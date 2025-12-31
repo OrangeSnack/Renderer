@@ -100,9 +100,11 @@ namespace MMMEngine
 			std::vector<uint8_t> bytes;
 			bytes.reserve(16);
 
-			// uuid의 data() 메서드로 바이트 배열 접근
-			auto span = m_uuid.as_bytes();
-			bytes.assign(span.begin(), span.end());
+			auto span = m_uuid.as_bytes(); // span<const std::byte, 16>
+
+			for (std::byte b : span) {
+				bytes.push_back(static_cast<uint8_t>(b));
+			}
 
 			return bytes;
 		}

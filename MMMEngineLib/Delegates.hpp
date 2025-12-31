@@ -1,4 +1,4 @@
-﻿/*
+/*
     Based on "The Impossibly Fast C++ Delegates"
     Copyright (C) 2017 Sergey A Kryukov, 2005 Sergey Ryazanov
     MIT License - See THIRD_PARTY_NOTICES.txt
@@ -58,8 +58,8 @@ namespace MMMEngine
         // 멤버 함수 추가 (std::bind 스타일)
         template<typename T>
         void AddListener(T* instance, void(T::* method)(Args...)) {
-            void* methodPtr = *reinterpret_cast<void**>(&method);
-            FunctionKey key{ instance, methodPtr };
+			std::uintptr_t methodHash = *reinterpret_cast<std::uintptr_t*>(&method);
+			FunctionKey key{ instance, reinterpret_cast<void*>(methodHash) };
 
             if (m_functionMap.find(key) != m_functionMap.end())
                 return; // 이미 등록됨
@@ -72,20 +72,22 @@ namespace MMMEngine
         }
 
         // Const 멤버 함수 추가
-        template<typename T>
-        void AddListener(const T* instance, void(T::* method)(Args...) const) {
-            void* methodPtr = *reinterpret_cast<void**>(const_cast<void(T::**)(Args...) const>(&method));
-            FunctionKey key{ const_cast<T*>(instance), methodPtr };
+		template<typename T>
+		void AddListener(const T* instance, void(T::* method)(Args...) const) {
+			// 멤버 함수 포인터를 uintptr_t로 안전하게 변환
+			std::uintptr_t methodPtr = *reinterpret_cast<std::uintptr_t*>(const_cast<void(T::**)(Args...) const>(&method));
+			FunctionKey key{ const_cast<T*>(instance), reinterpret_cast<void*>(methodPtr) };
 
-            if (m_functionMap.find(key) != m_functionMap.end())
-                return;
+			if (m_functionMap.find(key) != m_functionMap.end())
+				return;
 
-            auto delegate = DelegateType([instance, method](Args... args) {
-                (instance->*method)(args...);
-                });
-            m_functionMap[key] = delegate;
-            m_multicast += delegate;
-        }
+			auto delegate = DelegateType([instance, method](Args... args) {
+				(instance->*method)(args...);
+				});
+
+			m_functionMap[key] = delegate;
+			m_multicast += delegate;
+		}
 
         // 람다 추가 (제거 불가능, 하지만 += 연산자로 사용 가능)
         template<typename Lambda>
@@ -197,37 +199,39 @@ namespace MMMEngine
             m_multicast += delegate;
         }
 
-        // 멤버 함수 추가
-        template<typename T>
-        void AddListener(T* instance, R(T::* method)(Args...)) {
-            void* methodPtr = *reinterpret_cast<void**>(&method);
-            FunctionKey key{ instance, methodPtr };
+		// 멤버 함수 추가
+		template<typename T>
+		void AddListener(T* instance, R(T::* method)(Args...)) {
+			std::uintptr_t methodPtr = *reinterpret_cast<std::uintptr_t*>(&method);
+			FunctionKey key{ instance, reinterpret_cast<void*>(methodPtr) };
 
-            if (m_functionMap.find(key) != m_functionMap.end())
-                return;
+			if (m_functionMap.find(key) != m_functionMap.end())
+				return;
 
-            auto delegate = DelegateType([instance, method](Args... args) -> R {
-                return (instance->*method)(args...);
-                });
-            m_functionMap[key] = delegate;
-            m_multicast += delegate;
-        }
+			auto delegate = DelegateType([instance, method](Args... args) -> R {
+				return (instance->*method)(args...);
+				});
 
-        // Const 멤버 함수 추가
-        template<typename T>
-        void AddListener(const T* instance, R(T::* method)(Args...) const) {
-            void* methodPtr = *reinterpret_cast<void**>(const_cast<R(T::**)(Args...) const>(&method));
-            FunctionKey key{ const_cast<T*>(instance), methodPtr };
+			m_functionMap[key] = delegate;
+			m_multicast += delegate;
+		}
 
-            if (m_functionMap.find(key) != m_functionMap.end())
-                return;
+		// Const 멤버 함수 추가
+		template<typename T>
+		void AddListener(const T* instance, R(T::* method)(Args...) const) {
+			std::uintptr_t methodPtr = *reinterpret_cast<std::uintptr_t*>(&method);
+			FunctionKey key{ const_cast<T*>(instance), reinterpret_cast<void*>(methodPtr) };
 
-            auto delegate = DelegateType([instance, method](Args... args) -> R {
-                return (instance->*method)(args...);
-                });
-            m_functionMap[key] = delegate;
-            m_multicast += delegate;
-        }
+			if (m_functionMap.find(key) != m_functionMap.end())
+				return;
+
+			auto delegate = DelegateType([instance, method](Args... args) -> R {
+				return (instance->*method)(args...);
+				});
+
+			m_functionMap[key] = delegate;
+			m_multicast += delegate;
+		}
 
         // 람다 추가
         template<typename Lambda>
@@ -376,47 +380,39 @@ namespace MMMEngine
             m_multicast += delegate;
         }
 
-        // 멤버 함수 추가
-        template<typename T>
-        void AddListener(T* instance, R(T::* method)(Args...)) {
-            void* methodPtr = *reinterpret_cast<void**>(&method);
-            FunctionKey key{ instance, methodPtr };
+		// 멤버 함수 추가
+		template<typename T>
+		void AddListener(T* instance, R(T::* method)(Args...)) {
+			std::uintptr_t methodPtr = *reinterpret_cast<std::uintptr_t*>(&method);
+			FunctionKey key{ instance, reinterpret_cast<void*>(methodPtr) };
 
-            if (m_functionMap.find(key) != m_functionMap.end())
-                return;
+			if (m_functionMap.find(key) != m_functionMap.end())
+				return;
 
-            auto delegate = DelegateType([instance, method](Args... args) -> R {
-                if constexpr (std::is_same_v<R, void>) {
-                    (instance->*method)(args...);
-                }
-                else {
-                    return (instance->*method)(args...);
-                }
-                });
-            m_functionMap[key] = delegate;
-            m_multicast += delegate;
-        }
+			auto delegate = DelegateType([instance, method](Args... args) -> R {
+				return (instance->*method)(args...);
+				});
 
-        // Const 멤버 함수 추가
-        template<typename T>
-        void AddListener(const T* instance, R(T::* method)(Args...) const) {
-            void* methodPtr = *reinterpret_cast<void**>(const_cast<R(T::**)(Args...) const>(&method));
-            FunctionKey key{ const_cast<T*>(instance), methodPtr };
+			m_functionMap[key] = delegate;
+			m_multicast += delegate;
+		}
 
-            if (m_functionMap.find(key) != m_functionMap.end())
-                return;
+		// Const 멤버 함수 추가
+		template<typename T>
+		void AddListener(const T* instance, R(T::* method)(Args...) const) {
+			std::uintptr_t methodPtr = *reinterpret_cast<std::uintptr_t*>(&method);
+			FunctionKey key{ const_cast<T*>(instance), reinterpret_cast<void*>(methodPtr) };
 
-            auto delegate = DelegateType([instance, method](Args... args) -> R {
-                if constexpr (std::is_same_v<R, void>) {
-                    (instance->*method)(args...);
-                }
-                else {
-                    return (instance->*method)(args...);
-                }
-                });
-            m_functionMap[key] = delegate;
-            m_multicast += delegate;
-        }
+			if (m_functionMap.find(key) != m_functionMap.end())
+				return;
+
+			auto delegate = DelegateType([instance, method](Args... args) -> R {
+				return (instance->*method)(args...);
+				});
+
+			m_functionMap[key] = delegate;
+			m_multicast += delegate;
+		}
 
         // 람다 추가
         template<typename Lambda>
