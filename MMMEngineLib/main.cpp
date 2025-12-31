@@ -13,13 +13,11 @@ int main()
 	App app;
 
 	Action<> act;
-	act += Render;
+	act.AddListener<&Render>();
 
-	act -= Render;
+	act.RemoveListener<&Render>();
 
-	app.onRender += act;
-
-	app.onRender += Render;
+	app.onRender.AddListener<&Render>();
 
 	act.Invoke();
 
