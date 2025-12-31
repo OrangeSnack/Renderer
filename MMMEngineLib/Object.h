@@ -15,12 +15,6 @@ namespace MMMEngine
 			.property("name", Object::GetName, Object::SetName);
 	}
 
-	struct ObjectHandle
-	{
-		uint32_t idx;
-		uint32_t gen;
-	};
-
 	class Object
 	{
 	private:

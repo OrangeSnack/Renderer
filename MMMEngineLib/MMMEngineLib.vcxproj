@@ -106,6 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,6 +134,7 @@
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="Delegates.hpp" />
+    <ClInclude Include="GUID.h" />
     <ClInclude Include="Json.hpp" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="Singleton.hpp" />
