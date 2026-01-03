@@ -3,6 +3,7 @@
 #include "Object.h"
 #include <vector>
 #include <queue>
+#include <mutex>
 
 namespace MMMEngine
 {
@@ -11,9 +12,10 @@ namespace MMMEngine
     private:
         friend class App;
 
-        bool m_isCreatingObject = false;
-        bool m_isDestroyingObject = false;
+        static inline thread_local bool m_isCreatingObject;
+        static inline thread_local bool m_isDestroyingObject;
 
+        mutable std::mutex m_mutex;
         std::vector<Object*> m_objects;
         std::vector<uint32_t> m_handleGenerations;
         std::queue<uint32_t> m_freeHandleIDs;
@@ -21,6 +23,9 @@ namespace MMMEngine
 
         void ProcessPendingDestroy()
         {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            DestroyScope scope(this);
+
             for (uint32_t handleID : m_pendingDestroy)
             {
                 if (handleID >= m_objects.size())
@@ -136,6 +141,8 @@ namespace MMMEngine
             static_assert(std::is_base_of_v<Object, T>, "T는 반드시 Object를 상속받아야 합니다.");
             static_assert(!std::is_abstract_v<T>, "추상적인 Object는 만들 수 없습니다.");
 
+            std::lock_guard<std::mutex> lock(m_mutex);
+
             CreationScope scope(this);
 
             T* newObj = new T(std::forward<Args>(args)...);
@@ -168,6 +175,7 @@ namespace MMMEngine
         {
             if (objPtr.IsValid())
             {
+                std::lock_guard<std::mutex> lock(m_mutex);
                 m_pendingDestroy.push_back(objPtr.m_handleID);
                 objPtr.m_ptr->MarkDestory();
             }
@@ -176,15 +184,14 @@ namespace MMMEngine
         ObjectManager() = default;
         ~ObjectManager()
         {
+            DestroyScope scope(this);
             // 모든 객체 정리
             for (Object* obj : m_objects)
             {
                 if (obj)
                 {
-                    DestroyScope scope(this);
                     delete obj;
                 }
-                    
             }
         }
     };
