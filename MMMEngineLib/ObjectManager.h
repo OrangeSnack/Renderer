@@ -23,7 +23,7 @@ namespace MMMEngine
 
         void ProcessPendingDestroy();
 
-        // === ID로 핸들 복원 (직렬화용) ===
+        // PtrID로 Ptr 복원 (직렬화용)
         template<typename T>
         ObjectPtr<T> GetPtr(uint32_t ptrID)
         {
@@ -42,9 +42,7 @@ namespace MMMEngine
             return ObjectPtr<T>(typedObj, ptrID, generation);
         }
 
-        // === 디버깅 ===
         size_t GetObjectCount() const;
-
     public:
         bool IsCreatingObject() const;
 
@@ -79,7 +77,6 @@ namespace MMMEngine
             }
         };
 
-        // === 유효성 검증 ===
         bool IsValidPtr(uint32_t ptrID, uint32_t generation, const Object* ptr) const;
 
         template<typename T, typename... Args>
@@ -116,7 +113,6 @@ namespace MMMEngine
             return ObjectPtr<T>(newObj, ptrID, generation);
         }
 
-        // === 파괴 ===
         template<typename T>
         void Destroy(ObjectPtr<T> objPtr)
         {
