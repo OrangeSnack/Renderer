@@ -66,7 +66,7 @@ MMMEngine::Transform::Transform()
 
 }
 
-void MMMEngine::Transform::BeforeDestroy()
+void MMMEngine::Transform::UnInitialize()
 {
 	DetachChildren();
 	SetParent(nullptr);
@@ -409,7 +409,7 @@ MMMEngine::ObjPtr<MMMEngine::Transform> MMMEngine::Transform::GetRoot()
 
 	while (current->m_parent != nullptr)
 	{
-		if (!current.IsValid())
+		if (!current.IsValid() || current->IsDestroyed())
 			break;
 		current = current->m_parent;
 	}
@@ -423,7 +423,7 @@ void MMMEngine::Transform::DetachChildren()
 
 	for (auto& child : childrenCopy)
 	{
-		if(child.IsValid())
+		if(child.IsValid() && !child->IsDestroyed())
 			child->SetParent(nullptr);
 	}
 

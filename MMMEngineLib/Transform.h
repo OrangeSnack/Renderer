@@ -35,7 +35,7 @@ namespace MMMEngine
 	protected:
 		Transform();
 		virtual void Initialize() override {};
-		virtual void BeforeDestroy() override;
+		virtual void UnInitialize() override;
 	public:
 		virtual ~Transform() = default;
 

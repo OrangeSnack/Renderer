@@ -3,5 +3,7 @@
 
 void MMMEngine::Component::BeforeDestroy()
 {
-	GetGameObject()->UnRegisterComponent(SelfPtr(this));
+	if(GetGameObject().IsValid() && !GetGameObject()->IsDestroyed())
+		GetGameObject()->UnRegisterComponent(SelfPtr(this));
+	UnInitialize();
 }

@@ -26,12 +26,12 @@ RTTR_REGISTRATION
    		    });
 }
 
-void MMMEngine::GameObject::RegisterComponent(ObjPtr<Component> comp)
+void MMMEngine::GameObject::RegisterComponent(const ObjPtr<Component>& comp)
 {
     m_components.push_back(comp);
 }
 
-void MMMEngine::GameObject::UnRegisterComponent(ObjPtr<Component> comp)
+void MMMEngine::GameObject::UnRegisterComponent(const ObjPtr<Component>& comp)
 {
     auto it = std::find(m_components.begin(), m_components.end(), comp);
     if (it != m_components.end()) {
@@ -90,9 +90,15 @@ MMMEngine::GameObject::GameObject(std::string name)
 void MMMEngine::GameObject::BeforeDestroy()
 {
 	ObjectManager::Get().Destroy(m_transform);
+	UnRegisterComponent(m_transform);
 	m_transform = nullptr;
-	for (const auto& comp : m_components)
-		Destroy(comp);
+	std::vector<ObjPtr<Component>> compsCopy = m_components;
+	for (const auto& comp : compsCopy)
+		if (comp.IsValid() && !comp->IsDestroyed())
+		{
+			Destroy(comp);
+			UnRegisterComponent(comp);
+		}
 }
 
 void MMMEngine::GameObject::SetActive(bool active)

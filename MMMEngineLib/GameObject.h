@@ -28,14 +28,14 @@ namespace MMMEngine
 		bool m_active = true;
 		bool m_activeInHierarchy = true; // Hierarchy에서 활성화 여부
 
-		void RegisterComponent(ObjPtr<Component> comp);
-		void UnRegisterComponent(ObjPtr<Component> comp);
+		void RegisterComponent(const ObjPtr<Component>& comp);
+		void UnRegisterComponent(const ObjPtr<Component>& comp);
 		void UpdateActiveInHierarchy();
 		void Initialize();
 	protected:
 		GameObject();
 		GameObject(std::string name);
-		virtual void BeforeDestroy() override;
+		virtual void BeforeDestroy() final override;
 	public:
 		virtual ~GameObject() = default;
 		
@@ -48,7 +48,7 @@ namespace MMMEngine
 
 		const std::string&	GetTag()	const { return m_tag; }
 		const uint32_t&		GetLayer()	const { return m_layer; }
-		//const SceneRef		GetScene(	const { return m_scene; }
+		//const SceneRef		GetScene()	const { return m_scene; }
 
 		template <typename T>
 		ObjPtr<T> AddComponent()
@@ -78,6 +78,9 @@ namespace MMMEngine
 
 			for (auto comp : m_components)
 			{
+				if (!comp.IsValid() || comp->IsDestroyed())
+					continue;
+
 				if (auto typedComp = comp.Cast<T>())
 					return typedComp;
 			}

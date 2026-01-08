@@ -17,8 +17,9 @@ namespace MMMEngine
 		inline void SetGameObject(ObjPtr<GameObject> owner) { m_gameObject = owner; }
 	protected:
 		Component() = default;
-		virtual void Initialize() {};
-		virtual void BeforeDestroy() override;
+		virtual void Initialize() {};	//생성자 이후 추가 초기화용
+		virtual void BeforeDestroy() final override;
+		virtual void UnInitialize() {};  //파괴 직전 모든 참조 끊기용
 	public:
 		virtual ~Component() = default;
 

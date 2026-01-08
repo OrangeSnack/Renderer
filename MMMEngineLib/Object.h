@@ -187,7 +187,7 @@ namespace MMMEngine
             return ObjectManager::Get().GetPtr<U>(m_ptrID, m_ptrGeneration);
         }
 
-        T& operator*() const 
+        T& operator*() const
         {
             T* raw = Get();
             assert(raw && "ObjectPtr의 역참조가 잘못되었습니다!");

@@ -89,15 +89,12 @@ bool MMMEngine::ObjectManager::IsValidPtr(uint32_t ptrID, uint32_t generation, c
     if (m_objectPtrInfos[ptrID].ptrGenerations != generation)
         return false;
 
-    if (ptr && stored->IsDestroyed())
-        return false;
-
     return true;
 }
 
 void MMMEngine::ObjectManager::Destroy(const ObjPtrBase& objPtr, float delayTime)
 {
-    if (!objPtr.IsValid())
+    if (!objPtr.IsValid() || static_cast<Object*>(objPtr.GetRaw())->IsDestroyed())
         return;
 
     auto id = objPtr.GetPtrID();
