@@ -125,10 +125,20 @@ void MMMEngine::ObjectManager::Destroy(const ObjPtrBase& objPtr, float delayTime
     }
 }
 
-MMMEngine::ObjectManager::~ObjectManager()
+void MMMEngine::ObjectManager::StartUp()
 {
-    DestroyScope scope;
+
+}
+
+void MMMEngine::ObjectManager::ShutDown()
+{
     // 모든 객체 정리
+    DestroyScope scope;
+
+    // 파괴 예약 무효화
+    m_pendingDestroy.clear();
+    m_delayedDestroy.clear();
+
     for (ObjectPtrInfo& info : m_objectPtrInfos)
     {
         if (info.raw)
@@ -140,4 +150,16 @@ MMMEngine::ObjectManager::~ObjectManager()
             info.destroyScheduled = false;
         }
     }
+
+    m_objectPtrInfos.clear();
+    m_objectPtrInfos.shrink_to_fit();
+
+    // free id 스택 비우기
+    while (!m_freePtrIDs.empty())
+        m_freePtrIDs.pop();
+}
+
+MMMEngine::ObjectManager::~ObjectManager()
+{
+    ShutDown();
 }

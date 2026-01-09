@@ -30,7 +30,7 @@ namespace MMMEngine
 
 		bool			m_isDestroyed = false;
 
-        inline void		MarkDestroy() { if (m_isDestroyed) return; m_isDestroyed = true; BeforeDestroy();  }
+        inline void		MarkDestroy() { if (m_isDestroyed) return; m_isDestroyed = true; Dispose();  }
 		inline void		SetGUID(const GUID& guid) { m_guid = guid; }
 	protected:
         Object();
@@ -39,7 +39,7 @@ namespace MMMEngine
         template<typename T>
         ObjPtr<T> SelfPtr(T* self);
 
-        virtual void BeforeDestroy() {};
+        virtual void Dispose() {};
 	public:
 		Object(const Object&) = delete;
 		Object& operator=(const Object&) = delete;

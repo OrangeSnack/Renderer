@@ -173,6 +173,9 @@ namespace MMMEngine
 
         void Destroy(const ObjPtrBase& objPtr, float delayTime = 0.0f);
 
+        void StartUp();
+        void ShutDown();
+
         ObjectManager() = default;
         ~ObjectManager();
     };

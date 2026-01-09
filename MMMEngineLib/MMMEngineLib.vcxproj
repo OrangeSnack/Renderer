@@ -173,6 +173,8 @@
     <ClInclude Include="dxtk\Inc\XboxDDSTextureLoader.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="GUID.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="InputManager.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectManager.h" />
     <ClInclude Include="ObjectSerializer.h" />
@@ -304,6 +306,7 @@
     <ClInclude Include="rttr\variant_associative_view.h" />
     <ClInclude Include="rttr\variant_sequential_view.h" />
     <ClInclude Include="rttr\wrapper_mapper.h" />
+    <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="StringHelper.h" />
     <ClInclude Include="Transform.h" />
@@ -313,6 +316,8 @@
     <ClCompile Include="Component.cpp" />
     <ClCompile Include="dxtk\Src\SimpleMath.cpp" />
     <ClCompile Include="GameObject.cpp" />
+    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectManager.cpp" />

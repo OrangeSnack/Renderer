@@ -87,7 +87,7 @@ MMMEngine::GameObject::GameObject(std::string name)
 	Initialize();
 }
 
-void MMMEngine::GameObject::BeforeDestroy()
+void MMMEngine::GameObject::Dispose()
 {
 	ObjectManager::Get().Destroy(m_transform);
 	UnRegisterComponent(m_transform);

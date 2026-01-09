@@ -118,8 +118,14 @@
     <Filter Include="헤더 파일\Core\Resource API">
       <UniqueIdentifier>{9429d884-7bed-4e3a-8a66-6736b614e7c7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일\Core\InputSystem API">
+    <Filter Include="헤더 파일\Core\Scene API">
+      <UniqueIdentifier>{f41342cf-51ab-49c1-a516-6aa1444b9872}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Core\Input API">
       <UniqueIdentifier>{0541079b-0c19-4d7d-9149-a84c89ebef56}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Core\Input API">
+      <UniqueIdentifier>{a1c10f2f-8f28-4dd3-a335-a9ab53d1d169}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -603,6 +609,15 @@
     <ClInclude Include="StringHelper.h">
       <Filter>헤더 파일\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="SceneManager.h">
+      <Filter>헤더 파일\Core\Scene API</Filter>
+    </ClInclude>
+    <ClInclude Include="InputManager.h">
+      <Filter>헤더 파일\Core\Input API</Filter>
+    </ClInclude>
+    <ClInclude Include="Input.h">
+      <Filter>헤더 파일\Core\Input API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -727,6 +742,12 @@
     </ClCompile>
     <ClCompile Include="Component.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Input.cpp">
+      <Filter>소스 파일\Core\Input API</Filter>
+    </ClCompile>
+    <ClCompile Include="InputManager.cpp">
+      <Filter>소스 파일\Core\Input API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -35,7 +35,7 @@ namespace MMMEngine
 	protected:
 		GameObject();
 		GameObject(std::string name);
-		virtual void BeforeDestroy() final override;
+		virtual void Dispose() final override;
 	public:
 		virtual ~GameObject() = default;
 		
