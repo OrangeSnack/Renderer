@@ -43,14 +43,14 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
@@ -132,7 +132,7 @@
       <ConformanceMode>Default</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(ProjectDir)￦rttr\..;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)￦rttr\..;$(ProjectDir);$(ProjectDir)dxtk\Inc;$(ProjectDir)dxtk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <TreatWChar_tAsBuiltInType />
       <ForceConformanceInForLoopScope />
@@ -309,6 +309,7 @@
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="StringHelper.h" />
+    <ClInclude Include="TimeManager.h" />
     <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>

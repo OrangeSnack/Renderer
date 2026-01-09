@@ -55,8 +55,6 @@ public:
 
 int main()
 {
-	App app;
-
 	Test testObj;
 
 	Action<> act;
@@ -66,11 +64,11 @@ int main()
 
 	act.AddListener<Test, &Test::Foo>(&testObj);
 
-	app.onRender.AddListener<&Render>();
+	Application::Get().OnRender.AddListener<&Render>();
 
 	act.Invoke();
 
-	app.Run();
+	Application::Get().Run();
 
 	MMMEngine::GUID id = MMMEngine::GUID::NewGuid();
 	

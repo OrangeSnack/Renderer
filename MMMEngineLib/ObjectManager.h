@@ -20,7 +20,7 @@ namespace MMMEngine
             bool destroyScheduled = false;  
         };
 
-        friend class App;
+        friend class Application;
 
         static inline thread_local bool m_isCreatingObject;
         static inline thread_local bool m_isDestroyingObject;

@@ -9,7 +9,7 @@ namespace MMMEngine
 	private:
 		RTTR_ENABLE(Object)
 		RTTR_REGISTRATION_FRIEND
-		friend class App;
+		friend class Application;
 		friend class ObjectManager;
 		friend class GameObject;
 
