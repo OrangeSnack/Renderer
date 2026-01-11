@@ -1,6 +1,5 @@
 #pragma once
 #include "IBytesProvider.h"
-#include "PakFileReader.h"
 
 namespace MMMEngine::Player
 {
@@ -9,12 +8,7 @@ namespace MMMEngine::Player
     public:
         explicit PakBytesProvider(PakFileReader* reader) : m_reader(reader) {}
 
-        bool ReadAll(const MMMEngine::AssetEntry& entry, std::vector<uint8_t>& outBytes) override
-        {
-            if (!m_reader) return false;
-            if (entry.source != MMMEngine::AssetEntry::Source::Pak) return false;
-            return m_reader->Read(entry.offset, entry.size, outBytes);
-        }
+        bool ReadAll(const MMMEngine::AssetEntry& entry, std::vector<uint8_t>& outBytes) override;
 
     private:
         PakFileReader* m_reader = nullptr;

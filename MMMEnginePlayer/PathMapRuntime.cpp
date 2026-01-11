@@ -64,4 +64,12 @@ namespace MMMEngine::Player
 
         return true;
     }
+
+    bool PathMapRuntime::TryGetMUID(std::string_view sourcePath, Utility::MUID& out) const
+    {
+        auto it = m_map.find(std::string(sourcePath));
+        if (it == m_map.end()) return false;
+        out = it->second;
+        return true;
+    }
 }

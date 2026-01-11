@@ -28,7 +28,7 @@ namespace MMMEngine
 		IBytesProvider* m_bytes = nullptr;
 		
 		template<class T>
-		std::shared_ptr<T> LoadInternal(const AssetEntry& entry)
+		ResPtr<T> LoadInternal(const AssetEntry& entry)
 		{
 			static_assert(std::is_base_of_v<Resource, T>, "T must derive from Resource");
 			if (!m_bytes) return nullptr;
@@ -61,7 +61,7 @@ namespace MMMEngine
 
 
 		template<class T>
-		std::shared_ptr<T> Load(std::string_view sourcePath)
+		ResPtr<T> Load(std::string_view sourcePath)
 		{
 			AssetEntry entry{};
 			if (!m_resolver || !m_resolver->Resolve(sourcePath, entry)) return nullptr;
@@ -69,7 +69,7 @@ namespace MMMEngine
 		}
 
 		template<class T>
-		std::shared_ptr<T> LoadByGuid(const Utility::MUID& muid)
+		ResPtr<T> LoadByGuid(const Utility::MUID& muid)
 		{
 			AssetEntry entry{};
 			if (!m_resolver || !m_resolver->Resolve(muid, entry)) return nullptr;

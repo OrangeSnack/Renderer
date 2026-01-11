@@ -53,5 +53,14 @@
     <ClCompile Include="PathMapRuntime.cpp">
       <Filter>소스 파일\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="PakBytesProvider.cpp">
+      <Filter>소스 파일\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="PakFileReader.cpp">
+      <Filter>소스 파일\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerResolver.cpp">
+      <Filter>소스 파일\Asset</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

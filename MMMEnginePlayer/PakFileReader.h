@@ -9,12 +9,7 @@ namespace MMMEngine::Player
     class PakFileReader
     {
     public:
-        bool Open(const std::wstring& pakPath)
-        {
-            m_file.close();
-            m_file.open(pakPath, std::ios::binary);
-            return (bool)m_file;
-        }
+        bool Open(const std::wstring& pakPath);
 
         bool Read(uint64_t offset, uint64_t size, std::vector<uint8_t>& outBytes)
         {

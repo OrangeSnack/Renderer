@@ -17,13 +17,7 @@ namespace MMMEngine::Player
     public:
         bool LoadFromFile(const std::wstring& path);
 
-        bool TryGetSpan(const Utility::MUID& muid, AssetSpan& out) const
-        {
-            auto it = m_map.find(muid);
-            if (it == m_map.end()) return false;
-            out = it->second;
-            return true;
-        }
+        bool TryGetSpan(const Utility::MUID& muid, AssetSpan& out) const;
 
     private:
         std::unordered_map<Utility::MUID, AssetSpan, Utility::MUID::Hash> m_map;

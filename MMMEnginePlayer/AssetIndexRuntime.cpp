@@ -53,4 +53,12 @@ namespace MMMEngine::Player
 
         return true;
     }
+
+    bool AssetIndexRuntime::TryGetSpan(const Utility::MUID& muid, AssetSpan& out) const
+    {
+        auto it = m_map.find(muid);
+        if (it == m_map.end()) return false;
+        out = it->second;
+        return true;
+    }
 }
