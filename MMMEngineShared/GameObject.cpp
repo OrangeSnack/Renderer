@@ -76,15 +76,17 @@ void MMMEngine::GameObject::UpdateActiveInHierarchy()
 
 MMMEngine::GameObject::GameObject()
 {
-	//m_scene = SceneManager::Get() ? SCENE_GET_CURRENTSCENE() : nullptr;
-	//m_scene->RegisterGameObject(this);
-	Initialize();
 }
 
 
 MMMEngine::GameObject::GameObject(std::string name)
 {
 	SetName(name);
+}
+
+void MMMEngine::GameObject::Construct()
+{
+	auto s = SelfPtr(this);
 	Initialize();
 }
 

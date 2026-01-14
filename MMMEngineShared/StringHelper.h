@@ -12,5 +12,6 @@ namespace MMMEngine::Utility
 		static std::wstring StringToWString(const std::string& str);
 		static std::string WStringToString(const std::wstring& wstr);
 		static std::wstring ExtractFileFormat(const std::wstring& filepath);
+		static std::wstring ExtractFileName(const std::wstring& filepath);
 	};
 }

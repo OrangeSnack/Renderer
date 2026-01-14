@@ -95,3 +95,23 @@ std::wstring MMMEngine::Utility::StringHelper::ExtractFileFormat(const std::wstr
 
     return filepath.substr(dotPos + 1);
 }
+
+std::wstring MMMEngine::Utility::StringHelper::ExtractFileName(const std::wstring& filepath)
+{
+    if (filepath.empty())
+        return L"";
+
+    size_t slashPos = filepath.find_last_of(L"/\\");
+    std::wstring filename =
+        (slashPos == std::wstring::npos)
+        ? filepath
+        : filepath.substr(slashPos + 1);
+
+    size_t dotPos = filename.find_last_of(L'.');
+    if (dotPos != std::wstring::npos)
+    {
+        return filename.substr(0, dotPos);
+    }
+
+    return filename;
+}

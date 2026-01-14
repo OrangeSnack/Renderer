@@ -1,10 +1,11 @@
 #pragma once
-#include "Singleton.hpp"
+#include "ExportSingleton.hpp"
 
 namespace MMMEngine
 {
-	class SceneManager : public Utility::Singleton<SceneManager>
+	class MMMENGINE_API SceneManager : public Utility::ExportSingleton<SceneManager>
 	{
+	public:
 		void StartUp();
 		void ShutDown();
 		void Update();

@@ -145,6 +145,8 @@ namespace MMMEngine
             auto baseObj = static_cast<Object*>(newObj);
             baseObj->m_ptrID = ptrID;
             baseObj->m_ptrGen = ptrGen;
+
+            newObj->Construct();
             return ObjPtr<T>(newObj, ptrID, ptrGen);
         }
 

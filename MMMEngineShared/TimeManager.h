@@ -2,6 +2,8 @@
 #include "ExportSingleton.hpp"
 #include <chrono>
 
+// 아래는 표준라이브러리 (std::)의 dll export경고를 없애기 위한코드 
+// EngineShared는 ABI가 유지됨이 보장되기때문에 4251경고에 대해 안전함
 #pragma warning(push)
 #pragma warning(disable: 4251)
 

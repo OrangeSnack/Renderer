@@ -41,6 +41,7 @@ namespace MMMEngine
         template<typename T>
         ObjPtr<T> SelfPtr(T* self);
 
+        virtual void Construct() {};
         virtual void Dispose() {};
 	public:
 		Object(const Object&) = delete;

@@ -385,6 +385,8 @@
     <ClCompile Include="rttr\variant.cpp" />
     <ClCompile Include="rttr\variant_associative_view.cpp" />
     <ClCompile Include="rttr\variant_sequential_view.cpp" />
+    <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="ScriptBehaviour.cpp" />
     <ClCompile Include="StringHelper.cpp" />
     <ClCompile Include="TimeManager.cpp">
