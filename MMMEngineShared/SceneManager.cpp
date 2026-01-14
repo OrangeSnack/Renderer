@@ -21,18 +21,17 @@ MMMEngine::Scene* MMMEngine::SceneManager::GetSceneRaw(const SceneRef& ref)
 
 void MMMEngine::SceneManager::ChangeScene(const std::string& name)
 {
+	auto it = m_sceneNameToID.find(name);
+	if (it != m_sceneNameToID.end())
+	{
+		m_nextSceneID = it->second;
+	}
 }
 
-void MMMEngine::SceneManager::ChangeScene(const uint32_t& id)
+void MMMEngine::SceneManager::ChangeScene(const size_t& id)
 {
-}
-
-void MMMEngine::SceneManager::LoadScene(const uint32_t& index)
-{
-}
-
-void MMMEngine::SceneManager::LoadScene(const std::string& Name)
-{
+	if (id < m_scenes.size())
+		m_nextSceneID = id;
 }
 
 
@@ -44,10 +43,28 @@ void MMMEngine::SceneManager::StartUp()
 	m_currentSceneID = 0;
 }
 
-void MMMEngine::SceneManager::Update()
-{
-}
+
 
 void MMMEngine::SceneManager::ShutDown()
 {
+}
+
+bool MMMEngine::SceneManager::CheckSceneIsChanged()
+{
+	if (m_nextSceneID != static_cast<size_t>(-1) &&
+		m_nextSceneID < m_scenes.size())
+	{
+		if (m_currentSceneID != static_cast<size_t>(-1) && 
+			m_currentSceneID < m_scenes.size())
+		 	m_scenes[m_currentSceneID]->Clear();
+
+		m_currentSceneID = m_nextSceneID;
+		m_nextSceneID = static_cast<size_t>(-1);
+
+		// todo : SceneSerializer È£Ãâ
+		//m_currentSceneID->Initialize();
+		return true;
+	}
+
+	return false;
 }
