@@ -717,6 +717,9 @@
     <ClInclude Include="MMMSceneManagement.h">
       <Filter>헤더 파일\Core\Scene API</Filter>
     </ClInclude>
+    <ClInclude Include="SceneSerializer.h">
+      <Filter>헤더 파일\Core\Scene API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="rttr\constructor.cpp">
@@ -867,6 +870,9 @@
       <Filter>소스 파일\Core\Scene API</Filter>
     </ClCompile>
     <ClCompile Include="SceneManager.cpp">
+      <Filter>소스 파일\Core\Scene API</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneSerializer.cpp">
       <Filter>소스 파일\Core\Scene API</Filter>
     </ClCompile>
   </ItemGroup>

@@ -5,6 +5,11 @@
 #include "PlayerRegistry.h"
 #include "App.h"
 
+#include "MMMApplication.h"
+#include "MMMScreen.h"
+#include "MMMTime.h"
+#include "MMMInput.h"
+
 #include "InputManager.h"
 #include "TimeManager.h"
 #include "ResourceManager.h"
@@ -15,14 +20,21 @@
 using namespace MMMEngine;
 using namespace MMMEngine::Utility;
 
+ObjPtr<GameObject> g_pPlayer = nullptr;
+
 void Initialize()
 {
 	InputManager::Get().StartUp(GlobalRegistry::g_pApp->GetWindowHandle());
 	GlobalRegistry::g_pApp->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
 
-	SceneManager::Get().StartUp(L"Data/", false);
+	SceneManager::Get().StartUp(L"Data/", true);
 
 	BehaviourManager::Get().StartUp();
+
+	g_pPlayer = Object::NewObject<GameObject>();
+	Object::NewObject<GameObject>();
+	Object::NewObject<GameObject>();
+	Object::NewObject<GameObject>();
 }
 
 void Update()
@@ -30,13 +42,20 @@ void Update()
 	TimeManager::Get().BeginFrame();
 	InputManager::Get().Update();
 
-	BehaviourManager::Get().InitializeBehaviours();
-	
-	//씬 변환 후 한번만 호출
-	//BehaviourManager::Get().AllSortBehaviours();
-	//BehaviourManager::Get().AllBroadCastBehaviourMessage("OnSceneLoaded");
-
 	float dt = TimeManager::Get().GetDeltaTime();
+
+	//씬 변환 후 한번만 호출
+	if (SceneManager::Get().CheckSceneIsChanged())
+	{
+		ObjectManager::Get().UpdateInternalTimer(dt);
+		BehaviourManager::Get().DisableBehaviours();
+		ObjectManager::Get().ProcessPendingDestroy();
+		BehaviourManager::Get().AllSortBehaviours();
+		BehaviourManager::Get().AllBroadCastBehaviourMessage("OnSceneLoaded");
+	}
+
+	BehaviourManager::Get().InitializeBehaviours();
+
 
 	TimeManager::Get().ConsumeFixedSteps([&](float fixedDt)
 	{
@@ -59,8 +78,7 @@ void Update()
 void Release()
 {
 	SceneManager::Get().ShutDown();
-	ObjectManager::Get().UpdateInternalTimer(10000);
-	ObjectManager::Get().ProcessPendingDestroy();
+	ObjectManager::Get().ShutDown();
 	BehaviourManager::Get().ShutDown();
 	GlobalRegistry::g_pApp = nullptr;
 }

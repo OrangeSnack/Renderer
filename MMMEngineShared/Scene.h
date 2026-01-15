@@ -15,6 +15,7 @@ namespace MMMEngine
 	{
 	private:
 		friend class SceneManager;
+		friend class SceneSerializer;
 		RTTR_ENABLE()
 		RTTR_REGISTRATION_FRIEND
 		Utility::MUID m_muid;

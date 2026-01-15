@@ -62,8 +62,6 @@ void MMMEngine::GameObject::Initialize()
 	RegisterComponent(m_transform); // Transform을 컴포넌트로 등록
 
 	UpdateActiveInHierarchy();
-
-	//s_allGameObjects.push_back(this); // 모든 게임 오브젝트 목록에 추가
 }
 
 void MMMEngine::GameObject::UpdateActiveInHierarchy()

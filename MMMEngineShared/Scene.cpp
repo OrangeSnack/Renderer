@@ -36,6 +36,7 @@ void MMMEngine::Scene::Clear()
         go->SetScene({ static_cast<size_t>(-1),false });
         Object::Destroy(go);
     }
+    m_gameObjects.clear();
 }
 
 std::vector<MMMEngine::ObjPtr<MMMEngine::GameObject>> MMMEngine::Scene::GetGameObjects()
