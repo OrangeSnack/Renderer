@@ -9,14 +9,15 @@ RTTR_REGISTRATION
     using namespace MMMEngine;
 
     registration::class_<Scene>("Scene")
+        .method("SetSnapShot", &Scene::SetSnapShot, registration::private_access)
         .property("MUID", &Scene::GetMUID, &Scene::SetMUID, registration::private_access);
 }
-
 
 void MMMEngine::Scene::SetMUID(const Utility::MUID& muid)
 {
     m_muid = muid;
 }
+
 
 void MMMEngine::Scene::SetSnapShot(SnapShot&& snapshot) noexcept
 {
@@ -35,6 +36,16 @@ void MMMEngine::Scene::Clear()
         go->SetScene({ static_cast<size_t>(-1),false });
         Object::Destroy(go);
     }
+}
+
+std::vector<MMMEngine::ObjPtr<MMMEngine::GameObject>> MMMEngine::Scene::GetGameObjects()
+{
+    return m_gameObjects;
+}
+
+void MMMEngine::Scene::Initialize()
+{
+    //SceneSerializer를 호출, 내부에 로드된 SnapShot 넘기기
 }
 
 

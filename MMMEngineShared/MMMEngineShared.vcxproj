@@ -187,6 +187,7 @@
     <ClInclude Include="MissingScriptBehaviour.h" />
     <ClInclude Include="MMMApplication.h" />
     <ClInclude Include="MMMResources.h" />
+    <ClInclude Include="MMMSceneManagement.h" />
     <ClInclude Include="MMMScreen.h" />
     <ClInclude Include="MUID.h" />
     <ClInclude Include="InputConstant.h" />

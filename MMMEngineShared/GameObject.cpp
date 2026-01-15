@@ -13,6 +13,7 @@ RTTR_REGISTRATION
 	using namespace MMMEngine;
 
 	registration::class_<GameObject>("GameObject")
+		.property("Active", &GameObject::IsActiveInHierarchy, &GameObject::SetActive)
 		.property("Scene", &GameObject::GetScene, &GameObject::SetScene, registration::private_access)
 		.property("Layer", &GameObject::GetLayer, &GameObject::SetLayer)
 		.property("Tag", &GameObject::GetTag, &GameObject::SetTag)
@@ -96,29 +97,29 @@ MMMEngine::GameObject::GameObject(std::string name)
 
 MMMEngine::GameObject::GameObject(SceneRef scene)
 {
-	SetScene(scene);
+	m_scene = scene;
 }
 
 MMMEngine::GameObject::GameObject(SceneRef scene, std::string name)
 {
-	SetScene(scene);
+	m_scene = scene;
 	SetName(name);
 }
 
 void MMMEngine::GameObject::Construct()
 {
 	auto& sceneManager = SceneManager::Get();
-	if (!sceneManager.GetSceneRaw(GetScene()))
+	if (!sceneManager.GetSceneRaw(m_scene))
 	{
-		SetScene(sceneManager.GetCurrentScene());
-		sceneManager.GetSceneRaw(GetScene())->RegisterGameObject(SelfPtr(this));
+		m_scene = sceneManager.GetCurrentScene();
+		sceneManager.GetSceneRaw(m_scene)->RegisterGameObject(SelfPtr(this));
 	}
 	Initialize();
 }
 
 void MMMEngine::GameObject::Dispose()
 {
-	if (auto scene = SceneManager::Get().GetSceneRaw(GetScene()))
+	if (auto scene = SceneManager::Get().GetSceneRaw(m_scene))
 	{
 		scene->UnRegisterGameObject(SelfPtr(this));
 	}
@@ -145,19 +146,17 @@ void MMMEngine::GameObject::SetActive(bool active)
 	UpdateActiveInHierarchy();
 }
 
-
-// todo : Scene 매니저에서 모든 씬을 순회하면서 찾기 -> 우리가 원하는 로직임
-MMMEngine::ObjPtr<MMMEngine::GameObject> MMMEngine::GameObject::Find(const std::wstring& name)
+MMMEngine::ObjPtr<MMMEngine::GameObject> MMMEngine::GameObject::Find(const std::string& name)
 {
-	return ObjPtr<GameObject>();
+	return SceneManager::Get().FindFromAllScenes(name);
 }
 
-MMMEngine::ObjPtr<MMMEngine::GameObject> MMMEngine::GameObject::FindWithTag(const std::string& name)
+MMMEngine::ObjPtr<MMMEngine::GameObject> MMMEngine::GameObject::FindWithTag(const std::string& tag)
 {
-	return ObjPtr<GameObject>();
+	return SceneManager::Get().FindWithTagFromAllScenes(tag);
 }
 
-std::vector<MMMEngine::ObjPtr<MMMEngine::GameObject>> MMMEngine::GameObject::FindGameObjectsWithTag(const std::string& name)
+std::vector<MMMEngine::ObjPtr<MMMEngine::GameObject>> MMMEngine::GameObject::FindGameObjectsWithTag(const std::string& tag)
 {
-	return std::vector<ObjPtr<GameObject>>();
+	return SceneManager::Get().FindGameObjectsWithTagFromAllScenes(tag);
 }

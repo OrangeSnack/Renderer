@@ -16,6 +16,7 @@
 #include "BehaviourManager.h"
 #include "ObjectManager.h"
 #include "SceneManager.h"
+#include "MMMSceneManagement.h"
 
 using namespace MMMEngine;
 using namespace MMMEngine::Utility;
@@ -27,7 +28,8 @@ void Initialize()
 	InputManager::Get().StartUp(GlobalRegistry::g_pApp->GetWindowHandle());
 	GlobalRegistry::g_pApp->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
 
-	SceneManager::Get().StartUp();
+	SceneManager::Get().StartUp(L"Data/", false);
+
 	BehaviourManager::Get().StartUp();
 
 	g_pPlayer = Object::NewObject<GameObject>("Player");

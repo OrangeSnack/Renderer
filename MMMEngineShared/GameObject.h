@@ -7,7 +7,7 @@
 
 namespace MMMEngine
 {
-	class MMMENGINE_API GameObject : public Object
+	class MMMENGINE_API GameObject final : public Object
 	{
 	private:
 		RTTR_ENABLE(Object)
@@ -51,7 +51,7 @@ namespace MMMEngine
 
 		bool IsActiveSelf() const { return m_active; }
 		bool IsActiveInHierarchy() const { return m_activeInHierarchy; }
-
+		
 		const std::string&	GetTag()		const { return m_tag; }
 		const uint32_t&		GetLayer()		const { return m_layer; }
 
@@ -97,8 +97,8 @@ namespace MMMEngine
 
 		ObjPtr<Transform> GetTransform() { return m_transform; }
 
-		static ObjPtr<GameObject> Find(const std::wstring& name);
-		static ObjPtr<GameObject> FindWithTag(const std::string& name);
-		static std::vector<ObjPtr<GameObject>> FindGameObjectsWithTag(const std::string& name);
+		static ObjPtr<GameObject> Find(const std::string& name);
+		static ObjPtr<GameObject> FindWithTag(const std::string& tag);
+		static std::vector<ObjPtr<GameObject>> FindGameObjectsWithTag(const std::string& tag);
 	};
 }

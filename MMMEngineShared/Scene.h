@@ -23,7 +23,9 @@ namespace MMMEngine
 		void SetMUID(const Utility::MUID& muid);
 		void SetSnapShot(SnapShot&& snapshot) noexcept;  //호출시 반드시 인자에 std::move()로 옮길것, 예) loadedScene.SetSnapShot(std::move(snapshot));
 		const SnapShot& GetSnapShot() const;
+		void Initialize();
 		void Clear();
+		std::vector<ObjPtr<GameObject>> GetGameObjects();
 	public:
 		~Scene();
 		void RegisterGameObject(ObjPtr<GameObject> go);
