@@ -1,5 +1,6 @@
 #include "SceneManager.h"
 #include "SceneSerializer.h"
+#include "StringHelper.h"
 
 #include "json/json.hpp"
 #include <fstream>
@@ -9,21 +10,59 @@ DEFINE_SINGLETON(MMMEngine::SceneManager)
 
 void MMMEngine::SceneManager::LoadScenes(std::wstring rootPath)
 {
-	//std::ifstream file(rootPath, std::ios::binary);
-	//if (!file.is_open())
-	//    return;
+	//rootPath에서 bin을 읽어서 m_sceneNameToID; // <Name , ID>를 초기화
+	auto sceneListPath = rootPath + L"/sceneList.bin";
+	std::ifstream file(sceneListPath, std::ios::binary);
+	if (!file.is_open())
+		return;
+	std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)),
+		std::istreambuf_iterator<char>());
+	file.close();
+	nlohmann::json sceneList = nlohmann::json::from_msgpack(buffer);
 
-	//std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)),
-	//    std::istreambuf_iterator<char>());
-	//file.close();
+	m_sceneNameToID.clear();
+	m_scenes.clear();
 
-	//nlohmann::json snapshot = nlohmann::json::from_msgpack(buffer);
+	// index 기준으로 정렬
+	std::vector<std::pair<size_t, std::string>> sortedScenes;
+	for (const auto& sceneEntry : sceneList)
+	{
+		std::string filepath = sceneEntry["filepath"];
+		size_t index = sceneEntry["index"];
+		sortedScenes.emplace_back(index, filepath);
+	}
+	std::sort(sortedScenes.begin(), sortedScenes.end());
 
-	//m_scenes.emplace_back(std::move(std::make_unique<Scene>()));
-	//
-	//auto& currentScene = *m_scenes[0].get();
-	//currentScene.m_snapshot = snapshot;
-	//SceneSerializer::Get().Deserialize(currentScene,currentScene.m_snapshot);
+	// 정렬된 순서대로 m_scenes 크기 미리 할당
+	m_scenes.resize(sortedScenes.size());
+
+	for (const auto& [index, filepath] : sortedScenes)
+	{
+		// .scene 확장자 제거하여 순수 이름만 추출
+		std::string sceneName = filepath.substr(0, filepath.find(".scene"));
+		m_sceneNameToID[sceneName] = index;
+
+		// Scene 파일 로드
+		auto sceneRootPath = rootPath + L"/" + Utility::StringHelper::StringToWString(filepath);
+		std::ifstream sceneFile(sceneRootPath, std::ios::binary);
+		if (!sceneFile.is_open())
+		{
+			// todo : 에러로그 만들기, 빈 씬 생성
+			m_scenes[index] = std::make_unique<Scene>();
+			m_sceneNameToID[sceneName] = index;
+			continue;
+		}
+
+		std::vector<uint8_t> sceneBuffer((std::istreambuf_iterator<char>(sceneFile)),
+			std::istreambuf_iterator<char>());
+		sceneFile.close();
+
+		nlohmann::json snapshot = nlohmann::json::from_msgpack(sceneBuffer);
+
+		// index 위치에 Scene 배치
+		m_scenes[index] = std::make_unique<Scene>();
+		m_scenes[index]->m_snapshot = snapshot;
+	}
 }
 
 void MMMEngine::SceneManager::CreateEmptyScene()
@@ -96,7 +135,7 @@ void MMMEngine::SceneManager::StartUp(std::wstring rootPath, bool allowEmptyScen
 {
 	m_dontDestroyOnLoadScene = std::make_unique<Scene>();
 
-	// 고정된 경로로 json 바이너리를 읽고 씬파일경로를 불러오 ID맵을 초기화하고 초기씬을 생성함
+	// 고정된 경로로 json 바이너리를 읽고 씬파일경로를 불러와 ID맵을 초기화하고 초기씬을 생성함
 	LoadScenes(rootPath);
 
 	if (allowEmptyScene)
@@ -107,6 +146,8 @@ void MMMEngine::SceneManager::StartUp(std::wstring rootPath, bool allowEmptyScen
 	{
 		assert(false && "씬리스트가 비어있습니다!, 초기씬 로드에 실패했습니다!");
 	}
+
+	m_nextSceneID = 0;
 }
 
 

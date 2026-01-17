@@ -11,7 +11,7 @@ RTTR_REGISTRATION
 	using namespace MMMEngine;
 
 	registration::class_<Component>("Component")
-		.property("GameObject", &Component::GetGameObject, &Component::SetGameObject, registration::private_access)
+		.property_readonly("GameObject", &Component::GetGameObject, registration::private_access)
 		.property_readonly("Transform", &Component::GetTransform);
 
 	//registration::class_<ObjPtr<Component>>("ObjPtr<Component>");

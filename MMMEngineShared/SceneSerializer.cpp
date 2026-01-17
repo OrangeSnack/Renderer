@@ -15,13 +15,18 @@ using json = nlohmann::json;
 using namespace MMMEngine;
 using namespace rttr;
 
+std::unordered_map<std::string, rttr::variant> g_objectTable;
+
 json SerializeVariant(const rttr::variant& var);
 json SerializeObject(const rttr::instance& obj)
 {
     json j;
     type t = obj.get_type();
 
-    for (auto& prop : t.get_properties())
+    for (auto& prop : t.get_properties(
+        rttr::filter_item::instance_item |
+        rttr::filter_item::public_access |
+        rttr::filter_item::non_public_access))
     {
         if (prop.is_readonly())
             continue;
@@ -98,8 +103,12 @@ json SerializeComponent(const ObjPtr<Component>& comp)
 	type type = type::get(*comp);
 	compJson["Type"] = type.get_name().to_string();
 
-	for (auto& prop : type.get_properties())
+	for (auto& prop : type.get_properties(
+        rttr::filter_item::instance_item |
+        rttr::filter_item::public_access |
+        rttr::filter_item::non_public_access))
 	{
+        auto string = prop.get_name().to_string();
         if (prop.is_readonly())
             continue;
 
@@ -117,7 +126,8 @@ void MMMEngine::SceneSerializer::Serialize(const Scene& scene, std::wstring path
     auto sceneMUID = scene.GetMUID().IsEmpty() ? Utility::MUID::NewMUID() : scene.GetMUID();
 
 	snapshot["MUID"] = sceneMUID.ToString();
-	snapshot["Name"] = Utility::StringHelper::WStringToString(Utility::StringHelper::ExtractFileName(path));
+    snapshot["Name"] = scene.GetName();
+        //Utility::StringHelper::WStringToString(Utility::StringHelper::ExtractFileName(path));
 
 	json goArray = json::array();
 
@@ -128,7 +138,9 @@ void MMMEngine::SceneSerializer::Serialize(const Scene& scene, std::wstring path
 
 		json goJson;
 		goJson["Name"] = goPtr->GetName();
-		goJson["MUID"] = goPtr->GetMUID().ToString();
+		goJson["MUID"] = goPtr->GetMUID().ToString();    
+        goJson["Layer"] = goPtr->GetLayer();
+        goJson["Tag"] = goPtr->GetTag();
 
 		json compArray = json::array();
 		for (auto& comp : goPtr->GetAllComponents()) // 컴포넌트 리스트 가정
@@ -143,261 +155,353 @@ void MMMEngine::SceneSerializer::Serialize(const Scene& scene, std::wstring path
 	snapshot["GameObjects"] = goArray;
 	std::vector<uint8_t> v = json::to_msgpack(snapshot);
 
-    // 1. 경로 준비 (기존 코드 유지)
     fs::path p(path);
     if (p.has_parent_path() && !fs::exists(p.parent_path())) {
         fs::create_directories(p.parent_path());
     }
 
-    // 2. 파일 쓰기 (텍스트 모드)
-    std::ofstream file(path); // 바이너리 플래그 제거
-
+    std::ofstream file(path, std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("파일을 열 수 없습니다: " + Utility::StringHelper::WStringToString(path));
     }
 
-    // 3. snapshot.dump(들여쓰기_공간_수)를 사용하여 파일에 기록
-    // dump(4)를 사용하면 4칸 들여쓰기가 적용되어 사람이 읽기 편해집니다.
-    file << snapshot.dump(4);
-
+    file.write(reinterpret_cast<const char*>(v.data()), v.size());
     file.close();
 }
 
 
-void DeserializeVariant(rttr::variant& var, const json& j,
-    const std::unordered_map<std::string, rttr::variant>& guidTable)
+void DeserializeVariant(rttr::variant& target, const json& j, type target_type);
+
+void DeserializeObject(rttr::instance obj, const json& j)
 {
-    rttr::type t = var.get_type();
+    type t = obj.get_type();
 
-    if (t.is_arithmetic())
+    for (auto& prop : t.get_properties(
+        rttr::filter_item::instance_item |
+        rttr::filter_item::public_access |
+        rttr::filter_item::non_public_access))
     {
-        if (t == type::get<bool>())
-            var = j.get<bool>();
-        else if (t == type::get<int>())
-            var = j.get<int>();
-        else if (t == type::get<float>())
-            var = j.get<float>();
-        else if (t == type::get<double>())
-            var = j.get<double>();
-        else if (t == type::get<uint64_t>())
-            var = j.get<uint64_t>();
-        else if (t == type::get<unsigned int>())
-            var = j.get<unsigned int>();
-        else if (t == type::get<long long>())
-            var = j.get<long long>();
-    }
-    else if (t == type::get<std::string>())
-    {
-        var = j.get<std::string>();
-    }
-    else if (t == type::get<std::wstring>())
-    {
-        var = Utility::StringHelper::StringToWString(j.get<std::string>());
-    }
-    else if (t.is_sequential_container())
-    {
-        auto view = var.create_sequential_view();
-        view.set_size(j.size());
+        if (prop.is_readonly())
+            continue;
 
-        size_t index = 0;
+        std::string propName = prop.get_name().to_string();
+        if (!j.contains(propName))
+            continue;
+
+        rttr::variant currentValue = prop.get_value(obj);
+        DeserializeVariant(currentValue, j[propName], prop.get_type());
+        prop.set_value(obj, currentValue);
+    }
+}
+
+void DeserializeVariant(rttr::variant& target, const json& j, type target_type)
+{
+    if (j.is_null())
+    {
+        target = rttr::variant();
+        return;
+    }
+
+    if (target_type.is_arithmetic())
+    {
+        if (target_type == type::get<bool>()) target = j.get<bool>();
+        else if (target_type == type::get<int>()) target = j.get<int>();
+        else if (target_type == type::get<unsigned int>()) target = j.get<unsigned int>();
+        else if (target_type == type::get<long long>()) target = j.get<long long>();
+        else if (target_type == type::get<uint64_t>()) target = j.get<uint64_t>();
+        else if (target_type == type::get<float>()) target = j.get<float>();
+        else if (target_type == type::get<double>()) target = j.get<double>();
+        return;
+    }
+
+    if (target_type == type::get<MMMEngine::Utility::MUID>())
+    {
+        std::string muidStr = j.get<std::string>();
+        target = MMMEngine::Utility::MUID::Parse(muidStr);
+        return;
+    }
+
+    if (target_type == type::get<std::string>())
+    {
+        target = j.get<std::string>();
+        return;
+    }
+
+    if (target_type.is_sequential_container())
+    {
+        auto view = target.create_sequential_view();
+        view.clear();
+
+        // 템플릿 인자 가져오기
+        auto args = target_type.get_wrapped_type().get_template_arguments();
+        auto it = args.begin();
+        if (it == args.end())
+            return;
+
+        type value_type = *it;
+
         for (const auto& item : j)
         {
-            rttr::variant elemVar = view.get_value(index);
-            DeserializeVariant(elemVar, item, guidTable);
-            view.set_value(index, elemVar);
-            index++;
+            rttr::variant element = value_type.create();
+            DeserializeVariant(element, item, value_type);
+            view.insert(view.end(), element);
         }
+        return;
     }
-    else if (t.get_name().to_string().find("ObjPtr") != std::string::npos)
+
+    if (target_type.is_associative_container())
     {
-        // GUID 참조는 나중에 처리하기 위해 GUID 문자열을 임시 저장
-        // 실제 연결은 2차 패스에서 수행
-    }
-    else if (t.is_associative_container())
-    {
-        auto view = var.create_associative_view();
+        auto view = target.create_associative_view();
+        view.clear();
+
+        // 템플릿 인자 가져오기 (key, value)
+        auto args = target_type.get_wrapped_type().get_template_arguments();
+        auto it = args.begin();
+        if (it == args.end())
+            return;
+
+        type key_type = *it;
+        ++it;
+        if (it == args.end())
+            return;
+
+        type value_type = *it;
+
         for (auto& [key, value] : j.items())
         {
+            rttr::variant k = key_type.create();
+            rttr::variant v = value_type.create();
+
             json keyJson = json::parse(key);
-            rttr::variant keyVar;
-            rttr::variant valueVar;
+            DeserializeObject(k, keyJson);
+            DeserializeObject(v, value);
 
-            DeserializeVariant(keyVar, keyJson, guidTable);
-            DeserializeVariant(valueVar, value, guidTable);
-
-            view.insert(keyVar, valueVar);
+            view.insert(k, v);
         }
+        return;
+    }
+
+    // ObjPtr<T> 타입 처리
+    if (target_type.get_name().to_string().find("ObjPtr") != std::string::npos)
+    {
+        std::string muidStr = j.get<std::string>();
+
+        auto it = g_objectTable.find(muidStr);
+        if (it != g_objectTable.end())
+        {
+            // 변환 시도하지 말고 그대로 대입
+            target = it->second;
+        }
+        return;
+    }
+
+    // 사용자 정의 객체
+    if (!target.is_valid() || target.get_type() != target_type)
+    {
+        target = target_type.create();
+    }
+
+    DeserializeObject(target, j);
+}
+
+ObjPtr<Component> DeserializeComponent(const json& compJson)
+{
+    std::string typeName = compJson["Type"].get<std::string>();
+    type compType = type::get_by_name(typeName);
+
+    if (!compType.is_valid())
+        return nullptr;
+
+    rttr::variant compVariant = compType.create();
+    ObjPtr<Component> comp = nullptr;
+
+    // variant에서 ObjPtr<Component>로 변환
+    if (compVariant.can_convert<ObjPtr<Component>>())
+    {
+        comp = compVariant.convert<ObjPtr<Component>>();
+    }
+
+    if (!comp.IsValid())
+        return nullptr;
+
+    // Component의 MUID를 먼저 테이블에 등록
+    const json& props = compJson["Props"];
+    if (props.contains("MUID"))
+    {
+        std::string muid = props["MUID"].get<std::string>();
+        g_objectTable[muid] = comp;
+    }
+
+    // 속성 복원 (ObjPtr도 바로 처리됨)
+    DeserializeObject(*comp, props);
+
+    return comp;
+}
+
+void DeserializeTransform(Transform& tr, const json& j)
+{
+    type t = type::get<Transform>();
+
+    for (auto& prop : t.get_properties(
+        rttr::filter_item::instance_item |
+        rttr::filter_item::public_access |
+        rttr::filter_item::non_public_access))
+    {
+        if (prop.is_readonly())
+            continue;
+
+        std::string name = prop.get_name().to_string();
+        if (name == "Parent" || name == "m_parent" || name == "MUID" || name == "m_muid")
+            continue;
+
+        if (!j.contains(name))
+            continue;
+
+        rttr::variant v = prop.get_value(tr);
+        DeserializeVariant(v, j[name], prop.get_type());
+        prop.set_value(tr, v);
     }
 }
 
-void DeserializeComponent(ObjPtr<Component>& comp, const json& compJson,
-    const std::unordered_map<std::string, rttr::variant>& guidTable)
+static const json* FindTransformComp(const json& components)
 {
-    type t = type::get(*comp);
-
-    if (compJson.contains("Props"))
+    for (const auto& c : components)
     {
-        for (auto& [propName, propValue] : compJson["Props"].items())
-        {
-            auto prop = t.get_property(propName);
-            if (prop.is_valid())
-            {
-                rttr::variant var = prop.get_value(*comp);
-                DeserializeVariant(var, propValue, guidTable);
-                prop.set_value(*comp, var);
-            }
-        }
+        if (!c.contains("Type")) continue;
+        std::string t = c["Type"].get<std::string>();
+        if (t == "Transform") return &c;
     }
+    return nullptr;
 }
 
-void MMMEngine::SceneSerializer::Deserialize(Scene& scene,const SnapShot& snapShot)
+void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snapshot)
 {
-    // 파일 읽기
-    //std::ifstream file(path, std::ios::binary);
-    //if (!file.is_open())
-    //    return;
+    g_objectTable.clear();
+    std::unordered_map<std::string, std::string> pendingParent; // childTrMUID -> parentTrMUID
 
-    //std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)),
-    //    std::istreambuf_iterator<char>());
-    //file.close();
+    // Scene MUID
+    if (auto parsed = Utility::MUID::Parse(snapshot["MUID"].get<std::string>()); parsed.has_value())
+        scene.SetMUID(parsed.value());
 
-    //json snapshot = json::from_msgpack(buffer);
+    // Scene Name
+    scene.SetName(snapshot["Name"]);
 
-    // GUID -> ObjectPtr 매핑 테이블
-    std::unordered_map<std::string, ObjPtr<GameObject>> gameObjectTable;
-    std::unordered_map<std::string, ObjPtr<Component>> componentTable;
-    std::unordered_map<std::string, rttr::variant> guidTable;
+    const json& gameObjects = snapshot["GameObjects"];
 
-    // 부모 자식 관계 정보 저장용
-    struct HierarchyInfo
+    // 1-pass: GO + Transform(기존) MUID/값 복원 + 테이블 등록
+    for (const auto& goJson : gameObjects)
     {
-        std::string childMUID;
-        std::string parentMUID;
-    };
-    std::vector<HierarchyInfo> hierarchyInfos;
+        std::string goName = goJson["Name"].get<std::string>();
+        std::string goMUID = goJson["MUID"].get<std::string>();
+        std::string goLayer = goJson["Layer"].get<std::string>();
+        std::string goTag = goJson["Tag"].get<std::string>();
 
-    // 1단계: 모든 GameObject와 Component 생성
-    for (const auto& goJson : snapShot["GameObjects"])
-    {
-        std::string goMUID = goJson["MUID"];
-        std::string goName = goJson["Name"];
+        ObjPtr<GameObject> go = scene.CreateGameObject(goName);
+        scene.RegisterGameObject(go);
+        go->SetName(goName);
 
-        // GameObject 생성
-        auto gameObject = scene.CreateGameObject(goName);
-        gameObject->SetMUID(Utility::MUID::Parse(goMUID).value());
-        gameObjectTable[goMUID] = gameObject;
-        guidTable[goMUID] = gameObject;
+        if (auto parsedGo = Utility::MUID::Parse(goMUID); parsedGo.has_value())
+            go->SetMUID(parsedGo.value());
 
-        // 부모 정보가 있으면 저장
-        if (goJson.contains("ParentMUID"))
-        {
-            hierarchyInfos.push_back({ goMUID, goJson["ParentMUID"] });
-        }
+        g_objectTable[goMUID] = go;
 
-        // Component 생성
-        for (const auto& compJson : goJson["Components"])
-        {
-            if (!compJson.contains("Type") || !compJson.contains("Props")) continue;
+        // Transform json 찾기
+        const json& components = goJson["Components"];
+        const json* trComp = FindTransformComp(components);
+        if (!trComp || !trComp->contains("Props"))
+            continue; // 또는 throw
 
-            std::string typeName = compJson["Type"];
-            std::string compMUID = compJson["Props"]["MUID"];
-            std::string typePtrName = "ObjPtr<" + typeName + ">";
+        const json& trProps = (*trComp)["Props"];
 
-            // RTTR을 통해 컴포넌트 타입 생성
-            type compType = type::get_by_name(typePtrName);
-            if (compType.is_valid())
-            {
-                rttr::variant compVar = compType.create();
+        // 기존 Transform 가져오기
+        auto tr = go->GetTransform();
 
-                ObjPtr<Component> comp = nullptr;
-                compVar.convert(comp);
+        // Transform MUID는 Props["MUID"]
+        std::string trMUID = trProps["MUID"].get<std::string>();
+        if (auto parsedTr = Utility::MUID::Parse(trMUID); parsedTr.has_value())
+            tr->SetMUID(parsedTr.value());
 
-                if (comp.IsValid())
-                {
-                    comp->SetMUID(Utility::MUID::Parse(compMUID).value());
-                    //gameObject->AddComponent(comp);
-                    {
-                        comp->m_gameObject = gameObject;
-                        gameObject->RegisterComponent(comp);
+        g_objectTable[trMUID] = tr;
 
-                        // todo : UI가져올때
-                        //if constexpr (std::is_same<T, Canvas>::value || std::is_base_of<Graphic, T>::value)
-                        //{
-                        //	gameObject->EnsureRectTransform();
-                        //	gameObject->UpdateActiveInHierarchy();
-                        //}
+        // Transform 값 복원 (★ Parent/MUID는 스킵!)
+        DeserializeTransform(*tr, trProps);
 
-                        comp->Initialize();
-                    }
-
-                    componentTable[compMUID] = comp;
-                    guidTable[compMUID] = comp;
-
-                    // ObjPtr 참조가 아닌 프로퍼티는 바로 복원
-                    DeserializeComponent(comp, compJson, guidTable);
-                }
-            }
-        }
+        // Parent는 나중에
+        if (trProps.contains("Parent") && !trProps["Parent"].is_null())
+            pendingParent[trMUID] = trProps["Parent"].get<std::string>();
     }
 
-    // 2단계: Transform 계층 복원
-    for (const auto& info : hierarchyInfos)
+    // 2-pass: 일반 컴포넌트 생성/복원 (Transform은 제외)
+    for (const auto& goJson : gameObjects)
     {
-        auto child = gameObjectTable[info.childMUID];
-        auto parent = gameObjectTable[info.parentMUID];
+        std::string goMUID = goJson["MUID"].get<std::string>();
+        auto itGo = g_objectTable.find(goMUID);
+        if (itGo == g_objectTable.end()) continue;
 
-        if (child.IsValid() && parent.IsValid())
+        ObjPtr<GameObject> go = itGo->second.get_value<ObjPtr<GameObject>>();
+
+        const json& components = goJson["Components"];
+        for (const auto& compJson : components)
         {
-            auto childTransform = child->GetComponent<Transform>();
-            auto parentTransform = parent->GetComponent<Transform>();
-
-            if (childTransform.IsValid() && parentTransform.IsValid())
-            {
-                childTransform->SetParent(parentTransform);
-            }
-        }
-    }
-
-    // 3단계: 컴포넌트의 ObjPtr 참조 복원
-    for (const auto& goJson : snapShot["GameObjects"])
-    {
-        std::string goMUID = goJson["MUID"];
-        auto gameObject = gameObjectTable[goMUID];
-
-        for (const auto& compJson : goJson["Components"])
-        {
-            std::string compMUID = compJson["Props"]["MUID"];
-            auto comp = componentTable[compMUID];
-
-            if (!comp.IsValid() || !compJson.contains("Props"))
+            std::string typeName = compJson["Type"].get<std::string>();
+            if (typeName == "Transform") // 정확 일치로 스킵 권장
                 continue;
 
-            type t = type::get(*comp);
-
-            for (auto& [propName, propValue] : compJson["Props"].items())
+            ObjPtr<Component> comp = DeserializeComponent(compJson);
+            if (comp.IsValid())
             {
-                auto prop = t.get_property(propName);
-                if (!prop.is_valid())
-                    continue;
-
-                rttr::type propType = prop.get_type();
-
-                // ObjPtr 타입인지 확인
-                if (propType.get_name().to_string().find("ObjPtr") != std::string::npos)
-                {
-                    if (propValue.is_string())
-                    {
-                        std::string refMUID = propValue.get<std::string>();
-
-                        // GUID 테이블에서 실제 객체 찾기
-                        if (guidTable.find(refMUID) != guidTable.end())
-                        {
-                            prop.set_value(*comp, guidTable[refMUID]);
-                        }
-                    }
-                }
+                comp->m_gameObject = go;
+                go->RegisterComponent(comp);
+                comp->Initialize();
             }
         }
+    }
+
+    // 3-pass: Parent 연결 (Transform MUID 기준)
+    for (auto& [childTrMUID, parentTrMUID] : pendingParent)
+    {
+        auto itChild = g_objectTable.find(childTrMUID);
+        auto itParent = g_objectTable.find(parentTrMUID);
+
+        if (itChild == g_objectTable.end() || itParent == g_objectTable.end())
+            continue; // 또는 로그
+
+        auto childTr = itChild->second.get_value<ObjPtr<Transform>>();
+        auto parentTr = itParent->second.get_value<ObjPtr<Transform>>();
+        childTr->SetParent(parentTr);
+    }
+
+    g_objectTable.clear();
+}
+
+void MMMEngine::SceneSerializer::ExtractScenes(std::vector<Scene*> scenes, std::wstring rootPath)
+{
+    nlohmann::json sceneListJson = nlohmann::json::array();
+
+    // for문 순회하면서 { idx, filepath(name + .scene) }를 기록
+    for (size_t i = 0; i < scenes.size(); ++i)
+    {
+        auto& scene = scenes[i];
+        auto sceneFilePath = scene->GetName() + ".scene";
+
+        nlohmann::json sceneEntry;
+        sceneEntry["index"] = i;
+        sceneEntry["filepath"] = sceneFilePath;
+
+        sceneListJson.push_back(sceneEntry);
+
+        // TODO: rootpath에 .scene파일 직렬화
+        Serialize(*scene, rootPath + Utility::StringHelper::StringToWString(sceneFilePath));
+    }
+
+    // sceneList.json 파일로 저장
+    std::wstring sceneListPath = rootPath + L"/sceneList.bin";
+    std::ofstream outFile(sceneListPath, std::ios::binary);
+    if (outFile.is_open())
+    {
+        std::vector<uint8_t> msgpack = nlohmann::json::to_msgpack(sceneListJson);
+        outFile.write(reinterpret_cast<const char*>(msgpack.data()), msgpack.size());
+        outFile.close();
     }
 }
 

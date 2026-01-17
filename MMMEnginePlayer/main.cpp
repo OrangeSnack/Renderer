@@ -5,11 +5,6 @@
 #include "PlayerRegistry.h"
 #include "App.h"
 
-#include "MMMApplication.h"
-#include "MMMScreen.h"
-#include "MMMTime.h"
-#include "MMMInput.h"
-
 #include "InputManager.h"
 #include "TimeManager.h"
 #include "ResourceManager.h"
@@ -17,28 +12,17 @@
 #include "ObjectManager.h"
 #include "SceneManager.h"
 
-#include "SceneSerializer.h"
-
 using namespace MMMEngine;
 using namespace MMMEngine::Utility;
 
-ObjPtr<GameObject> g_pPlayer = nullptr;
 
 void Initialize()
 {
 	InputManager::Get().StartUp(GlobalRegistry::g_pApp->GetWindowHandle());
 	GlobalRegistry::g_pApp->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
 
-	SceneManager::Get().StartUp(L"Assets/Scene/EmptyScene.scene", true);
-
+	SceneManager::Get().StartUp(L"Data", false);
 	BehaviourManager::Get().StartUp();
-
-	g_pPlayer = Object::NewObject<GameObject>();
-	Object::NewObject<GameObject>();
-	Object::NewObject<GameObject>();
-	Object::NewObject<GameObject>();
-
-	SceneSerializer::Get().Serialize(*SceneManager::Get().GetSceneRaw(SceneManager::Get().GetCurrentScene()), L"Assets/Scene/EmptyScene.scene");
 }
 
 void Update()
@@ -70,7 +54,6 @@ void Update()
 	});
 
 	BehaviourManager::Get().BroadCastBehaviourMessage("Update");
-
 	BehaviourManager::Get().BroadCastBehaviourMessage("LateUpdate");
 
 	ObjectManager::Get().UpdateInternalTimer(dt);

@@ -1,6 +1,7 @@
 #include "Scene.h"
 #include "SceneManager.h"
 #include "GameObject.h"
+#include "SceneSerializer.h"
 #include "rttr/registration"
 #include "rttr/detail/policies/ctor_policies.h"
 
@@ -52,7 +53,7 @@ MMMEngine::ObjPtr<MMMEngine::GameObject> MMMEngine::Scene::CreateGameObject(std:
 
 void MMMEngine::Scene::Initialize()
 {
-    //SceneSerializer를 호출, 내부에 로드된 SnapShot 넘기기
+    SceneSerializer::Get().Deserialize(*this, m_snapshot);
 }
 
 
@@ -75,7 +76,17 @@ void MMMEngine::Scene::UnRegisterGameObject(ObjPtr<GameObject> go)
     }
 }
 
+const std::string& MMMEngine::Scene::GetName() const
+{
+    return m_name;
+}
+
 const MMMEngine::Utility::MUID & MMMEngine::Scene::GetMUID() const
 {
     return m_muid;
+}
+
+void MMMEngine::Scene::SetName(const std::string& name)
+{
+    m_name = name;
 }

@@ -30,7 +30,7 @@ void Release()
 
 int main()
 {
-	App app;
+	App app{ L"MMMEditor",1600,900 };
 	GlobalRegistry::g_pApp = &app;
 
 	app.OnInitialize.AddListener<&Init>();

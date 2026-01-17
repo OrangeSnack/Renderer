@@ -19,6 +19,7 @@ namespace MMMEngine
 		RTTR_ENABLE()
 		RTTR_REGISTRATION_FRIEND
 		Utility::MUID m_muid;
+		std::string m_name;
 		std::vector<ObjPtr<GameObject>> m_gameObjects;
 		SnapShot m_snapshot;
 		void SetMUID(const Utility::MUID& muid);
@@ -32,6 +33,9 @@ namespace MMMEngine
 		~Scene();
 		void RegisterGameObject(ObjPtr<GameObject> go);
 		void UnRegisterGameObject(ObjPtr<GameObject> go);
+		const std::string& GetName() const;
 		const Utility::MUID& GetMUID() const;
+
+		void SetName(const std::string& name);
 	};
 }

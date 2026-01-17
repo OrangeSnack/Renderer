@@ -19,9 +19,9 @@ RTTR_REGISTRATION
 
 	registration::class_<Transform>("Transform")
 		.property("Position", &Transform::GetLocalPosition, setpos)
-		.property("Roation", &Transform::GetLocalRotation, setrot)
+		.property("Rotation", &Transform::GetLocalRotation, setrot)
 		.property("Scale", &Transform::GetLocalScale, setscale)
-		.property("Parent", &Transform::m_parent, registration::private_access)(rttr::metadata("DONT_SHOW", true));
+		.property("Parent", &Transform::m_parent, registration::private_access)(rttr::policy::prop::as_reference_wrapper);// (rttr::metadata("DONT_SHOW", true));
 
 	registration::class_<ObjPtr<Transform>>("ObjPtr<Transform>")
 		.constructor<>(
