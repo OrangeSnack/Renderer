@@ -1,0 +1,280 @@
+#include "ImGuiEditorContext.h"
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx11.h>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+void MMMEngine::Editor::ImGuiEditorContext::UpdateInfiniteDrag()
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    static ImVec2 lastMousePosBeforeWarp = ImVec2(-1, 1);
+
+    // 드래그 중이 아니면 리셋
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    {
+        lastMousePosBeforeWarp = ImVec2(-1, -1);
+        return;
+    }
+
+    // 현재 윈도우 핸들 가져오기
+    HWND hwnd = GetActiveWindow(); // 또는 메인 윈도우 핸들 저장해두기
+    if (!hwnd) return;
+
+    // 현재 마우스 위치 (스크린 좌표)
+    POINT screenPos;
+    GetCursorPos(&screenPos);
+
+    // 윈도우 클라이언트 영역 정보
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+    POINT clientOrigin = { 0, 0 };
+    ClientToScreen(hwnd, &clientOrigin);
+
+    int clientW = clientRect.right - clientRect.left;
+    int clientH = clientRect.bottom - clientRect.top;
+
+    // 클라이언트 영역 기준으로 변환
+    int localX = screenPos.x - clientOrigin.x;
+    int localY = screenPos.y - clientOrigin.y;
+
+    // 워프 직전 델타 저장
+    ImVec2 currentDelta = io.MouseDelta;
+
+    // 경계 체크 및 워프 (여유 공간 10px)
+    const int margin = 10;
+    bool wrapped = false;
+    POINT newScreenPos = screenPos;
+
+    if (localX <= margin)
+    {
+        newScreenPos.x = clientOrigin.x + clientW - margin - 1;
+        wrapped = true;
+    }
+    else if (localX >= clientW - margin)
+    {
+        newScreenPos.x = clientOrigin.x + margin + 1;
+        wrapped = true;
+    }
+
+    if (localY <= margin)
+    {
+        newScreenPos.y = clientOrigin.y + clientH - margin - 1;
+        wrapped = true;
+    }
+    else if (localY >= clientH - margin)
+    {
+        newScreenPos.y = clientOrigin.y + margin + 1;
+        wrapped = true;
+    }
+
+    if (wrapped)
+    {
+        // 워프 직전 위치 저장
+        lastMousePosBeforeWarp = io.MousePos;
+
+        // 커서 워프
+        SetCursorPos(newScreenPos.x, newScreenPos.y);
+
+        // ImGui에게 새 위치 알리기 (클라이언트 좌표로)
+        io.MousePos = ImVec2(
+            (float)(newScreenPos.x - clientOrigin.x),
+            (float)(newScreenPos.y - clientOrigin.y)
+        );
+
+        // 중요: Delta는 유지! 워프는 화면상 위치만 바꿀 뿐
+        // 실제 마우스 이동량은 그대로 전달되어야 함
+        io.MouseDelta = currentDelta;
+
+        // WantSetMousePos로 ImGui에게 위치 변경 알림
+        io.WantSetMousePos = true;
+    }
+    else if (lastMousePosBeforeWarp.x >= 0)
+    {
+        // 워프 직후 첫 프레임
+        // 이때 Delta가 비정상적으로 클 수 있으므로 보정
+        ImVec2 expectedDelta = ImVec2(
+            io.MousePos.x - lastMousePosBeforeWarp.x,
+            io.MousePos.y - lastMousePosBeforeWarp.y
+        );
+
+        // Delta가 비정상적으로 크면 (화면 반대편으로 점프) 무시
+        float deltaLen = sqrtf(expectedDelta.x * expectedDelta.x +
+            expectedDelta.y * expectedDelta.y);
+        if (deltaLen > 100.0f) // threshold
+        {
+            io.MouseDelta = ImVec2(0, 0);
+        }
+
+        lastMousePosBeforeWarp = ImVec2(-1, -1);
+    }
+}
+
+bool MMMEngine::Editor::ImGuiEditorContext::Initialize(HWND hWnd, ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
+{
+    m_hWnd = hWnd;
+    m_pD3DDevice = pDevice;
+    m_pD3DContext = pContext;
+
+    // 코어 컨텍스트 생성
+    if (!ImGui::CreateContext()) {
+        return false;
+    }
+    m_isImGuiInit = true;
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 내비게이션 활성화
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;       
+    m_defaultFont = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/malgun.ttf", 16.0f, NULL, io.Fonts->GetGlyphRangesKorean()); // 한글 폰트 설정
+    m_bigFont = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/malgun.ttf", 36.0f, NULL, io.Fonts->GetGlyphRangesKorean());
+
+    // 스타일 설정
+    ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    // 둥근 모서리 설정
+    style.FrameRounding = 6.0f;
+    style.WindowRounding = 10.0f;
+    style.GrabRounding = 6.0f;
+    style.ScrollbarRounding = 6.0f;
+
+    // 색상 설정
+    //style.Colors[ImGuiCol_Text] = ImVec4(0.90f, 0.90f, 0.90f, 0.90f);
+    //style.Colors[ImGuiCol_WindowBg] = ImVec4(0.09f, 0.09f, 0.15f, 1.00f);
+    //style.Colors[ImGuiCol_FrameBg] = ImVec4(0.00f, 1.00f, 0.01f, 1.00f);
+    //style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.90f, 0.80f, 0.80f, 0.40f);
+    //style.Colors[ImGuiCol_Button] = ImVec4(0.48f, 0.72f, 0.89f, 0.49f);
+    //style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.50f, 0.69f, 0.99f, 0.68f);
+    //style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.80f, 0.50f, 0.50f, 1.00f);
+
+    // Win32 백엔드 초기화
+    if (!ImGui_ImplWin32_Init(m_hWnd)) {
+        ImGui::DestroyContext();
+        return false;
+    }
+    m_isWin32BackendInit = true;
+
+    // DirectX 11 백엔드 초기화
+    if (!ImGui_ImplDX11_Init(m_pD3DDevice, m_pD3DContext)) {
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+        return false;
+    }
+    m_isD3D11BackendInit = true;
+
+    return true;
+
+    return false;
+}
+
+void MMMEngine::Editor::ImGuiEditorContext::BeginFrame()
+{
+    RECT clientRect;
+    GetClientRect(m_hWnd, &clientRect);
+
+    // 너비와 높이를 명시적으로 계산
+    LONG width = clientRect.right - clientRect.left;
+    LONG height = clientRect.bottom - clientRect.top;
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)width, (float)height); // float으로 형변환
+
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+}
+
+void MMMEngine::Editor::ImGuiEditorContext::Render()
+{
+    // 1. 도킹될 위치를 미리 보여주는 사각형의 색상 (Docking Preview)
+// ImVec4(R, G, B, A) -> 0.0f ~ 1.0f 사이의 값
+        //style.Colors[ImGuiCol_DockingPreview] = ImVec4(0.45f, 0.45f, 0.45f, 0.83f);
+
+        //// 2. 도킹된 창의 탭이 활성화되었을 때의 색상 (선택 사항)
+        //style.Colors[ImGuiCol_TabActive] = ImVec4(0.12f, 0.12f, 0.4f, 1.00f);
+        //style.Colors[ImGuiCol_TabHovered] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+        //style.Colors[ImGuiCol_Tab] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+        //style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+        //style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+
+        // 1. 메인 뷰포트 정보 가져오기
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    // 2. 배경 윈도우 스타일 설정 (테두리와 라운딩 제거)
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+    // 3. 배경 창을 위한 플래그 설정 (메뉴바 포함 필수)
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+    window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    // 4. 배경 창 시작
+    bool p_open = true;
+    ImGui::Begin("MyMainDockSpaceWindow", &p_open, window_flags);
+    ImGui::PopStyleVar(3); // StyleVar 2개(Rounding, BorderSize) 복구
+
+    // 5. DockSpace 생성
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    {
+        ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+    }
+
+    // 6. 메뉴바 구현
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Exit")) p_open = false;
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    ImGui::End(); // MyMainDockSpaceWindow 종료
+
+    auto& style = ImGui::GetStyle();
+
+    style.FrameRounding = 6.0f;
+    style.WindowRounding = 4.5f;
+    style.GrabRounding = 6.0f;
+    style.ScrollbarRounding = 6.0f;
+    style.WindowMenuButtonPosition = ImGuiDir_None;
+    ImGui::Begin(u8"속성");
+    ImGui::Text(u8"이 창은 테두리가 둥글게 나옵니다.");
+    ImGui::End();
+
+}
+
+void MMMEngine::Editor::ImGuiEditorContext::EndFrame()
+{
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
+
+void MMMEngine::Editor::ImGuiEditorContext::Uninitialize()
+{
+
+}
+
+bool MMMEngine::Editor::ImGuiEditorContext::GetIsHovered()
+{
+    return m_isHovered;
+}
+
+void MMMEngine::Editor::ImGuiEditorContext::HandleWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    if (m_isWin32BackendInit)
+    {
+        ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam);
+    }
+}
+

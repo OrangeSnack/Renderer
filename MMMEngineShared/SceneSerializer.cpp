@@ -423,7 +423,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
 
         g_objectTable[trMUID] = tr;
 
-        // Transform 값 복원 (★ Parent/MUID는 스킵!)
+        // Transform 값 복원 (Parent/MUID는 스킵)
         DeserializeTransform(*tr, trProps);
 
         // Parent는 나중에
@@ -431,7 +431,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
             pendingParent[trMUID] = trProps["Parent"].get<std::string>();
     }
 
-    // 2-pass: 일반 컴포넌트 생성/복원 (Transform은 제외)
+    // 2-pass: 일반 컴포넌트 생성/복원 (Transform은 제외 + RectTransform도 제외)
     for (const auto& goJson : gameObjects)
     {
         std::string goMUID = goJson["MUID"].get<std::string>();
@@ -457,6 +457,8 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
         }
     }
 
+    // 2.5-pass: RectTransform만 찾아서 값타입만 역직렬화 + pendingRectParent에 기록해두기
+
     // 3-pass: Parent 연결 (Transform MUID 기준)
     for (auto& [childTrMUID, parentTrMUID] : pendingParent)
     {
@@ -468,7 +470,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
 
         auto childTr = itChild->second.get_value<ObjPtr<Transform>>();
         auto parentTr = itParent->second.get_value<ObjPtr<Transform>>();
-        childTr->SetParent(parentTr);
+        childTr->SetParent(parentTr, false);
     }
 
     g_objectTable.clear();

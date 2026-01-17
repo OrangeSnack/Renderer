@@ -47,7 +47,7 @@ void MMMEngine::SceneManager::LoadScenes(std::wstring rootPath)
 		std::ifstream sceneFile(sceneRootPath, std::ios::binary);
 		if (!sceneFile.is_open())
 		{
-			// todo : 에러로그 만들기, 빈 씬 생성
+			// todo : 에러로그 만들기, 지금은 빈 씬만 생성
 			m_scenes[index] = std::make_unique<Scene>();
 			m_sceneNameToID[sceneName] = index;
 			continue;
