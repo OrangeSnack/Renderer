@@ -1,6 +1,8 @@
-// 픽셀 셰이더(쉐이더/셰이더).
-#include "PBRShared.hlsli"
+#include "../../CommonShared.hlsli"
+#include "../../DeferredShared.hlsli"
+#include "../PBRShared.hlsli"
 
+// 픽셀 셰이더(쉐이더/셰이더).
 struct PS_DEFINPUT
 {
     float4 pos : SV_POSITION;

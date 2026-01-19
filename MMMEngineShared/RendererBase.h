@@ -7,6 +7,7 @@
 #include <d3d11_4.h>
 #include <Material.h>
 #include "Object.h"
+#include "ResourceManager.h"
 
 namespace MMMEngine {
 	class MeshRenderer;
@@ -16,13 +17,16 @@ namespace MMMEngine {
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pVertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pIndexBuffer;
 		UINT m_IndicesSize;
-		std::shared_ptr<Material> m_pMaterial;
+		ResPtr<Material> m_pMaterial;
 
 		Microsoft::WRL::ComPtr<ID3D11DeviceContext4> m_pDeviceContext;	// 디바이스 컨텍스트 참조
-		ObjPtr<MeshRenderer> m_pMeshRenderer;		// 주관 메시렌더러
-		
+		ObjPtr<MeshRenderer> m_pMeshRenderer;							// 주관 메시렌더러
+		DirectX::SimpleMath::Matrix m_worldMat = DirectX::SimpleMath::Matrix::Identity;
+
 	public:
 		RendererBase();
+
+		void SetWorldMat(const DirectX::SimpleMath::Matrix& _mat) { m_worldMat = _mat; }
 
 		void SetRenderData(
 			Microsoft::WRL::ComPtr<ID3D11Buffer>& _vertex,

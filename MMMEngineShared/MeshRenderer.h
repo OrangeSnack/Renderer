@@ -2,19 +2,26 @@
 
 #include "Export.h"
 #include "Behaviour.h"
+#include "ResourceManager.h"
 
 namespace MMMEngine {
+	class StaticMesh;
+	class RendererBase;
 	class MMMENGINE_API MeshRenderer : public Behaviour
 	{
-		//// GPU 버퍼
-		//std::shared_ptr<StaticMesh> mesh = nullptr;
-		//std::vector<std::weak_ptr<Renderer>> renderers;
+	private:
 
-		//void SetMesh(std::shared_ptr<StaticMesh>& _mesh);
-		//void Start() override;
-		//void Update() override;
+		// GPU 버퍼
+		ResPtr<StaticMesh> mesh = nullptr;
+		std::vector<std::weak_ptr<RendererBase>> renderers;
 
-		//~MeshRenderer();
+		void SetMesh(ResPtr<StaticMesh>& _mesh);
+
+	public:
+		MeshRenderer();
+
+		void Start();
+		void Update();
 	};
 }
 

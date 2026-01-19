@@ -25,25 +25,24 @@ RTTR_REGISTRATION
 
 	registration::class_<MMMEngine::Material>("Material")
 		.property("name", &MMMEngine::Material::GetName, &MMMEngine::Material::SetName)
-		.property("VShader", &MMMEngine::Material::GetVShader)
-		.property("PShader", &MMMEngine::Material::GetPShader)
-		.property("properties", &MMMEngine::Material::GetProperties)
+		.property_readonly("VShader", &MMMEngine::Material::GetVShader)
+		.property_readonly("PShader", &MMMEngine::Material::GetPShader)
 		.method("GetProperty", &MMMEngine::Material::GetProperty)
 		.method("SetProperty", &MMMEngine::Material::SetProperty);
 }
 
 
 // 프로퍼티 설정
-void MMMEngine::Material::SetProperty(const std::wstring& name, const MMMEngine::PropertyValue& value)
+void MMMEngine::Material::SetProperty(const std::wstring& _name, const MMMEngine::PropertyValue& value)
 {
-	m_properties[name] = value;
+	m_properties[_name] = value;
 }
 
 
 // 프로퍼티 가져오기
-MMMEngine::PropertyValue MMMEngine::Material::GetProperty(const std::wstring& name) const
+MMMEngine::PropertyValue MMMEngine::Material::GetProperty(const std::wstring& _name) const
 {
-	auto it = m_properties.find(name);
+	auto it = m_properties.find(_name);
 	if (it != m_properties.end())
 		return it->second;
 

@@ -3,7 +3,7 @@
 #include "RendererBase.h"
 
 namespace MMMEngine {
-	class MMMENGINE_API PBRRenderer : public RendererBase
+	class MMMENGINE_API GeoRenderer : public RendererBase
 	{
 	private:
 

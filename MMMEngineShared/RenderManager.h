@@ -63,7 +63,7 @@ namespace MMMEngine
 		// 인풋 레이아웃
 		std::shared_ptr<VShader> m_pDefaultVSShader;
 		std::shared_ptr<PShader> m_pDefaultPSShader;
-		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_pInputLayout;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_pDefaultInputLayout;
 
 		// 카메라 관련
 		ObjPtr<EditorCamera> m_pCamera;

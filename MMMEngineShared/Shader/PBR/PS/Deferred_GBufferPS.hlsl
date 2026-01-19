@@ -1,4 +1,6 @@
-#include "PBRShared.hlsli"
+#include "../../CommonShared.hlsli"
+#include "../../DeferredShared.hlsli"
+#include "../PBRShared.hlsli"
 
 struct PS_GOUTPUT
 {

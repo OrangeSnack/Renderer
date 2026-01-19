@@ -53,8 +53,6 @@ namespace MMMEngine {
 		swapDesc.SampleDesc.Count = 1;		// MSAA
 		swapDesc.SampleDesc.Quality = 0;	// MSAA 품질수준
 
-		UINT creationFlag = 0;
-
 		// 팩토리 생성
 		Microsoft::WRL::ComPtr<IDXGIFactory2> dxgiFactory;
 		HR_T(CreateDXGIFactory1(__uuidof(IDXGIFactory2), (void**)dxgiFactory.GetAddressOf()));
@@ -145,7 +143,26 @@ namespace MMMEngine {
 		rsDesc.AntialiasedLineEnable = FALSE;
 		HR_T(m_pDevice->CreateRasterizerState2(&rsDesc, m_pDefaultRS.GetAddressOf()));
 		assert(m_pDefaultRS && "RenderPipe::InitD3D : defaultRS not initialized!!");
-	}
+	
+		// 기본 VSShader 생성
+		m_pDefaultVSShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
+		m_pDefaultPSShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
+
+		// 기본 InputLayout 생성
+		D3D11_INPUT_ELEMENT_DESC layout[] = {
+	   { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	   { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	   { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	   { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	   { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	   { "BONEINDEX", 0, DXGI_FORMAT_R32G32B32A32_SINT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	   { "BONEWEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		};
+		HR_T(m_pDevice->CreateInputLayout(
+			layout, ARRAYSIZE(layout), m_pDefaultVSShader->m_pBlob->GetBufferPointer(),
+			m_pDefaultVSShader->m_pBlob->GetBufferSize(), m_pDefaultInputLayout.GetAddressOf()
+		));
+}
 	void RenderManager::UnInitD3D()
 	{
 	}
@@ -165,10 +182,6 @@ namespace MMMEngine {
 
 		bd.ByteWidth = sizeof(Render_CamBuffer);
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pCambuffer.GetAddressOf()));
-
-		// 기본 VSShader 생성 (VS 쉐이더는 매크로 넣지않는 이상 스킨드매쉬 쉐이더가 아님)
-		m_pDefaultVSShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
-		m_pDefaultPSShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
 	}
 
 	void RenderManager::BeginFrame()

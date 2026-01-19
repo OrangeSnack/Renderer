@@ -30,4 +30,6 @@ bool MMMEngine::PShader::LoadFromFilePath(const std::wstring& filePath)
 		0, 0,
 		m_pBlob.GetAddressOf(),
 		errorBlob.GetAddressOf()));
+
+	return true;
 }

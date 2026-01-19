@@ -10,6 +10,8 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+DEFINE_SINGLETON(MMMEngine::MaterialSerealizer);
+
 MMMEngine::PropertyValue MMMEngine::MaterialSerealizer::property_from_json(const nlohmann::json& j)
 {
 	std::string type = j.at("type").get<std::string>();
@@ -78,7 +80,7 @@ void MMMEngine::MaterialSerealizer::Serealize(ResPtr<Material> _material, std::w
 	json props = json::object();
 	for (auto& [key, val] : _material->GetProperties())
 	{
-		std::string skey(key.begin(), key.end());
+		std::string skey(Utility::StringHelper::WStringToString(key));
 		to_json(props[skey], val);
 	}
 	snapshot["properties"] = props;

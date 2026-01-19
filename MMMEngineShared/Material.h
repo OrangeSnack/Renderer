@@ -32,10 +32,10 @@ namespace MMMEngine {
 		std::wstring name = L"Material";
 
 	public:
-		std::wstring GetName() { return name; }
-		std::wstring SetName(const std::wstring& _name) { name = _name; }
+		std::wstring GetName() const { return name; }
+		void SetName(std::wstring _name) { name = _name; }
 
-		void SetProperty(const std::wstring& name, const PropertyValue& value);
+		void SetProperty(const std::wstring& _name, const PropertyValue& value);
 		PropertyValue GetProperty(const std::wstring& name) const;
 		const std::unordered_map<std::wstring, PropertyValue>& GetProperties() { return m_properties; }
 

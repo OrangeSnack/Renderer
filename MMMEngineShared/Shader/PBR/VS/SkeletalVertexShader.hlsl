@@ -1,4 +1,4 @@
-#include "../PBRShared.hlsli"
+#include "../../CommonShared.hlsli"
 
 PS_INPUT main(VS_INPUT input)
 {
@@ -41,7 +41,7 @@ PS_INPUT main(VS_INPUT input)
     
     output.Norm = normalize(mul(input.Norm, (float3x3) normalMat));
     output.Tan = normalize(mul(input.Tan, (float3x3) normalMat));
-    output.BiTan = normalize(mul(input.BiTan, (float3x3) normalMat));
+    output.BiTan = normalize(cross(output.Norm, output.Tan));
     output.Tex = input.Tex;
     
     // 현재 위치를 ShadowMap 위치로 변환

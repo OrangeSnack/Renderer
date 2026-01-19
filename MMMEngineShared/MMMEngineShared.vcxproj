@@ -201,7 +201,7 @@
     <ClInclude Include="InputKeyCode.h" />
     <ClInclude Include="MMMInput.h" />
     <ClInclude Include="InputManager.h" />
-    <ClInclude Include="PBRRenderer.h" />
+    <ClInclude Include="GeoRenderer.h" />
     <ClInclude Include="PShader.h" />
     <ClInclude Include="RendererBase.h" />
     <ClInclude Include="RendererTools.h" />
@@ -347,6 +347,7 @@
     <ClInclude Include="ScriptBehaviour.h" />
     <ClInclude Include="ScriptLoader.h" />
     <ClInclude Include="SerializableEvent.h" />
+    <ClInclude Include="StaticMesh.h" />
     <ClInclude Include="VSShader.h" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="SkyboxRenderer.h" />
@@ -377,7 +378,7 @@
     <ClCompile Include="MUID.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
-    <ClCompile Include="PBRRenderer.cpp" />
+    <ClCompile Include="GeoRenderer.cpp" />
     <ClCompile Include="PShader.cpp" />
     <ClCompile Include="RendererBase.cpp" />
     <ClCompile Include="RendererTools.cpp" />
@@ -422,6 +423,7 @@
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="ScriptBehaviour.cpp" />
+    <ClCompile Include="StaticMesh.cpp" />
     <ClCompile Include="VShader.cpp" />
     <ClCompile Include="SkyboxRenderer.cpp" />
     <ClCompile Include="ScriptLoader.cpp" />

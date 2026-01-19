@@ -786,7 +786,7 @@
     <ClInclude Include="resource1.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="PBRRenderer.h">
+    <ClInclude Include="GeoRenderer.h">
       <Filter>헤더 파일\Core\Render API\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="MaterialSerealizer.h">
@@ -800,6 +800,9 @@
     </ClInclude>
     <ClInclude Include="ScriptLoader.h">
       <Filter>헤더 파일\Core\Behaviour API\ScriptLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="StaticMesh.h">
+      <Filter>헤더 파일\Core\Render API\Resource</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -989,9 +992,6 @@
     <ClCompile Include="PShader.cpp">
       <Filter>소스 파일\Core\Render API\Resource</Filter>
     </ClCompile>
-    <ClCompile Include="PBRRenderer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="MaterialSerealizer.cpp">
       <Filter>소스 파일\Core\Render API\Tools</Filter>
     </ClCompile>
@@ -1006,6 +1006,12 @@
     </ClCompile>
     <ClCompile Include="rttr_directxmath_registry.cpp">
       <Filter>소스 파일\Utility\RTTRRegistry</Filter>
+    </ClCompile>
+    <ClCompile Include="StaticMesh.cpp">
+      <Filter>소스 파일\Core\Render API\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="GeoRenderer.cpp">
+      <Filter>소스 파일\Core\Render API\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
