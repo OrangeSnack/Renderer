@@ -43,7 +43,7 @@ void Initialize()
 		SceneManager::Get().StartUp(currentProject.ProjectRootFS().generic_wstring() + L"/Assets/Scenes", currentProject.lastSceneIndex, true);
 		app->SetWindowTitle(L"MMMEditor [ " + Utility::StringHelper::StringToWString(currentProject.rootPath) + L" ]");
 		ObjectManager::Get().StartUp();
-		BehaviourManager::Get().StartUp(Utility::StringHelper::StringToWString(currentProject.rootPath) + L"/UserScripts.dll");
+		BehaviourManager::Get().StartUp(currentProject.rootPath + "/UserScripts.dll");
 		BuildManager::Get().SetProgressCallbackString([](const std::string& progress) { std::cout << progress.c_str() << std::endl; });
 	}
 
@@ -73,7 +73,7 @@ void Update_ProjectNotLoaded()
 		GlobalRegistry::g_pApp->SetWindowTitle(L"MMMEditor [ " + Utility::StringHelper::StringToWString(currentProject.rootPath) + L" ]");
 
 		ObjectManager::Get().StartUp();
-		BehaviourManager::Get().StartUp(Utility::StringHelper::StringToWString(currentProject.rootPath) + L"/UserScripts.dll");
+		BehaviourManager::Get().StartUp(currentProject.rootPath + "/UserScripts.dll");
 
 		BuildManager::Get().SetProgressCallbackString([](const std::string& progress) { std::cout << progress << std::endl; });
 		return;
