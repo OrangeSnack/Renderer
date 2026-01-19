@@ -24,6 +24,7 @@ using namespace MMMEngine::Editor;
 
 void Initialize()
 {
+	SetConsoleOutputCP(CP_UTF8);
 	auto app = GlobalRegistry::g_pApp;
 	auto hwnd = app->GetWindowHandle();
 	auto windowInfo = app->GetWindowInfo();
@@ -43,7 +44,7 @@ void Initialize()
 		app->SetWindowTitle(L"MMMEditor [ " + Utility::StringHelper::StringToWString(currentProject.rootPath) + L" ]");
 		ObjectManager::Get().StartUp();
 		BehaviourManager::Get().StartUp(Utility::StringHelper::StringToWString(currentProject.rootPath) + L"/UserScripts.dll");
-		BuildManager::Get().SetProgressCallback([](const std::string& progress) { std::cout << progress.c_str() << std::endl; });
+		BuildManager::Get().SetProgressCallbackString([](const std::string& progress) { std::cout << progress.c_str() << std::endl; });
 	}
 
 	RenderManager::Get().StartUp(hwnd, windowInfo.width, windowInfo.height);
@@ -74,7 +75,7 @@ void Update_ProjectNotLoaded()
 		ObjectManager::Get().StartUp();
 		BehaviourManager::Get().StartUp(Utility::StringHelper::StringToWString(currentProject.rootPath) + L"/UserScripts.dll");
 
-		BuildManager::Get().SetProgressCallback([](const std::string& progress) { std::cout << progress << std::endl; });
+		BuildManager::Get().SetProgressCallbackString([](const std::string& progress) { std::cout << progress << std::endl; });
 		return;
 	}
 }
