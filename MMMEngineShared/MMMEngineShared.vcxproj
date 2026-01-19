@@ -112,7 +112,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);WIN32;_WINDOWS;RTTR_DLL_EXPORTS;RTTR_DLL;MMMENGINE_EXPORTS;</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
@@ -120,7 +120,7 @@
       <LanguageStandard_C>Default</LanguageStandard_C>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)$(ProjectDir)rttr\..;$(ProjectDir);$(ProjectDir)dxtk\Inc;$(ProjectDir)dxtk;$(ProjectDir)dxtex;$(ProjectDir)DDSTextureLoader</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <TreatWChar_tAsBuiltInType />
       <ForceConformanceInForLoopScope />
@@ -136,7 +136,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);WIN32;_WINDOWS;RTTR_DLL;RTTR_DLL_EXPORTS;MMMENGINE_EXPORTS;</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
@@ -371,6 +371,10 @@
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    <ClCompile Include="PBRRenderer.cpp" />
+>>>>>>> parent of be6d39b (Merge branch 'main' into main)
     <ClCompile Include="PShader.cpp" />
 =======
 >>>>>>> parent of 417ccbf ([Add] Material Fix, MatSerealizer, ShaderResource)
@@ -411,7 +415,6 @@
     <ClCompile Include="rttr\variant.cpp" />
     <ClCompile Include="rttr\variant_associative_view.cpp" />
     <ClCompile Include="rttr\variant_sequential_view.cpp" />
-    <ClCompile Include="rttr_directxmath_registry.cpp" />
     <ClCompile Include="rttr_simplemath_registry.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />

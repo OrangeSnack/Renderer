@@ -1,4 +1,5 @@
 #pragma once
+
 #include <d3d11.h>
 #include <d3d11_1.h>
 //#include <wrl/client.h> // Microsoft::WRL::ComPtr
@@ -10,12 +11,12 @@
 
 namespace MMMEngine::Editor
 {
-	class ImGuiEditorContext : public Utility::Singleton<ImGuiEditorContext>
+	class ImGuiContext : public Utility::Singleton<ImGuiContext>
 	{
 	private:
 		HWND m_hWnd;
-		ID3D11Device* m_pD3DDevice;
-		ID3D11DeviceContext* m_pD3DContext;
+		ID3D11Device* m_pDevice;
+		ID3D11DeviceContext* m_pImmediateContext;
 
 		bool m_isImGuiInit = false;
 		bool m_isWin32BackendInit = false;
@@ -27,13 +28,11 @@ namespace MMMEngine::Editor
 		ImFont* m_bigFont;
 		ImFont* m_defaultFont;
 	public:
-		bool Initialize(HWND hWnd, ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
+		bool Initialize(ID3D11Device* pDevice);
 		void BeginFrame();
+		void Update();
 		void Render();
-		void EndFrame();
 		void Uninitialize();
-
 		bool GetIsHovered();
-		void HandleWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	};
 }

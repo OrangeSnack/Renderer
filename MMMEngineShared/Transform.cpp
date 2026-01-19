@@ -73,11 +73,11 @@ MMMEngine::Transform::Transform()
 
 }
 
-//void MMMEngine::Transform::UnInitialize()
-//{
-//	DetachChildren();
-//	SetParent(nullptr);
-//}
+void MMMEngine::Transform::UnInitialize()
+{
+	DetachChildren();
+	SetParent(nullptr);
+}
 
 const Matrix& MMMEngine::Transform::GetLocalMatrix() const
 {
@@ -374,8 +374,7 @@ void MMMEngine::Transform::SetParent(ObjPtr<Transform> parent, bool worldPositio
 
 	MarkDirty();
 	onMatrixUpdate.Invoke(this);  
-	if(GetGameObject().IsValid())
-		GetGameObject()->UpdateActiveInHierarchy(); // 부모가 바뀌었으므로 Hierarchy 활성화 상태 업데이트
+	GetGameObject()->UpdateActiveInHierarchy(); // 부모가 바뀌었으므로 Hierarchy 활성화 상태 업데이트
 }
 
 MMMEngine::ObjPtr<MMMEngine::Transform> MMMEngine::Transform::Find(const std::string& path)

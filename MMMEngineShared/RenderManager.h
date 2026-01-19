@@ -33,47 +33,47 @@ namespace MMMEngine
 		std::map<int, std::vector<std::shared_ptr<RendererBase>>> m_Passes;
 
     protected:
-        HWND* m_pHwnd = nullptr;	// HWND ъ명
+        HWND* m_pHwnd = nullptr;	// HWND 포인터
         UINT m_rClientWidth = 0;
         UINT m_rClientHeight = 0;
-        float m_backColor[4] = { 0.0f, 0.5f, 0.5f, 1.0f };	// 諛깃렇쇱대 而щ
+        float m_backColor[4] = { 0.0f, 0.5f, 0.5f, 1.0f };	// 백그라운드 컬러
 		
-		// 諛댁
+		// 디바이스
 		Microsoft::WRL::ComPtr<ID3D11Device5> m_pDevice;
 
-		// 湲곕낯 � 명고댁
-		Microsoft::WRL::ComPtr<ID3D11DeviceContext4> m_pDeviceContext;		// 諛댁 而⑦ㅽ
-		Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain;				// ㅼ泥댁
+		// 기본 렌더 인터페이스
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext4> m_pDeviceContext;		// 디바이스 컨텍스트
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain;				// 스왑체인
 
-		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1> m_pRenderTargetView;	// �留 寃酉
-		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;		// 源닿 泥由щ�  ㅼㅽ 酉
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1> m_pRenderTargetView;	// 렌더링 타겟뷰
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;		// 깊이값 처리를 위한 뎊스스텐실 뷰
 
-		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pDafaultSamplerLinear;		//  .
-		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_pDefaultRS;			// 湲곕낯 RS
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pDafaultSamplerLinear;		// 샘플러 상태.
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_pDefaultRS;			// 기본 RS
 
-		Microsoft::WRL::ComPtr<ID3D11BlendState1> m_pDefaultBS;		// 湲곕낯 釉 ㅽ댄
-		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_DefaultRS;	// 湲곕낯 �ㅽ곕쇱댁 ㅽ댄
-		D3D11_VIEWPORT m_defaultViewport;							// 湲곕낯 酉고ы
+		Microsoft::WRL::ComPtr<ID3D11BlendState1> m_pDefaultBS;		// 기본 블랜드 스테이트
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_DefaultRS;	// 기본 레스터라이저 스테이트
+		D3D11_VIEWPORT m_defaultViewport;							// 기본 뷰포트
 
-		// 踰 湲곕낯
+		// 버퍼 기본색상
 		DirectX::SimpleMath::Vector4 m_ClearColor;
 <<<<<<< HEAD
 		
-		// 명 �댁
+		// 인풋 레이아웃
 		std::shared_ptr<VShader> m_pDefaultVSShader;
 		std::shared_ptr<PShader> m_pDefaultPSShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_pInputLayout;
 =======
 >>>>>>> parent of 417ccbf ([Add] Material Fix, MatSerealizer, ShaderResource)
 
-		// 移대 愿�
+		// 카메라 관련
 		ObjPtr<EditorCamera> m_pCamera;
 		Render_CamBuffer m_camMat;
-		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCambuffer = nullptr;		// 몃ㅽ 踰
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCambuffer = nullptr;		// 트랜스폼 버퍼
 
-		// 諛깅 ㅼ
-		Microsoft::WRL::ComPtr<ID3D11Texture2D1> m_pBackBuffer = nullptr;		// 諛깅 ㅼ
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView1> m_pBackSRV = nullptr;	// 諛깅 SRV
+		// 백버퍼 텍스쳐
+		Microsoft::WRL::ComPtr<ID3D11Texture2D1> m_pBackBuffer = nullptr;		// 백버퍼 텍스처
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView1> m_pBackSRV = nullptr;	// 백버퍼 SRV
     public:
 		void Initialize(HWND* _hwnd, UINT _ClientWidth, UINT _ClientHeight);
 		void InitD3D();

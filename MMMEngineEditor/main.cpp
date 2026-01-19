@@ -8,129 +8,24 @@
 #include "InputManager.h"
 #include "ResourceManager.h"
 #include "TimeManager.h"
-#include "RenderManager.h"
-#include "BehaviourManager.h"
-#include "SceneManager.h"
-#include "ObjectManager.h"
-#include "ProjectManager.h"
-
-#include "ImGuiEditorContext.h"
 
 using namespace MMMEngine;
 using namespace MMMEngine::Utility;
-using namespace MMMEngine::Editor;
 
-void Initialize()
+void Init()
 {
-	auto app = GlobalRegistry::g_pApp;
-	auto hwnd = app->GetWindowHandle();
-	auto windowInfo = app->GetWindowInfo();
-
-	InputManager::Get().StartUp(hwnd);
-	app->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
-	
-	TimeManager::Get().StartUp();
-
-	// 이전에 켰던 프로젝트 우선 확인
-	EditorRegistry::g_editor_project_loaded = ProjectManager::Get().Boot();
-	if (EditorRegistry::g_editor_project_loaded)
-	{
-		// 존재하는 경우 씬을 처음으로 스타트
-		auto currentProject = ProjectManager::Get().GetActiveProject();
-		SceneManager::Get().StartUp(currentProject.ProjectRootFS().generic_wstring() + L"/Assets/Scenes", currentProject.lastSceneIndex, true);
-	}
-
-	ObjectManager::Get().StartUp();
-	BehaviourManager::Get().StartUp();
-
-	RenderManager::Get().StartUp(hwnd, windowInfo.width, windowInfo.height);
-	app->OnWindowSizeChanged.AddListener<RenderManager, &RenderManager::ResizeScreen>(&RenderManager::Get());
-
-	ImGuiEditorContext::Get().Initialize(hwnd, RenderManager::Get().GetDevice(), RenderManager::Get().GetContext());
-	app->OnBeforeWindowMessage.AddListener<ImGuiEditorContext, &ImGuiEditorContext::HandleWindowMessage>(&ImGuiEditorContext::Get());
-}
-
-void Update_ProjectNotLoaded()
-{
-	TimeManager::Get().BeginFrame();
-	InputManager::Get().Update();
-
-	RenderManager::Get().BeginFrame();
-	RenderManager::Get().Render();
-	ImGuiEditorContext::Get().BeginFrame();
-	ImGuiEditorContext::Get().Render();
-	ImGuiEditorContext::Get().EndFrame();
-	RenderManager::Get().EndFrame();
-
-	if (EditorRegistry::g_editor_project_loaded)
-	{
-		auto currentProject = ProjectManager::Get().GetActiveProject();
-		SceneManager::Get().StartUp(currentProject.ProjectRootFS().generic_wstring() + L"/Assets/Scenes", 0, true);
-		return;
-	}
+	InputManager::Get().StartUp(GlobalRegistry::g_pApp->GetWindowHandle());
+	GlobalRegistry::g_pApp->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
 }
 
 void Update()
 {
-	if (!EditorRegistry::g_editor_project_loaded)
-	{
-		Update_ProjectNotLoaded();
-		return;
-	}
-
-	TimeManager::Get().BeginFrame();
 	InputManager::Get().Update();
-
-	float dt = TimeManager::Get().GetDeltaTime();
-	if (SceneManager::Get().CheckSceneIsChanged())
-	{
-		ObjectManager::Get().UpdateInternalTimer(dt);
-		BehaviourManager::Get().DisableBehaviours();
-		ObjectManager::Get().ProcessPendingDestroy();
-		BehaviourManager::Get().AllSortBehaviours();
-		BehaviourManager::Get().AllBroadCastBehaviourMessage("OnSceneLoaded");
-	}
-
-	if (EditorRegistry::g_editor_scene_playing)
-	{
-		BehaviourManager::Get().InitializeBehaviours();
-	}
-
-	TimeManager::Get().ConsumeFixedSteps([&](float fixedDt)
-		{
-			if (!EditorRegistry::g_editor_scene_playing)
-				return;
-
-			//PhysicsManager::Get()->PreSyncPhysicsWorld();
-			//PhysicsManager::Get()->PreApplyTransform();
-			BehaviourManager::Get().BroadCastBehaviourMessage("FixedUpdate");
-			//PhysicsManager::Get()->Simulate(fixedDt);
-			//PhysicsManager::Get()->ApplyTransform();
-		});
-
-	RenderManager::Get().BeginFrame();
-	RenderManager::Get().Render();
-	ImGuiEditorContext::Get().BeginFrame();
-	ImGuiEditorContext::Get().Render();
-	ImGuiEditorContext::Get().EndFrame();
-	RenderManager::Get().EndFrame();
-
-	ObjectManager::Get().UpdateInternalTimer(dt);
-	BehaviourManager::Get().DisableBehaviours();
-	ObjectManager::Get().ProcessPendingDestroy();
 }
 
 void Release()
 {
 	GlobalRegistry::g_pApp = nullptr;
-	ImGuiEditorContext::Get().Uninitialize();
-	RenderManager::Get().ShutDown();
-	TimeManager::Get().ShutDown();
-	InputManager::Get().ShutDown();
-
-	SceneManager::Get().ShutDown();
-	ObjectManager::Get().ShutDown();
-	BehaviourManager::Get().ShutDown();
 }
 
 int main()
@@ -138,8 +33,7 @@ int main()
 	App app{ L"MMMEditor",1600,900 };
 	GlobalRegistry::g_pApp = &app;
 
-	app.OnInitialize.AddListener<&Initialize>();
+	app.OnInitialize.AddListener<&Init>();
 	app.OnUpdate.AddListener<&Update>();
-	app.OnRelease.AddListener<&Release>();
 	app.Run();
 }

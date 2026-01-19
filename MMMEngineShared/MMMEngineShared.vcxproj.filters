@@ -968,8 +968,6 @@
     </ClCompile>
     <ClCompile Include="PBRRenderer.cpp">
       <Filter>소스 파일</Filter>
-    <ClCompile Include="rttr_directxmath_registry.cpp">
-      <Filter>소스 파일\Utility\RTTRRegistry</Filter>
     </ClCompile>
 =======
 >>>>>>> parent of 417ccbf ([Add] Material Fix, MatSerealizer, ShaderResource)

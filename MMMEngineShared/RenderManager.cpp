@@ -11,7 +11,7 @@ using namespace Microsoft::WRL;
 namespace MMMEngine {
     void RenderManager::Initialize(HWND* _hwnd, UINT _ClientWidth, UINT _ClientHeight)
     {
-        // ë””ë°”ì´ìŠ¤ ìƒì„±
+        // µğ¹ÙÀÌ½º »ı¼º
         ComPtr<ID3D11Device> device;
         D3D_FEATURE_LEVEL featureLevel;
         D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, NULL,
@@ -20,14 +20,15 @@ namespace MMMEngine {
 
         HR_T(device.As(&m_pDevice));
 
-        // hWnd ë“±ë¡
+        // hWnd µî·Ï
         assert(_hwnd != nullptr && "RenderPipe::Initialize : hWnd must not be nullptr!!");
         m_pHwnd = _hwnd;
 
-        // í´ë¼ì´ì–¸íŠ¸ ì‚¬ì´ì¦ˆ ë“±ë¡
+        // Å¬¶óÀÌ¾ğÆ® »çÀÌÁî µî·Ï
         m_rClientWidth = _ClientWidth;
         m_rClientHeight = _ClientHeight;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 		// ì¹´ë©”ë¼ ìƒì„±
 		// WARNING::ì˜¤ë¸Œì íŠ¸ ìƒì„±!!
@@ -39,6 +40,15 @@ namespace MMMEngine {
 =======
         // ÀÎ½ºÅÏ½º ÃÊ±âÈ­ ¹¶ÅÊÀÌ
 >>>>>>> parent of 417ccbf ([Add] Material Fix, MatSerealizer, ShaderResource)
+=======
+		// Ä«¸Ş¶ó »ı¼º
+		// WARNING::¿ÀºêÁ§Æ® »ı¼º!!
+		// TODO::¿¡µğÅÍ ±¸ÇöºÎ·Î ÀÌ ÄÚµå ¿Å±â±â
+		auto camera = ObjectManager::Get().NewObject<GameObject>("EditorCamera");
+		m_pCamera = camera->AddComponent<EditorCamera>();
+
+        // ÀÎ½ºÅÏ½º ÃÊ±âÈ­ ¹¶ÅÊÀÌ
+>>>>>>> parent of be6d39b (Merge branch 'main' into main)
         this->InitD3D();
         this->Start();
 
@@ -50,7 +60,7 @@ namespace MMMEngine {
     }
     void RenderManager::InitD3D()
     {
-        // ìŠ¤ì™‘ì²´ì¸ ì†ì„±ì„¤ì • ìƒì„±
+        // ½º¿ÒÃ¼ÀÎ ¼Ó¼º¼³Á¤ »ı¼º
         DXGI_SWAP_CHAIN_DESC1 swapDesc = {};
         swapDesc.BufferCount = 1;
         swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -58,31 +68,31 @@ namespace MMMEngine {
         swapDesc.Width = m_rClientWidth;
         swapDesc.Height = m_rClientHeight;
         swapDesc.SampleDesc.Count = 1;		// MSAA
-        swapDesc.SampleDesc.Quality = 0;	// MSAA í’ˆì§ˆìˆ˜ì¤€
+        swapDesc.SampleDesc.Quality = 0;	// MSAA Ç°Áú¼öÁØ
 
 		UINT creationFlag = 0;
 
-		// íŒ©í† ë¦¬ ìƒì„±
+		// ÆÑÅä¸® »ı¼º
 		Microsoft::WRL::ComPtr<IDXGIFactory2> dxgiFactory;
 		HR_T(CreateDXGIFactory1(__uuidof(IDXGIFactory2), (void**)dxgiFactory.GetAddressOf()));
 
-		// ìŠ¤ì™‘ì²´ì¸ ìƒì„±
+		// ½º¿ÒÃ¼ÀÎ »ı¼º
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain;
 		HR_T(dxgiFactory->CreateSwapChainForHwnd(m_pDevice.Get(), *m_pHwnd, &swapDesc,
 			nullptr, nullptr, swapChain.GetAddressOf()));
 		HR_T(swapChain.As(&m_pSwapChain));
 
-		// ì»¨í…ìŠ¤íŠ¸ ìƒì„±
+		// ÄÁÅØ½ºÆ® »ı¼º
 		ComPtr<ID3D11DeviceContext3> context;
 		m_pDevice->GetImmediateContext3(context.GetAddressOf());
 		HR_T(context.As(&m_pDeviceContext));
 
-		// ë Œë”íƒ€ê²Ÿ ìƒì„±
+		// ·»´õÅ¸°Ù »ı¼º
 		HR_T(m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D1), (void**)m_pBackBuffer.GetAddressOf()));
 		HR_T(m_pDevice->CreateRenderTargetView1(m_pBackBuffer.Get(), nullptr, m_pRenderTargetView.GetAddressOf()));
 		HR_T(m_pDevice->CreateShaderResourceView1(m_pBackBuffer.Get(), nullptr, m_pBackSRV.GetAddressOf()));
 
-		// ë·°í¬íŠ¸ ì„¤ì •
+		// ºäÆ÷Æ® ¼³Á¤
 		m_defaultViewport = {};
 		m_defaultViewport.TopLeftX = 0.0f;
 		m_defaultViewport.TopLeftY = 0.0f;
@@ -91,7 +101,7 @@ namespace MMMEngine {
 		m_defaultViewport.MinDepth = 0.0f;
 		m_defaultViewport.MaxDepth = 1.0f;
 
-		// Â‰XìŠ¤ í…ìŠ¤ì³ ìƒì„±
+		// ‰X½º ÅØ½ºÃÄ »ı¼º
 		D3D11_TEXTURE2D_DESC1 depthDesc = {};
 		depthDesc.Width = m_rClientWidth;
 		depthDesc.Height = m_rClientHeight;
@@ -108,14 +118,14 @@ namespace MMMEngine {
 		ComPtr<ID3D11Texture2D1> depthTexture;
 		HR_T(m_pDevice->CreateTexture2D1(&depthDesc, nullptr, depthTexture.GetAddressOf()));
 
-		// Â‰XìŠ¤ìŠ¤íƒ ì‹¤ ë·° ìƒì„±
+		// ‰X½º½ºÅÄ½Ç ºä »ı¼º
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv = {};
 		dsv.Format = depthDesc.Format;
 		dsv.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 		dsv.Texture2D.MipSlice = 0;
 		HR_T(m_pDevice->CreateDepthStencilView(depthTexture.Get(), &dsv, m_pDepthStencilView.GetAddressOf()));
 
-		// ë˜ìŠ¤í„°ë¼ì´ì € ì†ì„± ìƒì„±
+		// ·¡½ºÅÍ¶óÀÌÀú ¼Ó¼º »ı¼º
 		D3D11_RASTERIZER_DESC2 defaultRsDesc = {};
 		defaultRsDesc.FillMode = D3D11_FILL_SOLID;
 		defaultRsDesc.CullMode = D3D11_CULL_BACK;
@@ -129,7 +139,7 @@ namespace MMMEngine {
 		defaultRsDesc.AntialiasedLineEnable = FALSE;
 		HR_T(m_pDevice->CreateRasterizerState2(&defaultRsDesc, m_pDefaultRS.GetAddressOf()));
 
-		// ë¸”ëœë“œ ìŠ¤í…Œì´íŠ¸ ìƒì„±
+		// ºí·£µå ½ºÅ×ÀÌÆ® »ı¼º
 		D3D11_BLEND_DESC1 blendDesc = {};
 		blendDesc.AlphaToCoverageEnable = FALSE;
 		blendDesc.IndependentBlendEnable = FALSE;
@@ -138,7 +148,7 @@ namespace MMMEngine {
 		HR_T(m_pDevice->CreateBlendState1(&blendDesc, m_pDefaultBS.GetAddressOf()));
 		assert(m_pDefaultBS && "RenderPipe::InitD3D : defaultBS not initialized!!");
 
-		// ë ˆìŠ¤í„°ë¼ì´ì € ìŠ¤í…Œì´íŠ¸ ìƒì„±
+		// ·¹½ºÅÍ¶óÀÌÀú ½ºÅ×ÀÌÆ® »ı¼º
 		D3D11_RASTERIZER_DESC2 rsDesc = {};
 		rsDesc.FillMode = D3D11_FILL_SOLID;
 		rsDesc.CullMode = D3D11_CULL_BACK;
@@ -158,13 +168,13 @@ namespace MMMEngine {
     }
     void RenderManager::Start()
     {
-        // ë²„í¼ ê¸°ë³¸ìƒ‰ìƒ
+        // ¹öÆÛ ±âº»»ö»ó
         m_ClearColor = DirectX::SimpleMath::Vector4(0.45f, 0.55f, 0.60f, 1.00f);
 
         m_pCamera->GetViewMatrix(m_camMat.mView);
         m_camMat.mProjection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, m_rClientWidth / (FLOAT)m_rClientHeight, 0.01f, 100.0f);
 
-        // ìº  ë²„í¼ ìƒì„±
+        // Ä· ¹öÆÛ »ı¼º
         D3D11_BUFFER_DESC bd = {};
         bd.Usage = D3D11_USAGE_DEFAULT;
         bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -174,7 +184,7 @@ namespace MMMEngine {
         HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pCambuffer.GetAddressOf()));
 <<<<<<< HEAD
 
-		// ê¸°ë³¸ VSShader ìƒì„± (VS ì‰ì´ë”ëŠ” ë§¤í¬ë¡œ ë„£ì§€ì•ŠëŠ” ì´ìƒ ìŠ¤í‚¨ë“œë§¤ì‰¬ ì‰ì´ë”ê°€ ì•„ë‹˜)
+		// ±âº» VSShader »ı¼º (VS ½¦ÀÌ´õ´Â ¸ÅÅ©·Î ³ÖÁö¾Ê´Â ÀÌ»ó ½ºÅ²µå¸Å½¬ ½¦ÀÌ´õ°¡ ¾Æ´Ô)
 		m_pDefaultVSShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
 		m_pDefaultPSShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
 	}
@@ -188,6 +198,7 @@ namespace MMMEngine {
 
 	void RenderManager::Render()
     {
+<<<<<<< HEAD
 		// ìº  ë²„í¼ ì—…ë°ì´íŠ¸
 =======
     }
@@ -200,16 +211,19 @@ namespace MMMEngine {
 
 		// Ä· ¹öÆÛ ¾÷µ¥ÀÌÆ®
 >>>>>>> parent of 417ccbf ([Add] Material Fix, MatSerealizer, ShaderResource)
+=======
+		// Ä· ¹öÆÛ ¾÷µ¥ÀÌÆ®
+>>>>>>> parent of be6d39b (Merge branch 'main' into main)
 		auto camTrans = m_pCamera->GetTransform();
 		m_camMat.camPos = (DirectX::SimpleMath::Vector4)camTrans->GetWorldPosition();
 		m_pCamera->GetViewMatrix(m_camMat.mView);
 		m_camMat.mView = DirectX::XMMatrixTranspose(m_camMat.mView);
 		m_camMat.mProjection = DirectX::XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, m_rClientWidth / (FLOAT)m_rClientHeight, 0.01f, 100.0f));
 
-		// ë¦¬ì†ŒìŠ¤ ì—…ë°ì´íŠ¸
+		// ¸®¼Ò½º ¾÷µ¥ÀÌÆ®
 		m_pDeviceContext->UpdateSubresource1(m_pCambuffer.Get(), 0, nullptr, &m_camMat, 0, 0, D3D11_COPY_DISCARD);
 
-		// ê¸°ë³¸ ë Œë”ì…‹íŒ…
+		// ±âº» ·»´õ¼ÂÆÃ
 		m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_pDeviceContext->VSSetConstantBuffers(0, 1, m_pCambuffer.GetAddressOf());
 		m_pDeviceContext->PSSetConstantBuffers(0, 1, m_pCambuffer.GetAddressOf());
@@ -230,10 +244,13 @@ namespace MMMEngine {
 <<<<<<< HEAD
 	}
 
+<<<<<<< HEAD
 void MMMEngine::RenderManager::EndFrame()
 {
 	m_swapChain->Present(m_syncInterval, 0);
 =======
     }
 >>>>>>> parent of 417ccbf ([Add] Material Fix, MatSerealizer, ShaderResource)
+=======
+>>>>>>> parent of be6d39b (Merge branch 'main' into main)
 }

@@ -112,9 +112,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;WIN32;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)MMMEngineShared\rttr\..;$(SolutionDir)MMMEngineShared\dxtk\Inc;$(SolutionDir)MMMEngineShared\dxtk;$(SolutionDir)MMMEngineShared;$(ProjectDir)imgui-docking\;$(ProjectDir)imgui-docking\backends</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)MMMEngineShared\rttr\..;$(SolutionDir)MMMEngineShared\dxtk\Inc;$(SolutionDir)MMMEngineShared\dxtk;$(SolutionDir)MMMEngineShared</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <TreatWChar_tAsBuiltInType />
@@ -133,10 +133,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);WIN32;_WINDOWS_CRT_SECURE_NO_WARNINGS;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)MMMEngineShared\rttr\..;$(SolutionDir)MMMEngineShared\dxtk\Inc;$(SolutionDir)MMMEngineShared\dxtk;$(SolutionDir)MMMEngineShared;$(ProjectDir)imgui-docking\;$(ProjectDir)imgui-docking\backends</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)MMMEngineShared\rttr\..;$(SolutionDir)MMMEngineShared\dxtk\Inc;$(SolutionDir)MMMEngineShared\dxtk;$(SolutionDir)MMMEngineShared</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,41 +143,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="DragAndDrop.h" />
     <ClInclude Include="EditorRegistry.h" />
-    <ClInclude Include="HierarchyWindow.h" />
-    <ClInclude Include="imgui-docking\backends\imgui_impl_dx11.h" />
-    <ClInclude Include="imgui-docking\backends\imgui_impl_null.h" />
-    <ClInclude Include="imgui-docking\backends\imgui_impl_win32.h" />
-    <ClInclude Include="imgui-docking\imconfig.h" />
-    <ClInclude Include="imgui-docking\imgui.h" />
-    <ClInclude Include="imgui-docking\imgui_internal.h" />
-    <ClInclude Include="imgui-docking\imstb_rectpack.h" />
-    <ClInclude Include="imgui-docking\imstb_textedit.h" />
-    <ClInclude Include="imgui-docking\imstb_truetype.h" />
-    <ClInclude Include="ImGuiEditorContext.h" />
-    <ClInclude Include="InspectorWindow.h" />
-    <ClInclude Include="Project.h" />
     <ClInclude Include="ProjectManager.h" />
-    <ClInclude Include="SceneListWindow.h" />
-    <ClInclude Include="StartUpProjectWindow.h" />
+    <ClInclude Include="Project.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="HierarchyWindow.cpp" />
-    <ClCompile Include="imgui-docking\backends\imgui_impl_dx11.cpp" />
-    <ClCompile Include="imgui-docking\backends\imgui_impl_null.cpp" />
-    <ClCompile Include="imgui-docking\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="imgui-docking\imgui.cpp" />
-    <ClCompile Include="imgui-docking\imgui_demo.cpp" />
-    <ClCompile Include="imgui-docking\imgui_draw.cpp" />
-    <ClCompile Include="imgui-docking\imgui_tables.cpp" />
-    <ClCompile Include="imgui-docking\imgui_widgets.cpp" />
-    <ClCompile Include="ImGuiEditorContext.cpp" />
-    <ClCompile Include="InspectorWindow.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ProjectManager.cpp" />
-    <ClCompile Include="SceneListWindow.cpp" />
-    <ClCompile Include="StartUpProjectWindow.cpp" />
+    <ClCompile Include="main_transform_test.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MMMEngineShared\MMMEngineShared.vcxproj">

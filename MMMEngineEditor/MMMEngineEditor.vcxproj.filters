@@ -19,135 +19,24 @@
     <Filter Include="헤더 파일\Project">
       <UniqueIdentifier>{430e761f-0d72-4342-a469-23d1f22139e1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일\ImGui">
-      <UniqueIdentifier>{8d59adc8-3413-4b6f-9211-9f160439985d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\ImGui\Backend">
-      <UniqueIdentifier>{0a1d6bc3-16fe-4f35-9c8b-769871cc1c74}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\ImGui">
-      <UniqueIdentifier>{4021eccf-dab5-4e22-91be-7f80db466295}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\ImGui\Backend">
-      <UniqueIdentifier>{c365af90-17c9-425c-9a50-491f33c8b8d3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\EditorWIndow">
-      <UniqueIdentifier>{3ef9e4fd-7906-456e-81aa-e94746d51ac1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\EditorWindow">
-      <UniqueIdentifier>{e99458c1-bb5b-4989-ac60-fb961dbb3c87}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\Project">
-      <UniqueIdentifier>{6179e345-0100-4c05-99da-7afa1b557ef6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\EditorWIndow\ForEditorContext">
-      <UniqueIdentifier>{21b902e5-596e-44c6-a214-afeec71509be}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\EditorWindow\ForEditorContext">
-      <UniqueIdentifier>{ec4962c3-a422-4040-bc15-fd4c8e4c2f6b}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorRegistry.h">
       <Filter>헤더 파일\EditorRegistry</Filter>
     </ClInclude>
-    <ClInclude Include="Project.h">
-      <Filter>헤더 파일\Project</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\imgui.h">
-      <Filter>헤더 파일\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\imgui_internal.h">
-      <Filter>헤더 파일\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\imstb_rectpack.h">
-      <Filter>헤더 파일\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\imstb_textedit.h">
-      <Filter>헤더 파일\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\imstb_truetype.h">
-      <Filter>헤더 파일\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\imconfig.h">
-      <Filter>헤더 파일\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\backends\imgui_impl_dx11.h">
-      <Filter>헤더 파일\ImGui\Backend</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\backends\imgui_impl_null.h">
-      <Filter>헤더 파일\ImGui\Backend</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-docking\backends\imgui_impl_win32.h">
-      <Filter>헤더 파일\ImGui\Backend</Filter>
-    </ClInclude>
-    <ClInclude Include="ImGuiEditorContext.h">
-      <Filter>헤더 파일\EditorWindow\ForEditorContext</Filter>
-    </ClInclude>
-    <ClInclude Include="HierarchyWindow.h">
-      <Filter>헤더 파일\EditorWindow</Filter>
-    </ClInclude>
-    <ClInclude Include="InspectorWindow.h">
-      <Filter>헤더 파일\EditorWindow</Filter>
-    </ClInclude>
-    <ClInclude Include="SceneListWindow.h">
-      <Filter>헤더 파일\EditorWindow</Filter>
-    </ClInclude>
-    <ClInclude Include="DragAndDrop.h">
-      <Filter>헤더 파일\EditorWindow\ForEditorContext</Filter>
-    </ClInclude>
     <ClInclude Include="ProjectManager.h">
       <Filter>헤더 파일\Project</Filter>
     </ClInclude>
-    <ClInclude Include="StartUpProjectWindow.h">
-      <Filter>헤더 파일\EditorWindow</Filter>
+    <ClInclude Include="Project.h">
+      <Filter>헤더 파일\Project</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="imgui-docking\imgui.cpp">
-      <Filter>소스 파일\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\imgui_demo.cpp">
-      <Filter>소스 파일\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\imgui_draw.cpp">
-      <Filter>소스 파일\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\imgui_tables.cpp">
-      <Filter>소스 파일\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\imgui_widgets.cpp">
-      <Filter>소스 파일\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\backends\imgui_impl_dx11.cpp">
-      <Filter>소스 파일\ImGui\Backend</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\backends\imgui_impl_null.cpp">
-      <Filter>소스 파일\ImGui\Backend</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-docking\backends\imgui_impl_win32.cpp">
-      <Filter>소스 파일\ImGui\Backend</Filter>
-    </ClCompile>
-    <ClCompile Include="ImGuiEditorContext.cpp">
-      <Filter>소스 파일\EditorWIndow\ForEditorContext</Filter>
-    </ClCompile>
-    <ClCompile Include="HierarchyWindow.cpp">
-      <Filter>소스 파일\EditorWIndow</Filter>
-    </ClCompile>
-    <ClCompile Include="InspectorWindow.cpp">
-      <Filter>소스 파일\EditorWIndow</Filter>
-    </ClCompile>
-    <ClCompile Include="SceneListWindow.cpp">
-      <Filter>소스 파일\EditorWIndow</Filter>
-    </ClCompile>
-    <ClCompile Include="ProjectManager.cpp">
-      <Filter>소스 파일\Project</Filter>
-    </ClCompile>
-    <ClCompile Include="StartUpProjectWindow.cpp">
-      <Filter>소스 파일\EditorWIndow</Filter>
+    <ClCompile Include="main_transform_test.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

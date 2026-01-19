@@ -141,7 +141,6 @@ void MMMEngine::SceneSerializer::Serialize(const Scene& scene, std::wstring path
 		goJson["MUID"] = goPtr->GetMUID().ToString();    
         goJson["Layer"] = goPtr->GetLayer();
         goJson["Tag"] = goPtr->GetTag();
-        goJson["Active"] = goPtr->IsActiveSelf();
 
 		json compArray = json::array();
 		for (auto& comp : goPtr->GetAllComponents()) // 컴포넌트 리스트 가정
@@ -385,7 +384,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
         scene.SetMUID(parsed.value());
 
     // Scene Name
-    scene.SetName(snapshot["Name"].get<std::string>());
+    scene.SetName(snapshot["Name"]);
 
     const json& gameObjects = snapshot["GameObjects"];
 
@@ -394,20 +393,12 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
     {
         std::string goName = goJson["Name"].get<std::string>();
         std::string goMUID = goJson["MUID"].get<std::string>();
-        uint32_t goLayer = goJson["Layer"].get<uint32_t>();
+        std::string goLayer = goJson["Layer"].get<std::string>();
         std::string goTag = goJson["Tag"].get<std::string>();
-        bool active = true;
-        if (goJson.contains("Active"))
-        {
-            active = goJson["Active"].get<bool>();
-        }
 
         ObjPtr<GameObject> go = scene.CreateGameObject(goName);
         scene.RegisterGameObject(go);
         go->SetName(goName);
-        go->SetLayer(goLayer);
-        go->SetTag(goTag);
-        go->SetActive(active);
 
         if (auto parsedGo = Utility::MUID::Parse(goMUID); parsedGo.has_value())
             go->SetMUID(parsedGo.value());
@@ -432,7 +423,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
 
         g_objectTable[trMUID] = tr;
 
-        // Transform 값 복원 (Parent/MUID는 스킵)
+        // Transform 값 복원 (★ Parent/MUID는 스킵!)
         DeserializeTransform(*tr, trProps);
 
         // Parent는 나중에
@@ -440,7 +431,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
             pendingParent[trMUID] = trProps["Parent"].get<std::string>();
     }
 
-    // 2-pass: 일반 컴포넌트 생성/복원 (Transform은 제외 + RectTransform도 제외)
+    // 2-pass: 일반 컴포넌트 생성/복원 (Transform은 제외)
     for (const auto& goJson : gameObjects)
     {
         std::string goMUID = goJson["MUID"].get<std::string>();
@@ -466,8 +457,6 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
         }
     }
 
-    // 2.5-pass: RectTransform만 찾아서 값타입만 역직렬화 + pendingRectParent에 기록해두기
-
     // 3-pass: Parent 연결 (Transform MUID 기준)
     for (auto& [childTrMUID, parentTrMUID] : pendingParent)
     {
@@ -479,83 +468,40 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
 
         auto childTr = itChild->second.get_value<ObjPtr<Transform>>();
         auto parentTr = itParent->second.get_value<ObjPtr<Transform>>();
-        childTr->SetParent(parentTr, false);
+        childTr->SetParent(parentTr);
     }
 
     g_objectTable.clear();
 }
 
-void MMMEngine::SceneSerializer::SerializeToMemory(const Scene& scene, SnapShot& snapshot)
+void MMMEngine::SceneSerializer::ExtractScenes(std::vector<Scene*> scenes, std::wstring rootPath)
 {
-    auto sceneMUID = scene.GetMUID().IsEmpty() ? Utility::MUID::NewMUID() : scene.GetMUID();
-
-    snapshot["MUID"] = sceneMUID.ToString();
-    snapshot["Name"] = scene.GetName();
-    //Utility::StringHelper::WStringToString(Utility::StringHelper::ExtractFileName(path));
-
-    json goArray = json::array();
-
-    for (auto& goPtr : scene.m_gameObjects)
-    {
-        if (!goPtr.IsValid())
-            continue;
-
-        json goJson;
-        goJson["Name"] = goPtr->GetName();
-        goJson["MUID"] = goPtr->GetMUID().ToString();
-        goJson["Layer"] = goPtr->GetLayer();
-        goJson["Tag"] = goPtr->GetTag();
-        goJson["Active"] = goPtr->IsActiveSelf();
-
-        json compArray = json::array();
-        for (auto& comp : goPtr->GetAllComponents()) // 컴포넌트 리스트 가정
-        {
-            compArray.push_back(SerializeComponent(comp));
-        }
-        goJson["Components"] = compArray;
-
-        goArray.push_back(goJson);
-    }
-
-    snapshot["GameObjects"] = goArray;
-}
-
-/// <summary>
-/// 최적화된 단일경로용 바이너리 파일을 만들어줍니다.
-/// </summary>
-/// <param name="scenes"></param>
-/// <param name="rootPath"></param>
-void MMMEngine::SceneSerializer::ExtractScenesList(const std::vector<Scene*>& scenes,
-    const std::wstring& rootPath)
-{
-    namespace fs = std::filesystem;
-
     nlohmann::json sceneListJson = nlohmann::json::array();
 
-    fs::path root(rootPath);
-
+    // for문 순회하면서 { idx, filepath(name + .scene) }를 기록
     for (size_t i = 0; i < scenes.size(); ++i)
     {
-        Scene* scene = scenes[i];
-        if (!scene) continue;
-
-        // "custom1.scene"
-        const std::string sceneFileName = scene->GetName() + ".scene";
+        auto& scene = scenes[i];
+        auto sceneFilePath = scene->GetName() + ".scene";
 
         nlohmann::json sceneEntry;
         sceneEntry["index"] = i;
-        sceneEntry["filepath"] = sceneFileName; // 리스트에는 상대경로(파일명)만 저장
+        sceneEntry["filepath"] = sceneFilePath;
+
         sceneListJson.push_back(sceneEntry);
+
+        // TODO: rootpath에 .scene파일 직렬화
+        Serialize(*scene, rootPath + Utility::StringHelper::StringToWString(sceneFilePath));
     }
 
-    // rootpath/sceneList.bin
-    fs::path listFullPath = root / L"sceneList.bin";
-
-    std::ofstream outFile(listFullPath, std::ios::binary);
-    if (outFile)
+    // sceneList.json 파일로 저장
+    std::wstring sceneListPath = rootPath + L"/sceneList.bin";
+    std::ofstream outFile(sceneListPath, std::ios::binary);
+    if (outFile.is_open())
     {
         std::vector<uint8_t> msgpack = nlohmann::json::to_msgpack(sceneListJson);
-        outFile.write(reinterpret_cast<const char*>(msgpack.data()),
-            static_cast<std::streamsize>(msgpack.size()));
+        outFile.write(reinterpret_cast<const char*>(msgpack.data()), msgpack.size());
+        outFile.close();
     }
 }
+
