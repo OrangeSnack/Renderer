@@ -51,6 +51,15 @@ void RefreshComponentTypes()
 
 void RenderProperties(rttr::instance inst)
 {
+    static ObjPtr<GameObject> s_lastCachedObject = nullptr;
+    static std::unordered_map<std::string, std::string> cache;
+    if (s_lastCachedObject != g_selectedGameObject)
+    {
+        static std::unordered_map<std::string, std::string> emptyCache;
+        cache.swap(emptyCache); // 캐시 클리어
+        s_lastCachedObject = g_selectedGameObject;
+    }
+
     auto t = inst.get_derived_type();
     rttr::property p = t.get_property("MUID");
     rttr::variant v = p.get_value(inst);
@@ -114,17 +123,50 @@ void RenderProperties(rttr::instance inst)
             if (changed && !readOnly)
                 prop.set_value(inst, b);
         }
-        else if (var.is_type<std::string>())
+        else if (var.is_type<int>())
         {
-            bool b = var.get_value<bool>();
+            int ntger = var.get_value<int>();
 
             if (readOnly) ImGui::BeginDisabled(true);
-            bool changed = ImGui::Checkbox(name.c_str(), &b);
+            bool changed = ImGui::DragInt(name.c_str(), &ntger);
             if (readOnly) ImGui::EndDisabled();
 
             if (changed && !readOnly)
-                prop.set_value(inst, b);
+                prop.set_value(inst, ntger);
         }
+        else if (var.is_type<std::string>())
+        {
+            // MUID 가져오기
+            rttr::property muidProp = t.get_property("MUID");
+            rttr::variant muidVar = muidProp.get_value(inst);
+            std::string muidStr = "unknown";
+            if (muidVar.is_valid() && muidVar.is_type<MMMEngine::Utility::MUID>())
+            {
+                muidStr = muidVar.get_value<MMMEngine::Utility::MUID>().ToStringWithoutHyphens();
+            }
+
+            // 고유 키: MUID + 타입명 + 프로퍼티명
+            std::string key = muidStr + "::" + inst.get_type().get_name().to_string() + "::" + name;
+
+            std::string& editing = cache[key];
+
+            if (editing.empty())
+                editing = var.get_value<std::string>();
+
+            char buf[256];
+            strcpy_s(buf, editing.c_str());
+
+            if (readOnly) ImGui::BeginDisabled(true);
+            bool changed = ImGui::InputText(name.c_str(), buf, IM_ARRAYSIZE(buf));
+            if (readOnly) ImGui::EndDisabled();
+
+            if (changed && !readOnly)
+            {
+                editing = buf;
+                prop.set_value(inst, editing);
+            }
+        }
+
         else if (var.is_type<Quaternion>())
         {
             // 표시용 캐시 계산은 readOnly든 아니든 가능
@@ -244,7 +286,7 @@ void MMMEngine::Editor::InspectorWindow::Render()
         sprintf_s(preview, "%d", curLayer);
 
         // 폭 지정
-        ImGui::SetNextItemWidth(80);
+        ImGui::SetNextItemWidth(53);
 
         if (ImGui::BeginCombo(u8"레이어", preview))
         {
@@ -294,7 +336,7 @@ void MMMEngine::Editor::InspectorWindow::Render()
             }
         }
 
-        for (auto comp : g_pendingRemoveComponents)
+        for (auto& comp : g_pendingRemoveComponents)
         {
             Object::Destroy(comp);
         }

@@ -6,6 +6,7 @@
 #include "SceneManager.h"
 #include "SceneSerializer.h"
 #include "StringHelper.h"
+#include "EditorRegistry.h"
 
 #include <filesystem>
 
@@ -73,6 +74,8 @@ namespace MMMEngine::Editor
 
                 SceneSerializer::Get().Serialize(*sceneRaw, SceneManager::Get().GetSceneListPath() + L"/" + StringHelper::StringToWString(sceneRaw->GetName()) + L".scene");
                 SceneSerializer::Get().ExtractScenesList(SceneManager::Get().GetAllSceneToRaw(), SceneManager::Get().GetSceneListPath());
+
+                EditorRegistry::g_selectedGameObject = nullptr;
 
                 // 씬 매니저를 셧다운
                 // 오브젝트 매니저를 셧다운
