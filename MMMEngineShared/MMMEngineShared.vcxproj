@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClInclude Include="AnimationClip.h" />
     <ClInclude Include="App.h" />
+    <ClInclude Include="AssetsDatabase.h" />
     <ClInclude Include="Behaviour.h" />
     <ClInclude Include="EditorCamera.h" />
     <ClInclude Include="Component.h" />
@@ -226,6 +227,7 @@
     <ClInclude Include="SkyboxRenderer.h" />
     <ClInclude Include="StringHelper.h" />
     <ClInclude Include="Texture2D.h" />
+    <ClInclude Include="TextResource.h" />
     <ClInclude Include="TimeManager.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="ResourceManager.h">
@@ -273,6 +275,7 @@
     <ClCompile Include="ScriptLoader.cpp" />
     <ClCompile Include="StringHelper.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="TextResource.cpp" />
     <ClCompile Include="TimeManager.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
