@@ -4,6 +4,8 @@
 #include "StringHelper.h"
 #include "rttr/type"
 #include "Transform.h"
+#include "Resource.h"
+#include "ResourceManager.h"
 
 #include <fstream>
 #include <filesystem>
@@ -16,6 +18,7 @@ using namespace MMMEngine;
 using namespace rttr;
 
 std::unordered_map<std::string, rttr::variant> g_objectTable;
+std::unordered_map<std::string, rttr::variant> g_resourceTable; // { "typeName|filepath", variant }
 
 json SerializeVariant(const rttr::variant& var);
 json SerializeObject(const rttr::instance& obj)
@@ -81,6 +84,32 @@ json SerializeVariant(const rttr::variant& var)
             arr.push_back(SerializeVariant(item));
         }
         return arr;
+    }
+
+    // ResPtr<T> 처리
+    if (var.get_type().get_name().to_string().find("ResPtr") != std::string::npos ||
+        var.get_type().get_name().to_string().find("shared_ptr") != std::string::npos)
+    {
+        // Resource* 로 변환 시도
+        Resource* res = nullptr;
+
+        // shared_ptr<Resource>로 먼저 시도
+        auto sharedRes = var.get_value<std::shared_ptr<Resource>>();
+        if (sharedRes)
+            res = sharedRes.get();
+
+        if (res != nullptr)
+        {
+            json resJson;
+            resJson["FilePath"] = Utility::StringHelper::WStringToString(res->GetFilePath());
+
+            // Resource의 실제 타입 저장
+            rttr::type actualType = rttr::type::get(*res);
+            resJson["ResourceType"] = actualType.get_name().to_string();
+
+            return resJson;
+        }
+        return nullptr;
     }
 
     if (var.get_type().get_name().to_string().find("ObjPtr") != std::string::npos)
@@ -334,7 +363,7 @@ void DeserializeVariant(rttr::variant& target, const json& j, type target_type)
     DeserializeObject(target, j);
 }
 
-void DeserializeComponent(const json& compJson, ObjPtr<GameObject> obj)
+void DeserializeComponent(const json& compJson, ObjPtr<GameObject> obj, ObjPtr<Component>& outComp)
 {
     std::string typeName = compJson["Type"].get<std::string>();
     type compType = type::get_by_name(typeName);
@@ -350,6 +379,8 @@ void DeserializeComponent(const json& compJson, ObjPtr<GameObject> obj)
 
     // 속성 복원 (ObjPtr도 바로 처리됨)
     DeserializeObject(*comp, props);
+
+    outComp = comp;
 }
 
 void DeserializeTransform(Transform& tr, const json& j)
@@ -391,7 +422,8 @@ static const json* FindTransformComp(const json& components)
 void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snapshot)
 {
     g_objectTable.clear();
-    std::unordered_map<std::string, std::string> pendingParent; // childTrMUID -> parentTrMUID
+    g_resourceTable.clear();
+    std::unordered_map<std::string, std::string> pendingParent;
 
     // Scene MUID
     if (auto parsed = Utility::MUID::Parse(snapshot["MUID"].get<std::string>()); parsed.has_value())
@@ -402,7 +434,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
 
     const json& gameObjects = snapshot["GameObjects"];
 
-    // 1-pass: GO + Transform(기존) MUID/값 복원 + 테이블 등록
+    // 1-pass: GO + Transform MUID/값 복원 + 테이블 등록
     for (const auto& goJson : gameObjects)
     {
         std::string goName = goJson["Name"].get<std::string>();
@@ -427,33 +459,31 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
 
         g_objectTable[goMUID] = go;
 
-        // Transform json 찾기
         const json& components = goJson["Components"];
         const json* trComp = FindTransformComp(components);
         if (!trComp || !trComp->contains("Props"))
-            continue; // 또는 throw
+            continue;
 
         const json& trProps = (*trComp)["Props"];
 
-        // 기존 Transform 가져오기
         auto tr = go->GetTransform();
 
-        // Transform MUID는 Props["MUID"]
         std::string trMUID = trProps["MUID"].get<std::string>();
         if (auto parsedTr = Utility::MUID::Parse(trMUID); parsedTr.has_value())
             tr->SetMUID(parsedTr.value());
 
         g_objectTable[trMUID] = tr;
 
-        // Transform 값 복원 (Parent/MUID는 스킵)
         DeserializeTransform(*tr, trProps);
 
-        // Parent는 나중에
         if (trProps.contains("Parent") && !trProps["Parent"].is_null())
             pendingParent[trMUID] = trProps["Parent"].get<std::string>();
     }
 
-    // 2-pass: 일반 컴포넌트 생성/복원 (Transform은 제외 + RectTransform도 제외)
+    // 2-pass: 일반 컴포넌트 생성/복원 (Transform 제외)
+    // ResPtr 프로퍼티 정보 수집
+    std::vector<std::tuple<ObjPtr<Component>, std::string, rttr::type, std::string, std::string>> pendingResources;
+
     for (const auto& goJson : gameObjects)
     {
         std::string goMUID = goJson["MUID"].get<std::string>();
@@ -469,21 +499,96 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
             if (typeName == "Transform") // 정확 일치로 스킵 권장
                 continue;
 
-            DeserializeComponent(compJson, go);
+            ObjPtr<Component> comp;
+            DeserializeComponent(compJson, go, comp);
 
+            if (comp.IsValid())
+            {
+                // ResPtr 프로퍼티 찾기
+                const json& props = compJson["Props"];
+                type compType = type::get(*comp);
+
+                for (auto& prop : compType.get_properties(
+                    rttr::filter_item::instance_item |
+                    rttr::filter_item::public_access |
+                    rttr::filter_item::non_public_access))
+                {
+                    if (prop.is_readonly())
+                        continue;
+
+                    std::string propName = prop.get_name().to_string();
+                    if (!props.contains(propName))
+                        continue;
+
+                    rttr::type propType = prop.get_type();
+                    std::string propTypeName = propType.get_name().to_string();
+
+                    // ResPtr인지 확인
+                    if (propTypeName.find("ResPtr") != std::string::npos ||
+                        propTypeName.find("shared_ptr") != std::string::npos)
+                    {
+                        const json& resPropJson = props[propName];
+                        if (resPropJson.contains("FilePath") && resPropJson.contains("ResourceType"))
+                        {
+                            std::string filePath = resPropJson["FilePath"].get<std::string>();
+                            std::string resourceType = resPropJson["ResourceType"].get<std::string>();
+
+                            pendingResources.push_back({ comp, propName, propType, resourceType, filePath });
+                        }
+                    }
+                }
+
+                comp->Initialize();
+            }
         }
     }
 
-    // 2.5-pass: RectTransform만 찾아서 값타입만 역직렬화 + pendingRectParent에 기록해두기
+    // 3-pass: ResPtr 로드 및 할당
+    for (auto& [comp, propName, propType, resourceTypeName, filePathStr] : pendingResources)
+    {
+        std::wstring filePath = Utility::StringHelper::StringToWString(filePathStr);
 
-    // 3-pass: Parent 연결 (Transform MUID 기준)
+        rttr::variant resVariant;
+
+        // 이미 로드된 리소스인지 확인
+        if (g_resourceTable.find(resourceTypeName) != g_resourceTable.end())
+        {
+            resVariant = g_resourceTable[resourceTypeName];
+        }
+        else
+        {
+            // ResourceManager를 통해 로드
+            rttr::type resType = rttr::type::get_by_name(resourceTypeName);
+            if (resType.is_valid())
+            {
+                resVariant = ResourceManager::Get().Load(resType, filePath);
+                if (resVariant.is_valid())
+                {
+                    g_resourceTable[resourceTypeName] = resVariant;
+                }
+            }
+        }
+
+        // 프로퍼티에 할당
+        if (resVariant.is_valid())
+        {
+            type compType = type::get(*comp);
+            auto prop = compType.get_property(propName);
+            if (prop.is_valid())
+            {
+                prop.set_value(*comp, resVariant);
+            }
+        }
+    }
+
+    // 4-pass: Parent 연결
     for (auto& [childTrMUID, parentTrMUID] : pendingParent)
     {
         auto itChild = g_objectTable.find(childTrMUID);
         auto itParent = g_objectTable.find(parentTrMUID);
 
         if (itChild == g_objectTable.end() || itParent == g_objectTable.end())
-            continue; // 또는 로그
+            continue;
 
         auto childTr = itChild->second.get_value<ObjPtr<Transform>>();
         auto parentTr = itParent->second.get_value<ObjPtr<Transform>>();
@@ -491,6 +596,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
     }
 
     g_objectTable.clear();
+    g_resourceTable.clear();
 }
 
 void MMMEngine::SceneSerializer::SerializeToMemory(const Scene& scene, SnapShot& snapshot)

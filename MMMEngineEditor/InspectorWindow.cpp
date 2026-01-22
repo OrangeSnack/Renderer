@@ -1,6 +1,7 @@
 #include "InspectorWindow.h"
 #include "SceneManager.h"
 #include "Transform.h"
+#include "Resource.h"
 
 #include "EditorRegistry.h"
 using namespace MMMEngine::EditorRegistry;
@@ -250,6 +251,24 @@ void RenderProperties(rttr::instance inst)
                 prop.set_value(inst, updatedQ);
             }
         }
+        else if (propType.get_name().to_string().find("ResPtr") != std::string::npos)
+        {
+            Resource* res = nullptr;
+            auto sharedRes = var.get_value<std::shared_ptr<Resource>>();
+            if (sharedRes)
+                res = sharedRes.get();
+
+            std::string displayPath = res ? StringHelper::WStringToString(res->GetFilePath()) : "None";
+
+            // 경로 표시 버튼
+            if (ImGui::Button(displayPath.c_str()))
+            {
+                ImGui::OpenPopup("Select Resource");
+            }
+
+            // Drag & Drop 지원
+            // None으로 설정 버튼 (X)
+            }
         //else if (var.is_type<std::string>())
         //{
         //    const bool readOnly = prop.is_readonly();
