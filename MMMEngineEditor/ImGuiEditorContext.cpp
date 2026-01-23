@@ -340,8 +340,8 @@ void MMMEngine::Editor::ImGuiEditorContext::Render()
     SceneListWindow::Get().Render();
     HierarchyWindow::Get().Render();
     InspectorWindow::Get().Render();
-    SceneViewWindow::Get().Render();
     GameViewWindow::Get().Render();
+    SceneViewWindow::Get().Render();
 }
 
 void MMMEngine::Editor::ImGuiEditorContext::EndFrame()
