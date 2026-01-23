@@ -62,7 +62,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	ImGui::SetNextWindowSize(ImVec2(m_width, m_height), ImGuiCond_FirstUseEver);
 
-	ImGui::Begin(u8"\uf009 ¾À ºä", &g_editor_window_sceneView);
+	ImGui::Begin(u8"\uf009 ¾À", &g_editor_window_sceneView);
 
 	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 	{
