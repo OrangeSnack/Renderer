@@ -252,6 +252,7 @@ namespace MMMEngine {
 		m_ClearColor = DirectX::SimpleMath::Vector4(0.45f, 0.55f, 0.60f, 1.00f);
 
 		// 텍스쳐 버퍼번호 하드코딩
+		// TODO :: 이거 여기있으면 안될거같음
 		m_propertyMap[L"basecolor"] = 0;
 		m_propertyMap[L"normal"] = 1;
 		m_propertyMap[L"emissive"] = 2;
