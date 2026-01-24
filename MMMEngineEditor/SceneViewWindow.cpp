@@ -36,7 +36,7 @@ void MMMEngine::Editor::SceneViewWindow::Initialize(ID3D11Device* device, ID3D11
 	m_pGridRenderer = std::make_unique<EditorGridRenderer>();
 	if (!m_pGridRenderer->Initialize(device))
 	{
-		// ¿¡·¯ Ã³¸®
+		// ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½
 		OutputDebugStringA("Failed to initialize Grid Renderer\n");
 	}
 
@@ -62,7 +62,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	ImGui::SetNextWindowSize(ImVec2(m_width, m_height), ImGuiCond_FirstUseEver);
 
-	ImGui::Begin(u8"\uf009 ¾À", &g_editor_window_sceneView);
+	ImGui::Begin(u8"\uf009 ï¿½ï¿½", &g_editor_window_sceneView);
 
 	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 	{
@@ -77,14 +77,14 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		ImGuiIO& io = ImGui::GetIO();
 		const bool rightDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
 
-		// ¼öÁ¤ Á¦¾È: WantCaptureKeyboard Á¶°ÇÀ» Á¦°ÅÇÏ°Å³ª 
-		// ImGui Key °ü·Ã ÇÔ¼ö¸¦ Á÷Á¢ »ç¿ëÇÏ¿© ¿ì¼±¼øÀ§¸¦ ³ôÀÔ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½: WantCaptureKeyboard ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°Å³ï¿½ 
+		// ImGui Key ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ì¼±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ô´Ï´ï¿½.
 		const bool gizmoUsing = ImGuizmo::IsUsing();
 
 		if (!rightDown && !gizmoUsing)
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_Q))
-				m_guizmoOperation = (ImGuizmo::OPERATION)0; // 0Àº ¾î¶² ±âÁî¸ðµµ Ç¥½ÃÇÏÁö ¾ÊÀ½
+				m_guizmoOperation = (ImGuizmo::OPERATION)0; // 0ï¿½ï¿½ ï¿½î¶² ï¿½ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 			if (ImGui::IsKeyPressed(ImGuiKey_W))
 				m_guizmoOperation = ImGuizmo::TRANSLATE;
@@ -101,21 +101,21 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			if (g_selectedGameObject.IsValid())
 			{
 				auto& tr = g_selectedGameObject->GetTransform();
-				// ¿ÀºêÁ§Æ®ÀÇ À§Ä¡·Î Æ÷Ä¿½º (°Å¸®´Â 5.0f·Î ¼³Á¤ÇÏ°Å³ª ¹Ù¿îµù ¹Ú½º Å©±â¿¡ ºñ·ÊÇÏ°Ô ¼³Á¤)
+				// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½Ä¿ï¿½ï¿½ (ï¿½Å¸ï¿½ï¿½ï¿½ 5.0fï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°Å³ï¿½ ï¿½Ù¿ï¿½ï¿½ ï¿½Ú½ï¿½ Å©ï¿½â¿¡ ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½)
 				m_pCam->FocusOn(tr->GetWorldPosition(), 7.0f);
 			}
 		}
 	}
 
 
-	// »ç¿ë °¡´ÉÇÑ ¿µ¿ª Å©±â °¡Á®¿À±â
+	// ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 	m_lastWidth = viewportSize.x;
 	m_lastHeight = viewportSize.y;
 
 	auto scenecornerpos = ImGui::GetCursorPos();
 
-	// ImGui¿¡ ÅØ½ºÃ³ ·»´õ¸µ
+	// ImGuiï¿½ï¿½ ï¿½Ø½ï¿½Ã³ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (m_pSceneSRV)
 	{
 		ImGui::Image(
@@ -125,10 +125,10 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			ImVec2(1, 1)
 		);
 	}
-	// ImGuizmo´Â º°µµÀÇ DrawList¿¡ ±×·ÁÁü
+	// ImGuizmoï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ DrawListï¿½ï¿½ ï¿½×·ï¿½ï¿½ï¿½
 	if (g_selectedGameObject.IsValid() && (int)m_guizmoOperation != 0)
 	{
-		ImVec2 imagePos = ImGui::GetItemRectMin();  // ¹æ±Ý ±×¸° ImageÀÇ ÁÂ»ó´Ü (È­¸é ÁÂÇ¥)
+		ImVec2 imagePos = ImGui::GetItemRectMin();  // ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ Imageï¿½ï¿½ ï¿½Â»ï¿½ï¿½ (È­ï¿½ï¿½ ï¿½ï¿½Ç¥)
 		ImVec2 imageMax = ImGui::GetItemRectMax();
 		ImVec2 imageSize = ImVec2(imageMax.x - imagePos.x, imageMax.y - imagePos.y);
 
@@ -139,7 +139,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		auto viewMat = m_pCam->GetViewMatrix();
 		auto projMat = m_pCam->GetProjMatrix();
-		auto modelMat = g_selectedGameObject->GetTransform()->GetWorldMatrix(); // °ªÀÌ¶óµµ ·ÎÄÃ¿¡ ÀúÀå
+		auto modelMat = g_selectedGameObject->GetTransform()->GetWorldMatrix(); // ï¿½ï¿½ï¿½Ì¶ï¿½ ï¿½ï¿½ï¿½Ã¿ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 		float* viewPtr = &viewMat.m[0][0];
 		float* projPtr = &projMat.m[0][0];
@@ -155,11 +155,11 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 			auto tr = g_selectedGameObject->GetTransform();
 
-			// È¸Àü Áß¿¡´Â scale µå¸®ÇÁÆ®¸¦ ¸·±â À§ÇØ ±âÁ¸ ½ºÄÉÀÏ À¯Áö
+			// È¸ï¿½ï¿½ ï¿½ß¿ï¿½ï¿½ï¿½ scale ï¿½å¸®ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 			if (m_guizmoOperation == ImGuizmo::ROTATE)
 				s = tr->GetWorldScale();
 
-			r.Normalize(); // ÄõÅÍ´Ï¾ðµµ Á¤±ÔÈ­ ÃßÃµ
+			r.Normalize(); // ï¿½ï¿½ï¿½Í´Ï¾ï¿½ ï¿½ï¿½ï¿½ï¿½È­ ï¿½ï¿½Ãµ
 
 			tr->SetWorldPosition(t);
 			tr->SetWorldRotation(r);
@@ -182,15 +182,15 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
 
 		ImGui::SetCursorPos(scenecornerpos + padding);
-		// Hand ¹öÆ° (Q)
+		// Hand ï¿½ï¿½Æ° (Q)
 		ImGui::BeginDisabled(handing);
-		if (ImGui::Button(u8"\uf256 hand", buttonsize)) // ÆùÆ®¾î½æ ÇÚµå ¾ÆÀÌÄÜ
+		if (ImGui::Button(u8"\uf256 hand", buttonsize)) // ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ ï¿½Úµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		{
 			m_guizmoOperation = (ImGuizmo::OPERATION)0;
 		}
 		ImGui::EndDisabled();
 		ImGui::SameLine();
-		// Move ¹öÆ°
+		// Move ï¿½ï¿½Æ°
 		ImGui::BeginDisabled(moving);
 		if (ImGui::Button(u8"\uf047 move", buttonsize))
 		{
@@ -200,7 +200,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		ImGui::SameLine();
 
-		// Rotate ¹öÆ°
+		// Rotate ï¿½ï¿½Æ°
 		ImGui::BeginDisabled(rotating);
 		if (ImGui::Button(u8"\uf2f1 rotate", buttonsize))
 		{
@@ -210,7 +210,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		ImGui::SameLine();
 
-		// Scale ¹öÆ°
+		// Scale ï¿½ï¿½Æ°
 		ImGui::BeginDisabled(scaling);
 		if (ImGui::Button(u8"\uf31e scale", buttonsize))
 		{
@@ -220,12 +220,12 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		ImGui::SameLine();
 
-		// ±¸ºÐ¼±
+		// ï¿½ï¿½ï¿½Ð¼ï¿½
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
 		ImGui::SameLine();
 
-		// Local ¹öÆ°
+		// Local ï¿½ï¿½Æ°
 		ImGui::BeginDisabled(local);
 		if (ImGui::Button(u8"\uf1b2 local", buttonsize))
 		{
@@ -235,7 +235,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		ImGui::SameLine();
 
-		// World ¹öÆ°
+		// World ï¿½ï¿½Æ°
 		ImGui::BeginDisabled(world);
 		if (ImGui::Button(u8"\uf0ac world", buttonsize))
 		{
@@ -251,7 +251,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 }
 bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* device, int width, int height)
 {
-	// ±âÁ¸ ¸®¼Ò½º ÇØÁ¦
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ò½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	m_pSceneTexture.Reset();
 	m_pSceneRTV.Reset();
 	m_pSceneSRV.Reset();
@@ -261,7 +261,7 @@ bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* devic
 	m_width = width;
 	m_height = height;
 
-	// Render Target Texture »ý¼º
+	// Render Target Texture ï¿½ï¿½ï¿½ï¿½
 	D3D11_TEXTURE2D_DESC textureDesc = {};
 	textureDesc.Width = width;
 	textureDesc.Height = height;
@@ -282,7 +282,7 @@ bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* devic
 		return false;
 	}
 
-	// Render Target View »ý¼º
+	// Render Target View ï¿½ï¿½ï¿½ï¿½
 	D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = textureDesc.Format;
 	rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
@@ -295,7 +295,7 @@ bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* devic
 		return false;
 	}
 
-	// Shader Resource View »ý¼º (ImGui¿¡¼­ »ç¿ë)
+	// Shader Resource View ï¿½ï¿½ï¿½ï¿½ (ImGuiï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = textureDesc.Format;
 	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -309,7 +309,7 @@ bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* devic
 		return false;
 	}
 
-	// Depth Stencil Buffer »ý¼º
+	// Depth Stencil Buffer ï¿½ï¿½ï¿½ï¿½
 	D3D11_TEXTURE2D_DESC depthDesc = {};
 	depthDesc.Width = width;
 	depthDesc.Height = height;
@@ -330,7 +330,7 @@ bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* devic
 		return false;
 	}
 
-	// Depth Stencil View »ý¼º
+	// Depth Stencil View ï¿½ï¿½ï¿½ï¿½
 	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Format = depthDesc.Format;
 	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
@@ -343,7 +343,7 @@ bool MMMEngine::Editor::SceneViewWindow::CreateRenderTargets(ID3D11Device* devic
 		return false;
 	}
 
-	// Ä«¸Þ¶ó aspect ratio ¾÷µ¥ÀÌÆ®
+	// Ä«ï¿½Þ¶ï¿½ aspect ratio ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®
 	m_pCam->SetAspectRatio((float)width, (float)height);
 
 	return true;
@@ -361,7 +361,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	ID3D11ShaderResourceView* nullSRV = nullptr;
 	context->PSSetShaderResources(0, 1, &nullSRV);
 
-	RenderStateGuard guard(context); // ¹é¾÷/º¹¿ø¸¸ ´ã´ç
+	RenderStateGuard guard(context); // ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 
 	ID3D11RenderTargetView* rtv = m_pSceneRTV.Get();
 	ID3D11DepthStencilView* dsv = m_pSceneDSV.Get();
@@ -377,7 +377,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	viewport.MaxDepth = 1.0f;
 	context->RSSetViewports(1, &viewport);
 
-	// Clear (RTV/DSV°¡ ¹ÙÀÎµùµÈ µÚ¿¡ ÇÏ´Â °Ô ¾ÈÀü)
+	// Clear (RTV/DSVï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½ï¿½ï¿½ ï¿½Ú¿ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
 	float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	context->ClearRenderTargetView(rtv, clearColor);
 	context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -394,5 +394,5 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	RenderManager::Get().SetProjMatrix(proj);
 	RenderManager::Get().RenderOnlyRenderer();
 
-	// ¿©±â¼­ ÇÔ¼ö ³¡³ª¸é guard ¼Ò¸êÀÚ¿¡¼­ ¿ø·¡ RT/Viewport/Blend µî ÀÚµ¿ º¹¿øµÊ
+	// ï¿½ï¿½ï¿½â¼­ ï¿½Ô¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ guard ï¿½Ò¸ï¿½ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ RT/Viewport/Blend ï¿½ï¿½ ï¿½Úµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 }
