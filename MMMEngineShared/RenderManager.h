@@ -15,6 +15,7 @@
 #include <RenderShared.h>
 #include <Object.h>
 #include "json/json.hpp"
+#include <RenderCommand.h>
 
 #pragma comment (lib, "d3d11.lib")
 #pragma comment (lib, "dxgi.lib")
@@ -33,13 +34,21 @@ namespace MMMEngine
 		friend class Material;
 	private:
 		RenderManager();
-		std::map<int, std::vector<std::shared_ptr<RendererBase>>> m_Passes;
-		std::queue<std::shared_ptr<RendererBase>> m_initQueue;
+		//std::map<int, std::vector<std::shared_ptr<RendererBase>>> m_Passes;
+		//std::queue<std::shared_ptr<RendererBase>> m_initQueue;
 
 		bool useBackBuffer = true;
 		DirectX::SimpleMath::Matrix m_worldMatrix;
 		DirectX::SimpleMath::Matrix m_viewMatrix;
 		DirectX::SimpleMath::Matrix m_projMatrix;
+
+		std::map<RenderType, std::vector<RenderCommand>> m_renderCommands;
+		std::unordered_map<int, DirectX::SimpleMath::Matrix> m_objWorldMatMap;
+		unsigned int m_rObjIdx = 0;
+		
+		void ApplyMatToContext(ID3D11DeviceContext4* _context, Material* _material);
+		void ExcuteCommands();
+		void InitCache();
 	protected:
 		HWND m_hWnd;
 
@@ -86,10 +95,13 @@ namespace MMMEngine
 		ResPtr<PShader> m_pDefaultPSShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_pDefaultInputLayout;
 
+		// 트랜스폼 버퍼
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pTransbuffer = nullptr;		// 캠 버퍼
+
 		// 카메라 관련
 		//ObjPtr<EditorCamera> m_pCamera;
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCambuffer = nullptr;		// 캠 버퍼
-		Render_CamBuffer m_camMat;
+
 	public:
 		void StartUp(HWND _hwnd, UINT _ClientWidth, UINT _ClientHeight);
 		void InitD3D();
@@ -113,6 +125,9 @@ namespace MMMEngine
 			outHeight = m_sceneHeight; 
 		}
 
+		void AddCommand(RenderType _type, RenderCommand&& _command);	// 렌더커맨드 추가
+		int AddMatrix(const DirectX::SimpleMath::Matrix& _worldMatrix);		// 월드매트릭스 추가
+
 		void BeginFrame();
 		void Render();
 		void EndFrame();
@@ -124,7 +139,7 @@ namespace MMMEngine
 		const std::shared_ptr<PShader> GetDefaultPS() const { return m_pDefaultPSShader; }
 		const Microsoft::WRL::ComPtr<ID3D11InputLayout> GetDefaultInputLayout() const { return m_pDefaultInputLayout; }
 	public:
-		template <typename T, typename... Args>
+		/*template <typename T, typename... Args>
 		std::weak_ptr<RendererBase> AddRenderer(RenderType _passType, Args&&... args) {
 			std::shared_ptr<T> temp = std::make_shared<T>(std::forward<Args>(args)...);
 			m_Passes[_passType].push_back(temp);
@@ -145,6 +160,6 @@ namespace MMMEngine
 			}
 
 			return false;
-		}
+		}*/
 	};
 }

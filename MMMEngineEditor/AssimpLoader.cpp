@@ -13,6 +13,7 @@
 #include "RenderManager.h"
 #include "ResourceSerializer.h"
 #include "ProjectManager.h"
+#include "ShaderInfo.h"
 
 namespace fs = std::filesystem;
 
@@ -121,6 +122,10 @@ MMMEngine::ResPtr<MMMEngine::SkeletalMesh> MMMEngine::AssimpLoader::ConvertSkele
 			if (!ConvertMaterial(sementic, &ref, material.get()))
 				throw std::runtime_error("AssimpLoader::MaterialMapping Failed!!");
 		}
+
+		material->SetVShader(ShaderInfo::Get().GetDefaultVShader());
+		material->SetPShader(ShaderInfo::Get().GetDefaultPShader());
+
 		matList.push_back(material);
 	}
 

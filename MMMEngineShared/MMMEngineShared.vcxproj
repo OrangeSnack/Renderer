@@ -216,6 +216,7 @@
     <ClInclude Include="PhysxHelper.h" />
     <ClInclude Include="PhysxManager.h" />
     <ClInclude Include="PShader.h" />
+    <ClInclude Include="RenderCommand.h" />
     <ClInclude Include="RendererBase.h" />
     <ClInclude Include="RendererTools.h" />
     <ClInclude Include="RenderManager.h" />
@@ -280,6 +281,7 @@
     <ClCompile Include="PhysxHelper.cpp" />
     <ClCompile Include="PhysxManager.cpp" />
     <ClCompile Include="PShader.cpp" />
+    <ClCompile Include="RenderCommand.cpp" />
     <ClCompile Include="RendererBase.cpp" />
     <ClCompile Include="RendererTools.cpp" />
     <ClCompile Include="RenderManager.cpp" />

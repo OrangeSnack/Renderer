@@ -8,7 +8,11 @@
 #include <d3d11_4.h>
 #include "RendererTools.h"
 #include "RenderManager.h"
+#include "ResourceManager.h"
 #include <d3d11shader.h>
+
+#include "VShader.h"
+#include "PShader.h"
 
 // 쉐이더 정보를 정의하는 헤더입니다
 // 여기서 쉐이더 정보를 하드코딩해야합니다.
@@ -59,8 +63,13 @@ namespace MMMEngine {
 	class MMMENGINE_API ShaderInfo : public Utility::ExportSingleton<ShaderInfo>
 	{
 	private:
+		ResPtr<VShader> m_pDefaultVShader;
+		ResPtr<PShader> m_pDefaultPShader;
+
 		// 쉐이더 타입정의 < ShaderPath, ShaderType >
 		std::unordered_map<std::wstring, ShaderType> m_shaderTypeMap;
+		// 렌더타입 타입정의 < ShaderPath, RenderType >
+		std::unordered_map<std::wstring, RenderType> m_renderTypeMap;
 		// 쉐이더타입별 메테리얼 프로퍼티 정의 <PropertyName, PropertyInfo>
 		std::unordered_map<ShaderType, std::unordered_map<std::wstring, PropertyType>> m_typeInfo;
 		// 텍스쳐 버퍼인덱스 주는 맵 <propertyName, index> (int == shader tN)
@@ -75,7 +84,7 @@ namespace MMMEngine {
 		// 상수버퍼 오프셋 맵 <constantBufferName, <propertyName, offset>>
 		std::unordered_map<std::wstring, std::unordered_map<std::wstring, CBPropertyInfo>> m_CBPropertyOffsetMap;
 		
-		void CreateShaderReflection(std::wstring&& _filePath, ShaderType _type);
+		void CreateShaderReflection(std::wstring&& _filePath);
 
 		template<typename T>
 		Microsoft::WRL::ComPtr<ID3D11Buffer> CreateConstantBuffer();
@@ -86,7 +95,11 @@ namespace MMMEngine {
 		void ShutDown();
 
 	public:
-		const ShaderType GetShaderType(std::wstring&& _shaderPath);
+		std::wstring GetDefaultVShader();
+		std::wstring GetDefaultPShader();
+
+		const RenderType GetRenderType(const std::wstring& _shaderPath);
+		const ShaderType GetShaderType(const std::wstring& _shaderPath);
 		const int PropertyToIdx(const ShaderType _type, const std::wstring& _propertyName, PropertyType* _out = nullptr) const;
 		void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext* context,
 			const ShaderType shaderType,

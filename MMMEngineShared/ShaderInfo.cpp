@@ -2,18 +2,21 @@
 #include <filesystem>
 #include <d3dcompiler.h>
 
-#include "VShader.h"
-#include "PShader.h"
-
 namespace fs = std::filesystem;
 
 DEFINE_SINGLETON(MMMEngine::ShaderInfo);
 
-void MMMEngine::ShaderInfo::CreateShaderReflection(std::wstring&& _filePath, ShaderType _type)
+void MMMEngine::ShaderInfo::CreateShaderReflection(std::wstring&& _filePath)
 {
+	// 타입 검색
+	if (m_shaderTypeMap.find(_filePath) == m_shaderTypeMap.end())
+		throw std::runtime_error("ShaderInfo::CreateShaderReflection : Shader Type not found !!");
+
+	ShaderType _type = m_shaderTypeMap[_filePath];
+
 	fs::path filePath (_filePath);
 	if (!fs::exists(filePath))
-		throw std::runtime_error("ShaderInfo::Shader File not found !!");
+		throw std::runtime_error("ShaderInfo::CreateShaderReflection : Shader File not found !!");
 
 	auto res = ResourceManager::Get().Load<PShader>(_filePath);
 	auto _byteCode = res->m_pBlob;
@@ -53,8 +56,8 @@ void MMMEngine::ShaderInfo::CreateShaderReflection(std::wstring&& _filePath, Sha
 			// 예: CBPropertyInfo에 저장
 			CBPropertyInfo info;
 			info.bufferName = cbName;
-			info.offset = offset;
-			info.size = size;
+			info.offset = static_cast<UINT>(offset);
+			info.size = static_cast<UINT>(size);
 
 			m_CBPropertyMap[_type][propName] = cbName;
 			// 오프셋/크기 매핑 테이블에도 저장
@@ -71,6 +74,19 @@ void MMMEngine::ShaderInfo::DeSerialize()
 void MMMEngine::ShaderInfo::StartUp()
 {
 	// --- JSON 템플릿 ---
+	// 기본 쉐이더 정의
+	m_pDefaultVShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
+	m_pDefaultPShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
+
+	// 쉐이더 타입정의
+	m_shaderTypeMap[L"Shader/PBR/PS/BRDFShader.hlsl"] = ShaderType::S_PBR;
+
+	// 렌더타입 정의
+	m_renderTypeMap[L"Shader/PBR/PS/BRDFShader.hlsl"] = RenderType::R_GEOMETRY;
+
+	// 쉐이더 리플렉션 등록 (상수버퍼 개별업데이트 사용하기 위함)
+	CreateShaderReflection(L"Shader/PBR/PS/BRDFShader.hlsl");
+
 	// 텍스쳐 프로퍼티 타입정의
 	m_typeInfo[S_PBR][L"basecolor"] = PropertyType::Texture;
 	m_typeInfo[S_PBR][L"normal"] = PropertyType::Texture;
@@ -110,9 +126,6 @@ void MMMEngine::ShaderInfo::StartUp()
 	// 구조체별 이름 등록 (원래 이름과같게, 소문자로 하는것이 규칙)
 	m_CBBufferMap[L"pbr_materialbuffer"] = CreateConstantBuffer<PBR_MaterialBuffer>();
 
-	// 쉐이더 리플렉션 등록 (상수버퍼 개별업데이트 사용하기 위함)
-	CreateShaderReflection(L"Shader/PBR/PS/BRDFShader.hlsl", ShaderType::S_PBR);
-
 	// Json 읽기
 	DeSerialize();
 }
@@ -128,10 +141,28 @@ void MMMEngine::ShaderInfo::ShutDown()
 	m_CBPropertyOffsetMap.clear();
 }
 
-const MMMEngine::ShaderType MMMEngine::ShaderInfo::GetShaderType(std::wstring&& _shaderPath)
+std::wstring MMMEngine::ShaderInfo::GetDefaultVShader()
+{
+	return m_pDefaultVShader->GetFilePath();
+}
+
+std::wstring MMMEngine::ShaderInfo::GetDefaultPShader()
+{
+	return m_pDefaultPShader->GetFilePath();
+}
+
+const MMMEngine::RenderType MMMEngine::ShaderInfo::GetRenderType(const std::wstring& _shaderPath)
+{
+	if (m_renderTypeMap.find(_shaderPath) == m_renderTypeMap.end())
+		return RenderType::R_GEOMETRY;
+
+	return m_renderTypeMap[_shaderPath];
+}
+
+const MMMEngine::ShaderType MMMEngine::ShaderInfo::GetShaderType(const std::wstring& _shaderPath)
 {
 	if (m_shaderTypeMap.find(_shaderPath) == m_shaderTypeMap.end())
-		throw std::runtime_error("ShaderInfo::GetShaderType : 등록된 쉐이더가 아닙니다 !!");
+		return ShaderType::S_PBR;
 
 	return m_shaderTypeMap[_shaderPath];
 }

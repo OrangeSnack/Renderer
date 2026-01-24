@@ -30,4 +30,6 @@ bool MMMEngine::VShader::LoadFromFilePath(const std::wstring& filePath)
 		m_pBlob->GetBufferSize(),
 		nullptr,
 		m_pVShader.GetAddressOf()));
+
+	return true;
 }
