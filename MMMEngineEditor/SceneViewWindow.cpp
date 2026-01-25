@@ -134,6 +134,19 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		ImGuizmo::SetRect(imagePos.x, imagePos.y, imageSize.x, imageSize.y);
 
+		float snapValue[3] = { 0.f, 0.f, 0.f };
+		bool useSnap = ImGui::GetIO().KeyCtrl;
+
+		if (useSnap)
+		{
+			if (m_guizmoOperation == ImGuizmo::TRANSLATE)
+				snapValue[0] = snapValue[1] = snapValue[2] = 0.5f; // 0.5 단위 이동
+			else if (m_guizmoOperation == ImGuizmo::ROTATE)
+				snapValue[0] = snapValue[1] = snapValue[2] = 15.0f; // 15도 단위 회전
+			else if (m_guizmoOperation == ImGuizmo::SCALE)
+				snapValue[0] = snapValue[1] = snapValue[2] = 0.1f; // 0.1 단위 스케일
+		}
+
 		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
 		ImGuizmo::SetOrthographic(false);
 
@@ -145,7 +158,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		float* projPtr = &projMat.m[0][0];
 		float* modelPtr = &modelMat.m[0][0];
 
-		ImGuizmo::Manipulate(viewPtr, projPtr, m_guizmoOperation, m_guizmoMode, modelPtr);
+		ImGuizmo::Manipulate(viewPtr, projPtr, m_guizmoOperation, m_guizmoMode, modelPtr, NULL, useSnap ? snapValue : NULL);
 
 		if (ImGuizmo::IsUsing())
 		{
@@ -155,11 +168,23 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 			auto tr = g_selectedGameObject->GetTransform();
 
-			// 회전 중에는 scale 드리프트를 막기 위해 기존 스케일 유지
-			if (m_guizmoOperation == ImGuizmo::ROTATE)
-				s = tr->GetWorldScale();
+			// 3. SnapToZero 적용 (미세한 오차 제거)
+			auto SnapToZero = [](float& v, float eps = 1e-4f) {
+				if (std::abs(v) < eps) v = 0.0f;
+				};
 
-			r.Normalize(); // 쿼터니언도 정규화 추천
+			if (m_guizmoOperation == ImGuizmo::ROTATE)
+			{
+				s = tr->GetWorldScale();
+			}
+			else
+			{
+				SnapToZero(s.x); SnapToZero(s.y); SnapToZero(s.z);
+			}
+
+			SnapToZero(t.x); SnapToZero(t.y); SnapToZero(t.z);
+
+			r.Normalize();
 
 			tr->SetWorldPosition(t);
 			tr->SetWorldRotation(r);
