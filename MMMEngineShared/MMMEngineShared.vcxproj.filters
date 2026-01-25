@@ -68,6 +68,9 @@
     <ClCompile Include="RenderStateGuard.cpp">
       <Filter>소스 파일\Utility</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>소스 파일\Core\Render API\Component</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -258,9 +261,6 @@
     <Filter Include="헤더 파일\Core\Core Test">
       <UniqueIdentifier>{64ea75a6-7e6a-4817-801f-f9612da1250c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\Core\Core Test">
-      <UniqueIdentifier>{44b49f8c-3077-4d0a-be63-9f9da05c9b52}</UniqueIdentifier>
-    </Filter>
     <ClInclude Include="CapsuleColliderComponent.h">
       <Filter>헤더 파일\Core\Physics API</Filter>
     </ClInclude>
@@ -291,12 +291,6 @@
     <ClInclude Include="RigidBodyComponent.h">
       <Filter>헤더 파일\Core\Physics API</Filter>
     </ClInclude>
-    <ClInclude Include="BoxColliderComponent.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="SphereColliderComponent.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="RenderCommand.h">
       <Filter>헤더 파일\Core\Render API</Filter>
     </ClInclude>
@@ -306,8 +300,14 @@
     <ClInclude Include="RenderStateGuard.h">
       <Filter>헤더 파일\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="BoxColliderComponent.h">
+      <Filter>헤더 파일\Core\Physics API</Filter>
+    </ClInclude>
+    <ClInclude Include="SphereColliderComponent.h">
+      <Filter>헤더 파일\Core\Physics API</Filter>
+    </ClInclude>
     <ClInclude Include="Camera.h">
-      <Filter>헤더 파일\Core\Render API</Filter>
+      <Filter>헤더 파일\Core\Render API\Component</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -636,9 +636,6 @@
     </ClCompile>
     <ClCompile Include="MaterialSerializer.cpp">
       <Filter>소스 파일\Core\Render API\Tools</Filter>
-    </ClCompile>
-    <ClCompile Include="TextResource.cpp">
-      <Filter>소스 파일\Core\Core Test</Filter>
     </ClCompile>
     <ClCompile Include="ResourceSerializer.cpp">
       <Filter>소스 파일\Core\Render API\Tools</Filter>

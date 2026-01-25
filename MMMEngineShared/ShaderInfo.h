@@ -1,5 +1,5 @@
-#define NOMINMAX
 #pragma once
+#define NOMINMAX
 #include "ExportSingleton.hpp"
 #include <unordered_map>
 #include <string>

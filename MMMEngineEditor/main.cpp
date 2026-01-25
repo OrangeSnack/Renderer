@@ -50,6 +50,7 @@ void AfterProjectLoaded()
 	ResourceManager::Get().StartUp(projectPath.generic_wstring() + L"/");
 
 	BuildManager::Get().SetProgressCallbackString([](const std::string& progress) { std::cout << progress.c_str() << std::endl; });
+	ShaderInfo::Get().StartUp();
 }
 
 void Initialize()
@@ -60,9 +61,9 @@ void Initialize()
 	auto windowInfo = app->GetWindowInfo();
 
 	RenderManager::Get().StartUp(hwnd, windowInfo.width, windowInfo.height);
-	ShaderInfo::Get().StartUp();
 	InputManager::Get().StartUp(hwnd);
 	app->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
+	app->OnMouseWheelUpdate.AddListener<InputManager, &InputManager::HandleMouseWheelEvent>(&InputManager::Get());
 	
 	TimeManager::Get().StartUp();
 
@@ -130,13 +131,14 @@ void Update()
 		BehaviourManager::Get().AllBroadCastBehaviourMessage("OnSceneLoaded");
 	}
 
-	if (EditorRegistry::g_editor_scene_playing)
+	if (!EditorRegistry::g_editor_scene_playing)
 	{
 		BehaviourManager::Get().InitializeBehaviours();
 	}
+
 	TimeManager::Get().ConsumeFixedSteps([&](float fixedDt)
 		{
-			if (!EditorRegistry::g_editor_scene_playing)
+			if (EditorRegistry::g_editor_scene_playing)
 				return;
 
 			BehaviourManager::Get().BroadCastBehaviourMessage("FixedUpdate");
@@ -174,8 +176,12 @@ void Update()
 			}
 		});
 
-	BehaviourManager::Get().BroadCastBehaviourMessage("Update");
-	BehaviourManager::Get().BroadCastBehaviourMessage("LateUpdate");
+
+	if (!EditorRegistry::g_editor_scene_playing)
+	{
+		BehaviourManager::Get().BroadCastBehaviourMessage("Update");
+		BehaviourManager::Get().BroadCastBehaviourMessage("LateUpdate");
+	}
 
 	RenderManager::Get().BeginFrame();
 	RenderManager::Get().Render();
