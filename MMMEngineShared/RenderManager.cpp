@@ -537,6 +537,13 @@ namespace MMMEngine {
 		// 렌더러 컨트롤
 		InitRenderers();
 		UpdateRenderers();
+
+		// 카메라 유효성 확인
+		if(!m_pMainCamera.IsValid())
+			m_pMainCamera = Camera::GetMainCamera();
+		if (!m_pMainCamera.IsValid()) {
+			m_pMainCamera = Camera::CreateMainCamera()->GetComponent<Camera>();
+		}
 	}
 
 	void RenderManager::Render()
@@ -547,9 +554,9 @@ namespace MMMEngine {
 
 		// 캠 버퍼 업데이트
 		Render_CamBuffer m_camMat = {};
-		m_camMat.camPos = {.0f, .0f, .0f, 1.0f};
-		m_camMat.mView = Matrix::Identity;
-		m_camMat.mProjection = Matrix::Identity;
+		m_camMat.mView = XMMatrixTranspose(m_pMainCamera->GetViewMatrix());
+		m_camMat.mProjection = XMMatrixTranspose(m_pMainCamera->GetProjMatrix());
+		m_camMat.camPos = XMMatrixInverse(nullptr, m_camMat.mView).r[3];
 
 		// 리소스 업데이트
 		m_pDeviceContext->UpdateSubresource1(m_pCambuffer.Get(), 0, nullptr, &m_camMat, 0, 0, D3D11_COPY_DISCARD);
