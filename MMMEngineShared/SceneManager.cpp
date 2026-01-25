@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <iostream>
 
+#include "Camera.h"
+
 DEFINE_SINGLETON(MMMEngine::SceneManager)
 
 void MMMEngine::SceneManager::LoadScenes(bool allowEmptyScene)
@@ -86,7 +88,7 @@ void MMMEngine::SceneManager::CreateEmptyScene(std::string name)
 	m_scenes.push_back(std::make_unique<Scene>());
 	m_scenes.back()->SetName(name);
 	SnapShot snapShot; 
-	SceneSerializer::Get().SerializeToMemory(*m_scenes.back(), snapShot);
+	SceneSerializer::Get().SerializeToMemory(*m_scenes.back(), snapShot, true); //카메라 까지 같이 생성하도록 주입
 	m_scenes.back()->SetSnapShot(std::move(snapShot));
 }
 

@@ -550,7 +550,7 @@ void MMMEngine::SceneSerializer::Deserialize(Scene& scene, const SnapShot& snaps
     g_objectTable.clear();
 }
 
-void MMMEngine::SceneSerializer::SerializeToMemory(const Scene& scene, SnapShot& snapshot)
+void MMMEngine::SceneSerializer::SerializeToMemory(const Scene& scene, SnapShot& snapshot, bool makeNewCamera)
 {
     auto sceneMUID = scene.GetMUID().IsEmpty() ? Utility::MUID::NewMUID() : scene.GetMUID();
 
@@ -579,6 +579,28 @@ void MMMEngine::SceneSerializer::SerializeToMemory(const Scene& scene, SnapShot&
         }
         goJson["Components"] = compArray;
 
+        goArray.push_back(goJson);
+    }
+
+    if (makeNewCamera)
+    {
+        json goJson;
+        goJson["Name"] = "MainCamera";
+        goJson["MUID"] = Utility::MUID::NewMUID().ToString();
+        goJson["Layer"] = 0;
+        goJson["Tag"] = "MainCamera";
+        goJson["Active"] = true;
+
+        json compJson;
+        compJson["Type"] = "Camera";
+        compJson["Props"]["FOV"] = 60;
+        compJson["Props"]["Near"] = 0.1f;
+        compJson["Props"]["Far"] = 1000.0f;
+        compJson["Props"]["AspectRatio"] = 16.0f / 9.0f;
+
+        json compArray = json::array();
+        compArray.push_back(compJson);
+        goJson["Components"] = compArray;
         goArray.push_back(goJson);
     }
 
