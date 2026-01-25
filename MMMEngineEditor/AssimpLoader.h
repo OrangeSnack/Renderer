@@ -13,9 +13,6 @@
 #include "RenderShared.h"
 #include "ResourceManager.h"
 
-#pragma warning(push)
-#pragma warning(disable: 4251)
-
 namespace MMMEngine {
 	enum class ModelType {
 		Static,
