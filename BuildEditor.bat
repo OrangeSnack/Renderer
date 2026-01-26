@@ -7,6 +7,8 @@ if "%ENGINE_DIR:~-1%"=="\" set "ENGINE_DIR=%ENGINE_DIR:~0,-1%"
 set "PLATFORM=x64"
 set "SLN=%ENGINE_DIR%\MMMEngine.sln"
 
+set "BUILD_TARGET=MMMEngineEditor"
+
 echo ENGINE_DIR=[%ENGINE_DIR%]
 echo SLN=[%SLN%]
 echo.
@@ -67,7 +69,7 @@ echo   %MSBUILD%
 echo.
 
 "%MSBUILD%" "%SLN%" ^
-  /t:Build ^
+  /t:%BUILD_TARGET%:Build ^
   /p:Platform=%PLATFORM% ^
   /p:Configuration=%CONFIG% ^
   /m:1 /v:minimal /nologo
