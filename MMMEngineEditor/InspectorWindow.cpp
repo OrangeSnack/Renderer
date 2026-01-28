@@ -445,7 +445,6 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
                         auto fvar = func.invoke(var, baseRef);
                         if (fvar.is_valid() && fvar.is_type<bool>() && fvar.get_value<bool>())
                         {
-                            std::cout << "success" << std::endl;
                             prop.set_value(inst, var);
                             break;
                         }
@@ -462,7 +461,6 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
                             auto fvar = func.invoke(var, baseRef);
                             if (fvar.is_valid() && fvar.is_type<bool>() && fvar.get_value<bool>())
                             {
-                                std::cout << "success" << std::endl;
                                 prop.set_value(inst, var);
                                 break;
                             }
@@ -509,6 +507,20 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
                     ImGui::Button(displayPath.c_str(), ImVec2(-1, 0));
                     ImGui::PopStyleColor();
 
+                    if (ImGui::BeginPopupContextItem("ResPtrContext"))
+                    {
+                        if (!readOnly && ImGui::MenuItem(u8"참조 해제"))
+                        {
+                            std::shared_ptr<Resource> emptyPtr = nullptr;
+                            rttr::variant nullVar(emptyPtr);
+
+                            if (nullVar.convert(prop.get_type()))
+                            {
+                                bool ok = prop.set_value(inst, nullVar);
+                            }
+                        }
+                        ImGui::EndPopup();
+                    }
                     // Drag & Drop
                     if (ImGui::BeginDragDropTarget())
                     {
@@ -575,18 +587,6 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
                         }
                         ImGui::EndDragDropTarget();
                     }
-
-                    // Clear 버튼
-                    if (res != nullptr && !readOnly)
-                    {
-                        ImGui::SameLine();
-                        if (ImGui::SmallButton(("X##" + name).c_str()))
-                        {
-                            std::shared_ptr<Resource> nullPtr = nullptr;
-                            prop.set_value(inst, nullPtr);
-                        }
-                    }
-
                     ImGui::PopID();
                 }
             }
