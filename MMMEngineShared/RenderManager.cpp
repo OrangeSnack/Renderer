@@ -113,11 +113,15 @@ namespace MMMEngine {
 					// UpdateBoneIndexConstantBuffer(cmd.boneMatIndex);
 				}
 
-				// TODO::ShaderInfo 사용하여 상수버퍼 등록
+				// 상수버퍼 등록
 				auto type = ShaderInfo::Get().GetShaderType(lastMaterial->GetPShader()->GetFilePath());
 				
+				// 라이트등록
 				for (auto& light : m_lights)
 					ApplyLightToContext(m_pDeviceContext.Get(), light, type);
+
+				// 상수버퍼 일렬업데이트
+				ShaderInfo::Get().UpdateCBuffers(type);
 
 				// 월드매트릭스 버퍼집어넣기
 				Render_TransformBuffer transformBuffer;

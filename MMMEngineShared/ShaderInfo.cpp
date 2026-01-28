@@ -119,6 +119,10 @@ void MMMEngine::ShaderInfo::StartUp()
 	// 구조체별 이름 등록 (쉐이더 이름과같게)
 	m_CBBufferMap[L"MatBuffer"] = CreateConstantBuffer<PBR_MaterialBuffer>();
 	m_CBBufferMap[L"LightBuffer"] = CreateConstantBuffer<Render_LightBuffer>();
+	
+	// 사용 상수버퍼 등록
+	m_typeBufferMap[ShaderType::S_PBR].push_back({ L"MatBuffer" , 3 });
+	m_typeBufferMap[ShaderType::S_PBR].push_back({ L"LightBuffer" , 1 });
 
 	// 타입별 레지스터 번호 등록
 	m_propertyInfoMap[ShaderType::S_PBR][L"_albedo"]	= { PropertyType::Texture, 0 };
@@ -212,19 +216,8 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 			context->Unmap(buffer.Get(), 0);
 		}
 
-		context->PSSetConstantBuffers(pinfo.bufferIndex, 1, buffer.GetAddressOf());
-
-		// 상수버퍼 업데이트
-		/*UINT firstConstantBufferView = cbInfo.offset / 16;   // 16바이트 단위 오프셋
-		UINT numConstantBufferViews = (cbInfo.size + 15) / 16; // 16바이트 단위 크기 (올림)
-
-		context->PSSetConstantBuffers1(
-			pinfo.bufferIndex,         // StartSlot
-			1,                         // NumBuffers
-			buffer.GetAddressOf(),     // 버퍼 배열
-			&firstConstantBufferView,  // 시작 오프셋
-			&numConstantBufferViews    // 뷰 크기
-		);*/
+		/*RenderManager::Get().GetContext()->PSSetConstantBuffers(pinfo.bufferIndex, 1,
+			buffer.GetAddressOf());*/
 	}
 	else if (pinfo.propertyType == PropertyType::Texture) {
 		// Texture는 SRV 바인딩만 하면 됨
@@ -257,4 +250,20 @@ const int MMMEngine::ShaderInfo::PropertyToIdx(const ShaderType _type, const std
 	// bufferIndex 반환 (Texture면 tN, Constant면 bN 슬롯 번호)
 	return propIt->second.bufferIndex;
 
+}
+
+void MMMEngine::ShaderInfo::UpdateCBuffers(const ShaderType _type)
+{
+	auto it = m_typeBufferMap.find(_type);
+	if (it == m_typeBufferMap.end())
+		return;
+
+	for (auto& bufferInfo : it->second) {
+		auto cbit = m_CBBufferMap.find(bufferInfo.bufferName);
+
+		if (cbit != m_CBBufferMap.end()) {
+			RenderManager::Get().GetContext()->PSSetConstantBuffers(bufferInfo.registerIndex, 1,
+				cbit->second.GetAddressOf());
+		}
+	}
 }

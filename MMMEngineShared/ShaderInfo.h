@@ -81,6 +81,11 @@ namespace MMMEngine {
 		UINT size;		// 변수의 크기(바이트 단위)
 	};
 
+	struct BufferInfo {
+		std::wstring bufferName;
+		int registerIndex = -1;
+	};
+
 	class RenderManager;
 	class MMMENGINE_API ShaderInfo : public Utility::ExportSingleton<ShaderInfo>
 	{
@@ -93,6 +98,9 @@ namespace MMMEngine {
 		// 쉐이더 타입정보정의 < ShaderPath, TypeInfo >
 		std::unordered_map<std::wstring, TypeInfo> m_typeInfoMap;
 
+		// 쉐이더 타입별 사용버퍼 < ShaderType, < BufferName, RegisterIdx>>
+		std::unordered_map<ShaderType, std::vector<BufferInfo>> m_typeBufferMap;
+
 		// 쉐이더타입별 메테리얼 프로퍼티 정의 < ShaderType, <PropertyName, PropertyInfo>>
 		std::unordered_map<ShaderType, std::unordered_map<std::wstring, PropertyInfo>> m_propertyInfoMap;
 
@@ -104,8 +112,7 @@ namespace MMMEngine {
 
 		//// 텍스쳐 버퍼인덱스 주는 맵 <propertyName, index> (int == shader tN)
 		//std::unordered_map<ShaderType, std::unordered_map<std::wstring, int>> m_texPropertyMap;
-		//// 상수버퍼 인덱스 주는 맵 <constantBufferName, index> (int == shader bN)
-		//std::unordered_map<ShaderType, std::unordered_map<std::wstring, int>> m_CBIndexMap;
+		
 		
 		void CreatePShaderReflection(std::wstring&& _filePath);
 
@@ -128,6 +135,7 @@ namespace MMMEngine {
 			const ShaderType shaderType,
 			const std::wstring& propertyName,
 			const void* data);
+		void UpdateCBuffers(const ShaderType _type);
 	};
 
 	template<typename T>
