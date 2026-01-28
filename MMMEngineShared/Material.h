@@ -18,9 +18,12 @@ namespace MMMEngine {
 	class PShader;
 	class VShader;
 	class MaterialSerializer;
+	class RenderManager;
 	class MMMENGINE_API Material : public Resource
 	{
 		friend class MaterialSerializer;
+		friend class RenderManager;
+		friend class ShaderInfo;
 		RTTR_ENABLE(Resource);
 		RTTR_REGISTRATION_FRIEND
 			friend class ResourceManager;
@@ -32,8 +35,9 @@ namespace MMMEngine {
 		ResPtr<PShader> m_pPShader;
 
 	public:
-
-		void SetProperty(const std::wstring& _name, const PropertyValue& value);
+		void AddProperty(const std::wstring& _name, const PropertyValue& _value);
+		void SetProperty(const std::wstring& _name, const PropertyValue& _value);
+		void RemoveProperty(const std::wstring& _name);
 		PropertyValue GetProperty(const std::wstring& name) const;
 		const std::unordered_map<std::wstring, PropertyValue>& GetProperties() { return m_properties; }
 

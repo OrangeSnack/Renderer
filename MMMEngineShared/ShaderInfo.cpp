@@ -3,6 +3,7 @@
 #include <d3dcompiler.h>
 
 #include "RenderManager.h"
+#include "Material.h"
 
 namespace fs = std::filesystem;
 
@@ -55,7 +56,20 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 			D3D11_SHADER_VARIABLE_DESC varDesc;
 			var->GetDesc(&varDesc);
 
+			// 타입 정보 얻기
+			ID3D11ShaderReflectionType* type = var->GetType();
+			D3D11_SHADER_TYPE_DESC typeDesc;
+			type->GetDesc(&typeDesc);
+
 			std::wstring propName(varDesc.Name, varDesc.Name + strlen(varDesc.Name));
+
+			// 타입 정보 기록
+			auto it = m_propertyInfoMap[_type].find(propName);
+			if (it != m_propertyInfoMap[_type].end()) {
+				it->second.varType = typeDesc.Type;	// D3D_SHADER_VARIABLE_TYPE
+				it->second.rows = typeDesc.Rows;
+				it->second.columns = typeDesc.Columns;
+			}
 
 			// 오프셋과 크기 기록
 			CBPropertyInfo cbinfo;
@@ -77,36 +91,49 @@ void MMMEngine::ShaderInfo::DeSerialize()
 void MMMEngine::ShaderInfo::StartUp()
 {
 	// --- JSON 템플릿 ---
-	// 기본 쉐이더 정의
-	m_pDefaultVShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
-	m_pDefaultPShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
+	// 타입별 레지스터 번호 등록
+	m_propertyInfoMap[ShaderType::S_PBR][L"_albedo"] = { PropertyType::Texture, 0 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_normal"] = { PropertyType::Texture, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_emissive"] = { PropertyType::Texture, 2 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_shadowmap"] = { PropertyType::Texture, 3 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_opacity"] = { PropertyType::Texture, 4 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_specular"] = { PropertyType::Texture, 20 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_irradiance"] = { PropertyType::Texture, 21 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_brdflut"] = { PropertyType::Texture, 22 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_metallic"] = { PropertyType::Texture, 30 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_roughness"] = { PropertyType::Texture, 31 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_ambientOcclusion"] = { PropertyType::Texture, 32 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_sp0"] = { PropertyType::Sampler, 0 };
+
+	m_propertyInfoMap[ShaderType::S_PBR][L"mLightDir"] = { PropertyType::Constant, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mLightPadding"] = { PropertyType::Constant, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mLightColor"] = { PropertyType::Constant, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mIntensity"] = { PropertyType::Constant, 1 };
+
+	m_propertyInfoMap[ShaderType::S_PBR][L"mBaseColor"] = { PropertyType::Constant, 3 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mMetallic"] = { PropertyType::Constant, 3 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mRoughness"] = { PropertyType::Constant, 3 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mAoStrength"] = { PropertyType::Constant, 3 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mEmissive"] = { PropertyType::Constant, 3 };
 
 	// 쉐이더 타입정보정의
 	m_typeInfoMap[L"Shader/PBR/PS/BRDFShader.hlsl"] = { ShaderType::S_PBR, RenderType::R_GEOMETRY, nullptr };
 
-	// 쉐이더 리플렉션 등록 (상수버퍼 개별업데이트 사용하기 위함)
-	CreatePShaderReflection(L"Shader/PBR/PS/BRDFShader.hlsl");
-
 	// 구조체별 이름 등록 (쉐이더 이름과같게)
 	m_CBBufferMap[L"MatBuffer"] = CreateConstantBuffer<PBR_MaterialBuffer>();
 	m_CBBufferMap[L"LightBuffer"] = CreateConstantBuffer<Render_LightBuffer>();
-	
+
 	// 사용 상수버퍼 등록
 	m_typeBufferMap[ShaderType::S_PBR].push_back({ L"MatBuffer" , 3 });
 	m_typeBufferMap[ShaderType::S_PBR].push_back({ L"LightBuffer" , 1 });
 
-	// 타입별 레지스터 번호 등록
-	m_propertyInfoMap[ShaderType::S_PBR][L"_albedo"]	= { PropertyType::Texture, 0 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"_normal"]	= { PropertyType::Texture, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"_emissive"]	= { PropertyType::Texture, 2 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"_shadowmap"] = { PropertyType::Texture, 3 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"_opacity"]	= { PropertyType::Texture, 4 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"_sp0"]		= { PropertyType::Sampler, 0 };
+	// 쉐이더 리플렉션 등록 (상수버퍼 개별업데이트 사용하기 위함)
+	CreatePShaderReflection(L"Shader/PBR/PS/BRDFShader.hlsl");
 
-	m_propertyInfoMap[ShaderType::S_PBR][L"mLightDir"]		= { PropertyType::Constant, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"mLightPadding"]	= { PropertyType::Constant, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"mLightColor"]	= { PropertyType::Constant, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"mIntensity"]		= { PropertyType::Constant, 1 };
+	// 기본 쉐이더 정의
+	m_pDefaultVShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
+	m_pDefaultPShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
+	// --- JSON 템플릿 ---
 
 	// Json 읽기
 	DeSerialize();
@@ -232,5 +259,109 @@ void MMMEngine::ShaderInfo::UpdateCBuffers(const ShaderType _type)
 			RenderManager::Get().GetContext()->PSSetConstantBuffers(bufferInfo.registerIndex, 1,
 				cbit->second.GetAddressOf());
 		}
+	}
+}
+
+void AddProperty(MMMEngine::Material* _mat, const std::wstring& propName, const MMMEngine::PropertyInfo& pInfo)
+{
+	MMMEngine::PropertyValue val;
+
+	switch (pInfo.propertyType) // category: Constant / Texture / Sampler
+	{
+	case MMMEngine::PropertyType::Constant:
+		// ConstantBuffer 변수 타입에 따라 기본값 설정
+		switch (pInfo.varType) // D3D_SHADER_VARIABLE_TYPE
+		{
+		case D3D_SVT_FLOAT:
+			if (pInfo.columns == 1 && pInfo.rows == 1) {
+				val = 0.0f;
+			}
+			else if (pInfo.columns == 3 && pInfo.rows == 1) {
+				val = DirectX::SimpleMath::Vector3::Zero;
+			}
+			else if (pInfo.columns == 4 && pInfo.rows == 1) {
+				val = DirectX::SimpleMath::Vector4::Zero;
+			}
+			else if (pInfo.columns == 4 && pInfo.rows == 4) {
+				val = DirectX::SimpleMath::Matrix::Identity;
+			}
+			break;
+
+		case D3D_SVT_INT:
+			val = 0;
+			break;
+
+		case D3D_SVT_BOOL:
+			val = false;
+			break;
+
+		default:
+			// 기타 타입은 기본값 없음
+			val = 0;
+			break;
+		}
+		break;
+
+	case MMMEngine::PropertyType::Texture:
+	{
+		MMMEngine::ResPtr<MMMEngine::Texture2D> tex;
+		if(propName == L"_normal")
+			tex = MMMEngine::ResourceManager::Get()
+			.Load<MMMEngine::Texture2D>(L"Shader/Resource/Default_Texture/Default_Normal.png");
+		else
+			tex = MMMEngine::ResourceManager::Get()
+			.Load<MMMEngine::Texture2D>(L"Shader/Resource/Default_Texture/Solid_White.png");
+		val = tex; // 기본 텍스처
+	}
+	break;
+
+	case MMMEngine::PropertyType::Sampler:
+	{
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler = nullptr;
+		val = nullptr; // 기본 샘플러 없음 // TODO::ShaderInfo 기본 샘플러 만들기
+	}
+	break;
+	}
+
+	// Material에 프로퍼티 등록
+	_mat->AddProperty(propName, val);
+}
+
+void MMMEngine::ShaderInfo::ConvertMaterialType(const ShaderType _type, Material* _mat)
+{
+	// ShaderType에 등록된 프로퍼티 맵 조회
+	auto propIt = m_propertyInfoMap.find(_type);
+	if (propIt == m_propertyInfoMap.end())
+		return;
+
+	const auto& shaderProps = propIt->second;
+
+	// 1. ShaderType에 있는 모든 프로퍼티를 Material에 반영
+	for (const auto& [propName, pinfo] : shaderProps)
+	{
+		// TODO :: 기본Sampler 만들고나서 이거 지우기
+		if (pinfo.propertyType == PropertyType::Sampler)
+			continue;
+
+		// Material에 해당 프로퍼티가 없으면 추가
+		if (_mat->m_properties.find(propName) == _mat->m_properties.end())
+		{
+			AddProperty(_mat, propName, pinfo);
+		}
+	}
+
+	// 2. Material에 있는 프로퍼티 중 ShaderType에 없는 것 제거
+	std::vector<std::wstring> toRemove;
+	for (const auto& [name, val] : _mat->m_properties)
+	{
+		if (shaderProps.find(name) == shaderProps.end())
+		{
+			toRemove.push_back(name);
+		}
+	}
+
+	for (const auto& propName : toRemove)
+	{
+		_mat->RemoveProperty(propName);
 	}
 }

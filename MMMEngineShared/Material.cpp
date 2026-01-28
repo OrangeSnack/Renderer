@@ -11,6 +11,7 @@
 
 #include <rttr/registration>
 #include "MaterialSerializer.h"
+#include "ShaderInfo.h"
 
 namespace fs = std::filesystem;
 namespace mw = Microsoft::WRL;
@@ -42,12 +43,38 @@ RTTR_REGISTRATION
 }
 
 
-// 프로퍼티 설정
-void MMMEngine::Material::SetProperty(const std::wstring& _name, const MMMEngine::PropertyValue& value)
+// 프로퍼티 생성
+void MMMEngine::Material::AddProperty(const std::wstring& _name, const PropertyValue& _value)
 {
-	m_properties[_name] = value;
+	// 없으면 생성, 있으면 갱신
+	auto it = m_properties.find(_name);
+	if (it == m_properties.end())
+		m_properties[_name] = _value;
+	else
+		it->second = _value;
 }
 
+// 프로퍼티 갱신
+void MMMEngine::Material::SetProperty(const std::wstring& _name, const MMMEngine::PropertyValue& _value)
+{
+	auto it = m_properties.find(_name);
+	if (it == m_properties.end())
+		return;
+
+	// 같은 타입이면 갱신
+	if (_value.index() == it->second.index()) {
+		it->second = _value;
+	}
+}
+
+// 프로퍼티 삭제
+void MMMEngine::Material::RemoveProperty(const std::wstring& _name)
+{
+	auto it = m_properties.find(_name);
+	if (it != m_properties.end()) {
+		m_properties.erase(it);
+	}
+}
 
 // 프로퍼티 가져오기
 MMMEngine::PropertyValue MMMEngine::Material::GetProperty(const std::wstring& _name) const
@@ -105,6 +132,10 @@ void MMMEngine::Material::LoadTexture(const std::wstring& _propertyName, const s
 bool MMMEngine::Material::LoadFromFilePath(const std::wstring& _filePath)
 {
 	MaterialSerializer::Get().UnSerealize(this, _filePath);
+
+	// 타입에 따라 프로퍼티 생성, 삭제
+	auto type = ShaderInfo::Get().GetShaderType(m_pPShader->GetFilePath());
+	ShaderInfo::Get().ConvertMaterialType(type, this);
 
 	return true;
 }

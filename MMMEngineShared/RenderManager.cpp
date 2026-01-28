@@ -58,13 +58,16 @@ namespace MMMEngine {
 			}
 	}
 
-	void RenderManager::ApplyLightToContext(ID3D11DeviceContext4* _context, Light* _light, ShaderType _type)
+	void RenderManager::ApplyLightToMat(ID3D11DeviceContext4* _context, Light* _light, Material* _mat)
 	{
 		if (_light->m_lightIndex < 0)
 			return;
 
 		for (auto& [prop, val] : _light->m_properties) {
-			UpdateProperty(prop, val, _type);
+			auto it = _mat->m_properties.find(prop);
+			if (it != _mat->m_properties.end()) {
+				it->second = val;
+			}
 		}
 	}
 
@@ -97,6 +100,10 @@ namespace MMMEngine {
 			{
 				if (cmd.material != lastMaterial)
 				{
+					// 라이트등록 TODO::포인트라이트 존재시 밖으로 빼야함.
+					for (auto& light : m_lights)
+						ApplyLightToMat(m_pDeviceContext.Get(), light, cmd.material);
+
 					ApplyMatToContext(m_pDeviceContext.Get(), cmd.material);
 					lastMaterial = cmd.material;
 				}
@@ -114,14 +121,10 @@ namespace MMMEngine {
 				}
 
 				// 상수버퍼 등록
-				auto type = ShaderInfo::Get().GetShaderType(lastMaterial->GetPShader()->GetFilePath());
-				
-				// 라이트등록
-				for (auto& light : m_lights)
-					ApplyLightToContext(m_pDeviceContext.Get(), light, type);
+				auto sType = ShaderInfo::Get().GetShaderType(lastMaterial->GetPShader()->GetFilePath());
 
 				// 상수버퍼 일렬업데이트
-				ShaderInfo::Get().UpdateCBuffers(type);
+				ShaderInfo::Get().UpdateCBuffers(sType);
 
 				// 월드매트릭스 버퍼집어넣기
 				Render_TransformBuffer transformBuffer;
@@ -414,6 +417,7 @@ namespace MMMEngine {
 				if constexpr (std::is_same_v<T, int> ||
 					std::is_same_v<T, float> ||
 					std::is_same_v<T, DirectX::SimpleMath::Vector3> ||
+					std::is_same_v<T, DirectX::SimpleMath::Vector4> ||
 					std::is_same_v<T, DirectX::SimpleMath::Matrix>)
 				{
 					ShaderInfo::Get().UpdateProperty(m_pDeviceContext.Get(), _type, _propName, &arg);

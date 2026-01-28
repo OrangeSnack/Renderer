@@ -21,7 +21,7 @@
 // 여기서 쉐이더 정보를 하드코딩해야합니다.
 namespace MMMEngine {
 	using PropertyValue = std::variant<
-		int, float, DirectX::SimpleMath::Vector3, DirectX::SimpleMath::Matrix,
+		int, float, DirectX::SimpleMath::Vector3, DirectX::SimpleMath::Vector4, DirectX::SimpleMath::Matrix,
 		ResPtr<MMMEngine::Texture2D>
 	>;
 
@@ -73,6 +73,10 @@ namespace MMMEngine {
 	struct PropertyInfo {
 		PropertyType propertyType = PropertyType::Texture;
 		int bufferIndex = -1;	// 버퍼번호
+
+		D3D_SHADER_VARIABLE_TYPE varType;
+		UINT rows;    // 행 수 (예: float4 → 1)
+		UINT columns; // 열 수 (예: float4 → 4)
 	};
 
 	struct CBPropertyInfo {
@@ -136,6 +140,8 @@ namespace MMMEngine {
 			const std::wstring& propertyName,
 			const void* data);
 		void UpdateCBuffers(const ShaderType _type);
+
+		void ConvertMaterialType(const ShaderType _type, Material* _mat);
 	};
 
 	template<typename T>

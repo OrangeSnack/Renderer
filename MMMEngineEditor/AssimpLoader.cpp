@@ -195,7 +195,7 @@ bool MMMEngine::AssimpLoader::ConvertMaterial(const TextureSemantic _sementic, c
 	if (!resource)
 		return false;
 
-	_out->SetProperty(it->second, resource);
+	_out->AddProperty(it->second, resource);
 	return true;
 }
 

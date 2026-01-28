@@ -50,7 +50,7 @@ namespace MMMEngine
 		std::vector<Light*> m_lights;
 
 		void ApplyMatToContext(ID3D11DeviceContext4* _context, Material* _material);
-		void ApplyLightToContext(ID3D11DeviceContext4* _context, Light* _light, ShaderType _type);
+		void ApplyLightToMat(ID3D11DeviceContext4* _context, Light* _light, Material* _mat);
 		void ExcuteCommands();
 		void InitCache();
 
