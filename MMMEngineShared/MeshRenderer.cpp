@@ -1,10 +1,11 @@
-#include "MeshRenderer.h"
+ï»¿#include "MeshRenderer.h"
 #include "RenderManager.h"
 #include "RenderCommand.h"
 #include "GameObject.h"
 #include "Transform.h"
 #include "ShaderInfo.h"
 #include "PShader.h"
+#include "Material.h"
 
 #include "StaticMesh.h"
 #include "rttr/registration.h"
@@ -49,7 +50,7 @@ void MMMEngine::MeshRenderer::Init()
 
 void MMMEngine::MeshRenderer::Render()
 {
-	// À¯È¿¼º È®ÀÎ
+	// ìœ íš¨ì„± í™•ì¸
 	if (!mesh || !GetTransform())
 		return;
 
@@ -67,7 +68,7 @@ void MMMEngine::MeshRenderer::Render()
 			command.worldMatIndex = RenderManager::Get().AddMatrix(GetTransform()->GetWorldMatrix());
 			command.indiciesSize = mesh->indexSizes[idx];
 
-			// TODO::CamDistance º¸³»Áà¾ßÇÔ!!
+			// TODO::CamDistance ë³´ë‚´ì¤˜ì•¼í•¨!!
 			command.camDistance = 0.0f;
 
 			std::wstring shaderPath = material->GetPShader()->GetFilePath();

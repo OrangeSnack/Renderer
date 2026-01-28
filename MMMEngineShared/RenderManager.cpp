@@ -8,6 +8,7 @@
 #include "Transform.h"
 #include "Camera.h"
 #include "Renderer.h"
+#include "Material.h"
 
 #include "rttr/registration.h"
 
@@ -53,25 +54,18 @@ namespace MMMEngine {
 		// 메테리얼
 			for (auto& [prop, val] : _material->GetProperties()) {
 				ShaderType type = ShaderInfo::Get().GetShaderType(PS->GetFilePath());
-
-				std::visit([&](auto&& arg)
-					{
-						using T = std::decay_t<decltype(arg)>;
-
-						if constexpr (std::is_same_v<T, int> ||
-							std::is_same_v<T, float> ||
-							std::is_same_v<T, DirectX::SimpleMath::Vector3> ||
-							std::is_same_v<T, DirectX::SimpleMath::Matrix>)
-						{
-							ShaderInfo::Get().UpdateProperty(m_pDeviceContext.Get(), type, prop, &arg);
-						}
-						else if constexpr (std::is_same_v<T, ResPtr<MMMEngine::Texture2D>>)
-						{
-							ID3D11ShaderResourceView* srv = arg->m_pSRV.Get();
-							ShaderInfo::Get().UpdateProperty(m_pDeviceContext.Get(), type, prop, srv);
-						}
-					}, val);
+				UpdateProperty(prop, val, type);
 			}
+	}
+
+	void RenderManager::ApplyLightToContext(ID3D11DeviceContext4* _context, Light* _light, ShaderType _type)
+	{
+		if (_light->m_lightIndex < 0)
+			return;
+
+		for (auto& [prop, val] : _light->m_properties) {
+			UpdateProperty(prop, val, _type);
+		}
 	}
 
 	void RenderManager::ExcuteCommands()
@@ -110,7 +104,6 @@ namespace MMMEngine {
 
 				UINT stride = sizeof(Mesh_Vertex); // 실제 버텍스 구조체 크기
 				UINT offset = 0;
-				m_pDeviceContext->IAGetInputLayout(m_pDefaultInputLayout.GetAddressOf());
 				m_pDeviceContext->IASetVertexBuffers(0, 1, &cmd.vertexBuffer, &stride, &offset);
 				m_pDeviceContext->IASetIndexBuffer(cmd.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
@@ -121,6 +114,10 @@ namespace MMMEngine {
 				}
 
 				// TODO::ShaderInfo 사용하여 상수버퍼 등록
+				auto type = ShaderInfo::Get().GetShaderType(lastMaterial->GetPShader()->GetFilePath());
+				
+				for (auto& light : m_lights)
+					ApplyLightToContext(m_pDeviceContext.Get(), light, type);
 
 				// 월드매트릭스 버퍼집어넣기
 				Render_TransformBuffer transformBuffer;
@@ -161,6 +158,15 @@ namespace MMMEngine {
 		for (auto& renderer : m_renderers) {
 			if (renderer->IsActiveAndEnabled()) {
 				renderer->Render();
+			}
+		}
+	}
+
+	void RenderManager::UpdateLights()
+	{
+		for (auto& light : m_lights) {
+			if (light->IsActiveAndEnabled()) {
+				light->Render();
 			}
 		}
 	}
@@ -395,6 +401,27 @@ namespace MMMEngine {
 		m_ClearColor = DirectX::SimpleMath::Vector4(0.45f, 0.55f, 0.60f, 1.00f);
 	}
 
+	void RenderManager::UpdateProperty(const std::wstring& _propName, const PropertyValue& _value, ShaderType _type)
+	{
+		std::visit([&](auto&& arg)
+			{
+				using T = std::decay_t<decltype(arg)>;
+
+				if constexpr (std::is_same_v<T, int> ||
+					std::is_same_v<T, float> ||
+					std::is_same_v<T, DirectX::SimpleMath::Vector3> ||
+					std::is_same_v<T, DirectX::SimpleMath::Matrix>)
+				{
+					ShaderInfo::Get().UpdateProperty(m_pDeviceContext.Get(), _type, _propName, &arg);
+				}
+				else if constexpr (std::is_same_v<T, ResPtr<MMMEngine::Texture2D>>)
+				{
+					ID3D11ShaderResourceView* srv = arg->m_pSRV.Get();
+					ShaderInfo::Get().UpdateProperty(m_pDeviceContext.Get(), _type, _propName, srv);
+				}
+			}, _value);
+	}
+
 	void RenderManager::SetWorldMatrix(DirectX::SimpleMath::Matrix& _world)
 	{
 		m_worldMatrix = _world;
@@ -567,6 +594,7 @@ namespace MMMEngine {
 		// 렌더러 컨트롤
 		InitRenderers();
 		UpdateRenderers();
+		UpdateLights();
 
 		// 카메라 유효성 확인
 		//if(!m_pMainCamera.IsValid())
@@ -668,8 +696,17 @@ namespace MMMEngine {
 
 	void RenderManager::RemoveRenderer(int _idx)
 	{
+		if (m_renderers.empty())
+			return;
+
 		if (_idx < m_renderers.size() && _idx >= 0)
 		{
+			if (m_renderers.size() == 1)
+			{
+				m_renderers.pop_back();
+				return;
+			}
+
 			std::swap(m_renderers[_idx], m_renderers.back());
 			m_renderers[_idx]->renderIndex = _idx;
 			m_renderers.pop_back();
@@ -689,10 +726,19 @@ namespace MMMEngine {
 
 	void RenderManager::RemoveLight(int _idx)
 	{
+		if (m_lights.empty())
+			return;
+
 		if (_idx < m_lights.size() && _idx >= 0)
 		{
+			if (m_lights.size() == 1)
+			{
+				m_lights.pop_back();
+				return;
+			}
+
 			std::swap(m_lights[_idx], m_lights.back());
-			m_lights[_idx]->lightIndex = _idx;
+			m_lights[_idx]->m_lightIndex = _idx;
 			m_renderers.pop_back();
 		}
 	}

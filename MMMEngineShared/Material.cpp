@@ -1,4 +1,4 @@
-#include "Material.h"
+﻿#include "Material.h"
 #include "VShader.h"
 #include "PShader.h"
 #include "Texture2D.h"
@@ -23,11 +23,17 @@ RTTR_REGISTRATION
 
 	registration::class_<Material>("Material")
 		.constructor<>()(policy::ctor::as_std_shared_ptr)
-		.property("VShader", &Material::GetVShaderRttr, &Material::SetVShader);
+		.property("VShader", &Material::GetVShaderRttr, &Material::SetVShader)
+		.property("PShader", &Material::GetPShaderRttr, &Material::SetPShader);
 
 	type::register_converter_func(
 		[](std::shared_ptr<Resource> from, bool& ok) -> std::shared_ptr<Material>
 		{
+			if (!from) {  // nullptr 허용
+				ok = true;
+				return nullptr;
+			}
+			
 			auto result = std::dynamic_pointer_cast<Material>(from);
 			ok = (result != nullptr);
 			return result;
@@ -82,6 +88,11 @@ const MMMEngine::ResPtr<MMMEngine::PShader> MMMEngine::Material::GetPShader()
 const std::wstring& MMMEngine::Material::GetVShaderRttr()
 {
 	return m_pVShader->GetFilePath();
+}
+
+const std::wstring& MMMEngine::Material::GetPShaderRttr()
+{
+	return m_pPShader->GetFilePath();
 }
 
 void MMMEngine::Material::LoadTexture(const std::wstring& _propertyName, const std::wstring& _filePath)

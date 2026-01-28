@@ -1,4 +1,4 @@
-#ifndef NOMINMAX
+﻿#ifndef NOMINMAX
 #define NOMINMAX
 #endif
 
@@ -50,14 +50,18 @@ namespace MMMEngine
 		std::vector<Light*> m_lights;
 
 		void ApplyMatToContext(ID3D11DeviceContext4* _context, Material* _material);
+		void ApplyLightToContext(ID3D11DeviceContext4* _context, Light* _light, ShaderType _type);
 		void ExcuteCommands();
 		void InitCache();
 
 		void InitRenderers();
 		void UpdateRenderers();
+		void UpdateLights();
 
 		void InitD3D();
 		void Start();
+
+		void UpdateProperty(const std::wstring& _propName, const PropertyValue& _value, ShaderType _type);
 	protected:
 		HWND m_hWnd;
 
@@ -98,9 +102,6 @@ namespace MMMEngine
 
 		// 버퍼 기본색상
 		DirectX::SimpleMath::Vector4 m_ClearColor;
-
-		// 인풋 레이아웃
-		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_pDefaultInputLayout;
 
 		// 트랜스폼 버퍼
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pTransbuffer = nullptr;		// 캠 버퍼
@@ -150,7 +151,6 @@ namespace MMMEngine
 
 		const Microsoft::WRL::ComPtr<ID3D11Device5> GetDevice() const { return m_pDevice; }
 		const Microsoft::WRL::ComPtr<ID3D11DeviceContext4> GetContext() const { return m_pDeviceContext; }
-		const Microsoft::WRL::ComPtr<ID3D11InputLayout> GetDefaultInputLayout() const { return m_pDefaultInputLayout; }
 	public:
 		/*template <typename T, typename... Args>
 		std::weak_ptr<RendererBase> AddRenderer(RenderType _passType, Args&&... args) {

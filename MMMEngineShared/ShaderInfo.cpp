@@ -1,4 +1,4 @@
-#include "ShaderInfo.h"
+ï»¿#include "ShaderInfo.h"
 #include <filesystem>
 #include <d3dcompiler.h>
 
@@ -10,14 +10,14 @@ DEFINE_SINGLETON(MMMEngine::ShaderInfo);
 
 void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 {
-	// Å¸ÀÔ °Ë»ö
+	// íƒ€ì… ê²€ìƒ‰
 	auto typeIt = m_typeInfoMap.find(_filePath);
 	if (typeIt == m_typeInfoMap.end())
 		throw std::runtime_error("ShaderInfo::CreateShaderReflection : Shader Type not found !!");
 
 	ShaderType _type = typeIt->second.shaderType;
 
-	// Àı´ë°æ·Î ¸¸µé±â
+	// ì ˆëŒ€ê²½ë¡œ ë§Œë“¤ê¸°
 	fs::path realPath(ResourceManager::Get().GetCurrentRootPath());
 	realPath = realPath / _filePath;
 
@@ -35,34 +35,34 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 		IID_ID3D11ShaderReflection,
 		(void**)reflection.GetAddressOf()));
 
-	// »ó¼ö¹öÆÛ °³¼ö È®ÀÎ
+	// ìƒìˆ˜ë²„í¼ ê°œìˆ˜ í™•ì¸
 	D3D11_SHADER_DESC shaderDesc;
 	reflection->GetDesc(&shaderDesc);
 
-	// SRV ÀÎµ¦½º µî·Ï
-	for (UINT r = 0; r < shaderDesc.BoundResources; r++) {
-		D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-		reflection->GetResourceBindingDesc(r, &bindDesc);
+	//// SRV ì¸ë±ìŠ¤ ë“±ë¡
+	//for (UINT r = 0; r < shaderDesc.BoundResources; r++) {
+	//	D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+	//	reflection->GetResourceBindingDesc(r, &bindDesc);
 
-		std::wstring propName(bindDesc.Name, bindDesc.Name + strlen(bindDesc.Name));
+	//	std::wstring propName(bindDesc.Name, bindDesc.Name + strlen(bindDesc.Name));
 
-		PropertyInfo pinfo;
+	//	PropertyInfo pinfo;
 
-		if (bindDesc.Type == D3D_SIT_TEXTURE)
-		{
-			pinfo.propertyType = PropertyType::Texture;
-			pinfo.bufferIndex = bindDesc.BindPoint; // tN ½½·Ô
-			m_propertyInfoMap[_type][propName] = pinfo;
-		}
-		else if (bindDesc.Type == D3D_SIT_SAMPLER)
-		{
-			pinfo.propertyType = PropertyType::Sampler;
-			pinfo.bufferIndex = bindDesc.BindPoint; // sN ½½·Ô
-			m_propertyInfoMap[_type][propName] = pinfo;
-		}
-	}
+	//	if (bindDesc.Type == D3D_SIT_TEXTURE)
+	//	{
+	//		pinfo.propertyType = PropertyType::Texture;
+	//		pinfo.bufferIndex = bindDesc.BindPoint; // tN ìŠ¬ë¡¯
+	//		m_propertyInfoMap[_type][propName] = pinfo;
+	//	}
+	//	else if (bindDesc.Type == D3D_SIT_SAMPLER)
+	//	{
+	//		pinfo.propertyType = PropertyType::Sampler;
+	//		pinfo.bufferIndex = bindDesc.BindPoint; // sN ìŠ¬ë¡¯
+	//		m_propertyInfoMap[_type][propName] = pinfo;
+	//	}
+	//}
 
-	// ConstantBuffer µî·Ï
+	// ConstantBuffer ë“±ë¡
 	for (UINT i = 0; i < shaderDesc.ConstantBuffers; i++)
 	{
 		ID3D11ShaderReflectionConstantBuffer* cb = reflection->GetConstantBufferByIndex(i);
@@ -71,7 +71,7 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 
 		std::wstring cbName(cbDesc.Name, cbDesc.Name + strlen(cbDesc.Name));
 
-		// °¢ º¯¼ö Á¤º¸ ÃßÃâ
+		// ê° ë³€ìˆ˜ ì •ë³´ ì¶”ì¶œ
 		for (UINT v = 0; v < cbDesc.Variables; v++)
 		{
 			ID3D11ShaderReflectionVariable* var = cb->GetVariableByIndex(v);
@@ -80,20 +80,20 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 
 			std::wstring propName(varDesc.Name, varDesc.Name + strlen(varDesc.Name));
 
-			// ¿ÀÇÁ¼Â°ú Å©±â ±â·Ï
+			// ì˜¤í”„ì…‹ê³¼ í¬ê¸° ê¸°ë¡
 			CBPropertyInfo cbinfo;
             cbinfo.bufferName = cbName;
             cbinfo.offset     = varDesc.StartOffset;
             cbinfo.size       = varDesc.Size;
 
-			// ¿ÀÇÁ¼Â/Å©±â ¸ÅÇÎ Å×ÀÌºí¿¡µµ ÀúÀå
+			// ì˜¤í”„ì…‹/í¬ê¸° ë§¤í•‘ í…Œì´ë¸”ì—ë„ ì €ì¥
 			m_CBPropertyMap[_type][propName] = cbinfo;
 
-			// ÇÁ·ÎÆÛÆ¼ Å¸ÀÔ µî·Ï
-			PropertyInfo pinfo;
-			pinfo.propertyType = PropertyType::Constant;
-			pinfo.bufferIndex = i; // bN ½½·Ô ¹øÈ£ (BindPoint·Î ¹Ù²ãµµ °¡´É)
-			m_propertyInfoMap[_type][propName] = pinfo;
+			//// í”„ë¡œí¼í‹° íƒ€ì… ë“±ë¡
+			//PropertyInfo pinfo;
+			//pinfo.propertyType = PropertyType::Constant;
+			//pinfo.bufferIndex = i; // bN ìŠ¬ë¡¯ ë²ˆí˜¸ (BindPointë¡œ ë°”ê¿”ë„ ê°€ëŠ¥)
+			//m_propertyInfoMap[_type][propName] = pinfo;
 		}
 	}
 }
@@ -105,21 +105,35 @@ void MMMEngine::ShaderInfo::DeSerialize()
 
 void MMMEngine::ShaderInfo::StartUp()
 {
-	// --- JSON ÅÛÇÃ¸´ ---
-	// ±âº» ½¦ÀÌ´õ Á¤ÀÇ
+	// --- JSON í…œí”Œë¦¿ ---
+	// ê¸°ë³¸ ì‰ì´ë” ì •ì˜
 	m_pDefaultVShader = ResourceManager::Get().Load<VShader>(L"Shader/PBR/VS/SkeletalVertexShader.hlsl");
 	m_pDefaultPShader = ResourceManager::Get().Load<PShader>(L"Shader/PBR/PS/BRDFShader.hlsl");
 
-	// ½¦ÀÌ´õ Å¸ÀÔÁ¤º¸Á¤ÀÇ
+	// ì‰ì´ë” íƒ€ì…ì •ë³´ì •ì˜
 	m_typeInfoMap[L"Shader/PBR/PS/BRDFShader.hlsl"] = { ShaderType::S_PBR, RenderType::R_GEOMETRY, nullptr };
 
-	// ½¦ÀÌ´õ ¸®ÇÃ·º¼Ç µî·Ï (»ó¼ö¹öÆÛ °³º°¾÷µ¥ÀÌÆ® »ç¿ëÇÏ±â À§ÇÔ)
+	// ì‰ì´ë” ë¦¬í”Œë ‰ì…˜ ë“±ë¡ (ìƒìˆ˜ë²„í¼ ê°œë³„ì—…ë°ì´íŠ¸ ì‚¬ìš©í•˜ê¸° ìœ„í•¨)
 	CreatePShaderReflection(L"Shader/PBR/PS/BRDFShader.hlsl");
 
-	// ±¸Á¶Ã¼º° ÀÌ¸§ µî·Ï (¿ø·¡ ÀÌ¸§°ú°°°Ô, ¼Ò¹®ÀÚ·Î ÇÏ´Â°ÍÀÌ ±ÔÄ¢)
+	// êµ¬ì¡°ì²´ë³„ ì´ë¦„ ë“±ë¡ (ì‰ì´ë” ì´ë¦„ê³¼ê°™ê²Œ)
 	m_CBBufferMap[L"MatBuffer"] = CreateConstantBuffer<PBR_MaterialBuffer>();
+	m_CBBufferMap[L"LightBuffer"] = CreateConstantBuffer<Render_LightBuffer>();
 
-	// Json ÀĞ±â
+	// íƒ€ì…ë³„ ë ˆì§€ìŠ¤í„° ë²ˆí˜¸ ë“±ë¡
+	m_propertyInfoMap[ShaderType::S_PBR][L"_albedo"]	= { PropertyType::Texture, 0 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_normal"]	= { PropertyType::Texture, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_emissive"]	= { PropertyType::Texture, 2 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_shadowmap"] = { PropertyType::Texture, 3 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_opacity"]	= { PropertyType::Texture, 4 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"_sp0"]		= { PropertyType::Sampler, 0 };
+
+	m_propertyInfoMap[ShaderType::S_PBR][L"mLightDir"]		= { PropertyType::Constant, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mLightPadding"]	= { PropertyType::Constant, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mLightColor"]	= { PropertyType::Constant, 1 };
+	m_propertyInfoMap[ShaderType::S_PBR][L"mIntensity"]		= { PropertyType::Constant, 1 };
+
+	// Json ì½ê¸°
 	DeSerialize();
 }
 
@@ -165,7 +179,7 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 	const std::wstring& propertyName,
 	const void* data)
 {
-	// PropertyInfo Á¶È¸
+	// PropertyInfo ì¡°íšŒ
 	auto propIt = m_propertyInfoMap.find(shaderType);
 	if (propIt == m_propertyInfoMap.end())
 		return;
@@ -178,7 +192,7 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 	const PropertyInfo& pinfo = pinfoIt->second;
 
 	if (pinfo.propertyType == PropertyType::Constant) {
-		// ConstantBuffer º¯¼ö Á¤º¸ Á¶È¸
+		// ConstantBuffer ë³€ìˆ˜ ì •ë³´ ì¡°íšŒ
 		auto cbIt = m_CBPropertyMap[shaderType].find(propertyName);
 		if (cbIt == m_CBPropertyMap[shaderType].end())
 			return;
@@ -192,19 +206,33 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 		auto buffer = bufIt->second;
 
 		D3D11_MAPPED_SUBRESOURCE mapped;
-		if (SUCCEEDED(context->Map(buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+		if (SUCCEEDED(context->Map(buffer.Get(), 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &mapped)))
 		{
 			memcpy((BYTE*)mapped.pData + cbInfo.offset, data, cbInfo.size);
 			context->Unmap(buffer.Get(), 0);
 		}
+
+		context->PSSetConstantBuffers(pinfo.bufferIndex, 1, buffer.GetAddressOf());
+
+		// ìƒìˆ˜ë²„í¼ ì—…ë°ì´íŠ¸
+		/*UINT firstConstantBufferView = cbInfo.offset / 16;   // 16ë°”ì´íŠ¸ ë‹¨ìœ„ ì˜¤í”„ì…‹
+		UINT numConstantBufferViews = (cbInfo.size + 15) / 16; // 16ë°”ì´íŠ¸ ë‹¨ìœ„ í¬ê¸° (ì˜¬ë¦¼)
+
+		context->PSSetConstantBuffers1(
+			pinfo.bufferIndex,         // StartSlot
+			1,                         // NumBuffers
+			buffer.GetAddressOf(),     // ë²„í¼ ë°°ì—´
+			&firstConstantBufferView,  // ì‹œì‘ ì˜¤í”„ì…‹
+			&numConstantBufferViews    // ë·° í¬ê¸°
+		);*/
 	}
 	else if (pinfo.propertyType == PropertyType::Texture) {
-		// Texture´Â SRV ¹ÙÀÎµù¸¸ ÇÏ¸é µÊ
+		// TextureëŠ” SRV ë°”ì¸ë”©ë§Œ í•˜ë©´ ë¨
 		ID3D11ShaderResourceView* srv = reinterpret_cast<ID3D11ShaderResourceView*>(const_cast<void*>(data));
 		context->PSSetShaderResources(pinfo.bufferIndex, 1, &srv);
 	}
 	else if (pinfo.propertyType == PropertyType::Sampler) {
-		// SamplerState´Â Sampler ½½·Ô¿¡ ¹ÙÀÎµù
+		// SamplerStateëŠ” Sampler ìŠ¬ë¡¯ì— ë°”ì¸ë”©
 		ID3D11SamplerState* sampler = reinterpret_cast<ID3D11SamplerState*>(const_cast<void*>(data));
 		context->PSSetSamplers(pinfo.bufferIndex, 1, &sampler);
 	}
@@ -212,21 +240,21 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 
 const int MMMEngine::ShaderInfo::PropertyToIdx(const ShaderType _type, const std::wstring& _propertyName, PropertyInfo* _out /*= nullptr*/) const
 {
-	// ShaderType Á¸Àç È®ÀÎ
+	// ShaderType ì¡´ì¬ í™•ì¸
 	auto typeIt = m_propertyInfoMap.find(_type);
 	if (typeIt == m_propertyInfoMap.end())
 		return -1;
 
-	// PropertyName Á¸Àç È®ÀÎ
+	// PropertyName ì¡´ì¬ í™•ì¸
 	auto propIt = typeIt->second.find(_propertyName);
 	if (propIt == typeIt->second.end())
 		return -1;
 
-	// Å¸ÀÔ ¹İÈ¯
+	// íƒ€ì… ë°˜í™˜
 	if (_out)
 		*_out = propIt->second;
 
-	// bufferIndex ¹İÈ¯ (Texture¸é tN, Constant¸é bN ½½·Ô ¹øÈ£)
+	// bufferIndex ë°˜í™˜ (Textureë©´ tN, Constantë©´ bN ìŠ¬ë¡¯ ë²ˆí˜¸)
 	return propIt->second.bufferIndex;
 
 }

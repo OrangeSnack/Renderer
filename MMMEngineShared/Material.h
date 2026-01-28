@@ -1,24 +1,20 @@
-#pragma once
+ï»¿#pragma once
 
 #include "Export.h"
-#include "Resource.h"
-#include <variant>
 #include <SimpleMath.h>
 #include <wrl/client.h>
 #include <d3d11_4.h>
-#include "Texture2D.h"
-#include <filesystem>
-#include "ResourceManager.h"
 
+#include <filesystem>
+
+#include "ResourceManager.h"
+#include "Texture2D.h"
+
+#include "ShaderInfo.h"
 #include "json/json.hpp"
 #include "rttr/type"
 
 namespace MMMEngine {
-	using PropertyValue = std::variant<
-		int, float, DirectX::SimpleMath::Vector3, DirectX::SimpleMath::Matrix,
-		ResPtr<MMMEngine::Texture2D>
-	>;
-
 	class PShader;
 	class VShader;
 	class MaterialSerializer;
@@ -47,13 +43,14 @@ namespace MMMEngine {
 		const ResPtr<PShader> GetPShader();
 
 		const std::wstring& GetVShaderRttr();
+		const std::wstring& GetPShaderRttr();
 
 		void LoadTexture(const std::wstring& _name, const std::wstring& _filePath);
 
 		bool LoadFromFilePath(const std::wstring& _filePath) override;
 
 		bool operator<(const Material& other) const {
-			return GetFilePath() < other.GetFilePath(); // Resource¿¡ ÀÌ¸§ÀÌ ÀÖ´Ù°í °¡Á¤
+			return GetFilePath() < other.GetFilePath(); // Resourceì— ì´ë¦„ì´ ìžˆë‹¤ê³  ê°€ì •
 		}
 
 		bool operator==(const Material& other) const {

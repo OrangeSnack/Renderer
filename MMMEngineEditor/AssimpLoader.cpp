@@ -1,4 +1,4 @@
-#include "AssimpLoader.h"
+﻿#include "AssimpLoader.h"
 #include <functional>
 #include <filesystem>
 #include "StringHelper.h"
@@ -677,8 +677,15 @@ bool MMMEngine::AssimpLoader::ImportModel(const std::wstring& path, ModelType ty
 	out.type = type;
 
 	fs::path localPath(path);
-	fs::path realPath = ResourceManager::Get().GetCurrentRootPath();
-	realPath = realPath / localPath;
+	fs::path realPath;
+
+	if (localPath.is_relative()) {
+		realPath = ResourceManager::Get().GetCurrentRootPath();
+		realPath = realPath / localPath;
+	}
+	else
+		realPath = localPath;
+	
 
 	const aiScene* scene = ImportScene(realPath.wstring(), type);
 	if (!scene) return false;
