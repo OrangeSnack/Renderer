@@ -39,29 +39,6 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 	D3D11_SHADER_DESC shaderDesc;
 	reflection->GetDesc(&shaderDesc);
 
-	//// SRV 인덱스 등록
-	//for (UINT r = 0; r < shaderDesc.BoundResources; r++) {
-	//	D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-	//	reflection->GetResourceBindingDesc(r, &bindDesc);
-
-	//	std::wstring propName(bindDesc.Name, bindDesc.Name + strlen(bindDesc.Name));
-
-	//	PropertyInfo pinfo;
-
-	//	if (bindDesc.Type == D3D_SIT_TEXTURE)
-	//	{
-	//		pinfo.propertyType = PropertyType::Texture;
-	//		pinfo.bufferIndex = bindDesc.BindPoint; // tN 슬롯
-	//		m_propertyInfoMap[_type][propName] = pinfo;
-	//	}
-	//	else if (bindDesc.Type == D3D_SIT_SAMPLER)
-	//	{
-	//		pinfo.propertyType = PropertyType::Sampler;
-	//		pinfo.bufferIndex = bindDesc.BindPoint; // sN 슬롯
-	//		m_propertyInfoMap[_type][propName] = pinfo;
-	//	}
-	//}
-
 	// ConstantBuffer 등록
 	for (UINT i = 0; i < shaderDesc.ConstantBuffers; i++)
 	{
@@ -88,12 +65,6 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 
 			// 오프셋/크기 매핑 테이블에도 저장
 			m_CBPropertyMap[_type][propName] = cbinfo;
-
-			//// 프로퍼티 타입 등록
-			//PropertyInfo pinfo;
-			//pinfo.propertyType = PropertyType::Constant;
-			//pinfo.bufferIndex = i; // bN 슬롯 번호 (BindPoint로 바꿔도 가능)
-			//m_propertyInfoMap[_type][propName] = pinfo;
 		}
 	}
 }
@@ -215,9 +186,6 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 			memcpy((BYTE*)mapped.pData + cbInfo.offset, data, cbInfo.size);
 			context->Unmap(buffer.Get(), 0);
 		}
-
-		/*RenderManager::Get().GetContext()->PSSetConstantBuffers(pinfo.bufferIndex, 1,
-			buffer.GetAddressOf());*/
 	}
 	else if (pinfo.propertyType == PropertyType::Texture) {
 		// Texture는 SRV 바인딩만 하면 됨
@@ -249,7 +217,6 @@ const int MMMEngine::ShaderInfo::PropertyToIdx(const ShaderType _type, const std
 
 	// bufferIndex 반환 (Texture면 tN, Constant면 bN 슬롯 번호)
 	return propIt->second.bufferIndex;
-
 }
 
 void MMMEngine::ShaderInfo::UpdateCBuffers(const ShaderType _type)

@@ -746,13 +746,4 @@ namespace MMMEngine {
 			m_renderers.pop_back();
 		}
 	}
-
-	/*const int RenderManager::PropertyToIdx(const std::wstring& _propertyName) const
-	{
-		auto it = m_propertyMap.find(_propertyName);
-		if (it == m_propertyMap.end())
-			return -1;
-
-		return it->second;
-	}*/
 }

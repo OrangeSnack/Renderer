@@ -151,28 +151,5 @@ namespace MMMEngine
 
 		const Microsoft::WRL::ComPtr<ID3D11Device5> GetDevice() const { return m_pDevice; }
 		const Microsoft::WRL::ComPtr<ID3D11DeviceContext4> GetContext() const { return m_pDeviceContext; }
-	public:
-		/*template <typename T, typename... Args>
-		std::weak_ptr<RendererBase> AddRenderer(RenderType _passType, Args&&... args) {
-			std::shared_ptr<T> temp = std::make_shared<T>(std::forward<Args>(args)...);
-			m_Passes[_passType].push_back(temp);
-			m_initQueue.push(temp);
-
-			return temp;
-		}
-
-		template <typename T>
-		bool RemoveRenderer(MMMEngine::RenderType _passType, std::shared_ptr<T>& _renderer) {
-			if (_renderer && (m_Passes.find(_passType) != m_Passes.end())) {
-				auto it = std::find(m_Passes[_passType].begin(), m_Passes[_passType].end(), _renderer);
-
-				if (it != m_Passes[_passType].end()) {
-					m_Passes[_passType].erase(it);
-					return true;
-				}
-			}
-
-			return false;
-		}*/
 	};
 }
