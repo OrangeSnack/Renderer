@@ -343,13 +343,139 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		}
 	}
 
+	bool toolbuttonHovered = false;
+	{
+		auto buttonsize = ImVec2(0, 0);
+		auto padding = ImVec2{ 10,10 };
+		auto handing = (int)m_guizmoOperation == 0;
+		auto moving = m_guizmoOperation == ImGuizmo::OPERATION::TRANSLATE;
+		auto rotating = m_guizmoOperation == ImGuizmo::OPERATION::ROTATE;
+		auto scaling = m_guizmoOperation == ImGuizmo::OPERATION::SCALE;
+		auto local = m_guizmoMode == ImGuizmo::MODE::LOCAL;
+		auto world = m_guizmoMode == ImGuizmo::MODE::WORLD;
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
+
+		ImGui::SetCursorPos(scenecornerpos + padding);
+		// Hand 버튼 (Q)
+		ImGui::BeginDisabled(handing);
+		if (ImGui::Button(u8"\uf256 hand", buttonsize)) // 폰트어썸 핸드 아이콘
+		{
+			m_guizmoOperation = (ImGuizmo::OPERATION)0;
+		}
+		if(ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		// Move 버튼
+		ImGui::BeginDisabled(moving);
+		if (ImGui::Button(u8"\uf047 move", buttonsize))
+		{
+			m_guizmoOperation = ImGuizmo::TRANSLATE;
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+
+		// Rotate 버튼
+		ImGui::BeginDisabled(rotating);
+		if (ImGui::Button(u8"\uf2f1 rotate", buttonsize))
+		{
+			m_guizmoOperation = ImGuizmo::ROTATE;
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+
+		// Scale 버튼
+		ImGui::BeginDisabled(scaling);
+		if (ImGui::Button(u8"\uf31e scale", buttonsize))
+		{
+			m_guizmoOperation = ImGuizmo::SCALE;
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+
+		// 구분선
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+		ImGui::SameLine();
+
+		// Local 버튼
+		ImGui::BeginDisabled(local);
+		if (ImGui::Button(u8"\uf1b2 local", buttonsize))
+		{
+			m_guizmoMode = ImGuizmo::LOCAL;
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+
+		// World 버튼
+		ImGui::BeginDisabled(world);
+		if (ImGui::Button(u8"\uf0ac world", buttonsize))
+		{
+			m_guizmoMode = ImGuizmo::WORLD;
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::EndDisabled();
+
+		// --- 카메라 설정 팝업 버튼 추가 ---
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+
+		if (ImGui::Button(u8"\uf0ad Camera Settings")) // 폰트어썸 렌치(wrench) 아이콘 사용 예시
+		{
+			ImGui::OpenPopup("CameraSettingsPopup");
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 10.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+
+		// 팝업 창 정의
+		if (ImGui::BeginPopup("CameraSettingsPopup"))
+		{
+			float fov = m_pCam->GetFOV();
+			float n = m_pCam->GetNearPlane();
+			float f = m_pCam->GetFarPlane();
+
+			// 컨트롤 간의 간격을 위해 ItemSpacing도 조절하고 싶다면 추가 가능
+			if (ImGui::DragFloat("FOV", &fov, 0.5f, 10.0f, 120.0f)) m_pCam->SetFOV(fov);
+			if (ImGui::DragFloat("Near", &n, 0.01f, 0.01f, 10.0f)) m_pCam->SetNearPlane(n);
+			if (ImGui::DragFloat("Far", &f, 1.0f, 10.0f, 10000.0f)) m_pCam->SetFarPlane(f);
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopStyleVar(2);
+		// ----------------------------------
+
+		ImGui::PopStyleColor(3);
+	}
+
 	// 씬 뷰 픽킹 (좌클릭)
 	{
 		const bool gizmoBlocking = gizmoDrawn && (ImGuizmo::IsOver() || ImGuizmo::IsUsing());
-		if (m_isHovered && ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
-			&& !gizmoBlocking)
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool mouseInImage = mousePos.x >= imagePos.x && mousePos.x <= imageMax.x
+			&& mousePos.y >= imagePos.y && mousePos.y <= imageMax.y;
+		if (m_isHovered && mouseInImage && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
+			&& !gizmoBlocking
+			&& !toolbuttonHovered)
 		{
-			ImVec2 mousePos = ImGui::GetMousePos();
 			ImVec2 imageSize = ImVec2(imageMax.x - imagePos.x, imageMax.y - imagePos.y);
 			if (imageSize.x > 0.0f && imageSize.y > 0.0f)
 			{
@@ -390,116 +516,6 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			}
 		}
 	}
-
-	{
-		auto buttonsize = ImVec2(0, 0);
-		auto padding = ImVec2{ 10,10 };
-		auto handing = (int)m_guizmoOperation == 0;
-		auto moving = m_guizmoOperation == ImGuizmo::OPERATION::TRANSLATE;
-		auto rotating = m_guizmoOperation == ImGuizmo::OPERATION::ROTATE;
-		auto scaling = m_guizmoOperation == ImGuizmo::OPERATION::SCALE;
-		auto local = m_guizmoMode == ImGuizmo::MODE::LOCAL;
-		auto world = m_guizmoMode == ImGuizmo::MODE::WORLD;
-
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
-
-		ImGui::SetCursorPos(scenecornerpos + padding);
-		// Hand 버튼 (Q)
-		ImGui::BeginDisabled(handing);
-		if (ImGui::Button(u8"\uf256 hand", buttonsize)) // 폰트어썸 핸드 아이콘
-		{
-			m_guizmoOperation = (ImGuizmo::OPERATION)0;
-		}
-		ImGui::EndDisabled();
-		ImGui::SameLine();
-		// Move 버튼
-		ImGui::BeginDisabled(moving);
-		if (ImGui::Button(u8"\uf047 move", buttonsize))
-		{
-			m_guizmoOperation = ImGuizmo::TRANSLATE;
-		}
-		ImGui::EndDisabled();
-
-		ImGui::SameLine();
-
-		// Rotate 버튼
-		ImGui::BeginDisabled(rotating);
-		if (ImGui::Button(u8"\uf2f1 rotate", buttonsize))
-		{
-			m_guizmoOperation = ImGuizmo::ROTATE;
-		}
-		ImGui::EndDisabled();
-
-		ImGui::SameLine();
-
-		// Scale 버튼
-		ImGui::BeginDisabled(scaling);
-		if (ImGui::Button(u8"\uf31e scale", buttonsize))
-		{
-			m_guizmoOperation = ImGuizmo::SCALE;
-		}
-		ImGui::EndDisabled();
-
-		ImGui::SameLine();
-
-		// 구분선
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-		ImGui::SameLine();
-
-		// Local 버튼
-		ImGui::BeginDisabled(local);
-		if (ImGui::Button(u8"\uf1b2 local", buttonsize))
-		{
-			m_guizmoMode = ImGuizmo::LOCAL;
-		}
-		ImGui::EndDisabled();
-
-		ImGui::SameLine();
-
-		// World 버튼
-		ImGui::BeginDisabled(world);
-		if (ImGui::Button(u8"\uf0ac world", buttonsize))
-		{
-			m_guizmoMode = ImGuizmo::WORLD;
-		}
-		ImGui::EndDisabled();
-
-		// --- 카메라 설정 팝업 버튼 추가 ---
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		ImGui::SameLine();
-
-		if (ImGui::Button(u8"\uf0ad Camera Settings")) // 폰트어썸 렌치(wrench) 아이콘 사용 예시
-		{
-			ImGui::OpenPopup("CameraSettingsPopup");
-		}
-
-		ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 10.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
-
-		// 팝업 창 정의
-		if (ImGui::BeginPopup("CameraSettingsPopup"))
-		{
-			float fov = m_pCam->GetFOV();
-			float n = m_pCam->GetNearPlane();
-			float f = m_pCam->GetFarPlane();
-
-			// 컨트롤 간의 간격을 위해 ItemSpacing도 조절하고 싶다면 추가 가능
-			if (ImGui::DragFloat("FOV", &fov, 0.5f, 10.0f, 120.0f)) m_pCam->SetFOV(fov);
-			if (ImGui::DragFloat("Near", &n, 0.01f, 0.01f, 10.0f)) m_pCam->SetNearPlane(n);
-			if (ImGui::DragFloat("Far", &f, 1.0f, 10.0f, 10000.0f)) m_pCam->SetFarPlane(f);
-
-			ImGui::EndPopup();
-		}
-		ImGui::PopStyleVar(2);
-		// ----------------------------------
-
-		ImGui::PopStyleColor(3);
-	}
-
 	ImGui::End();
 	ImGui::PopStyleVar();
 }
