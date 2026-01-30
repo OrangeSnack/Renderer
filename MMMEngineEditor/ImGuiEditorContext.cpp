@@ -513,6 +513,7 @@ void MMMEngine::Editor::ImGuiEditorContext::Render()
                 {
 					g_editor_scene_before_play_sceneID = SceneManager::Get().GetCurrentScene().id;
                     SceneManager::Get().ReloadSnapShotCurrentScene();
+                    PhysxManager::Get().SyncRigidsFromTransforms();
                 }
                 else
                 {

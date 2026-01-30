@@ -67,6 +67,13 @@ void MMMEngine::PhysxManager::ApplyInterpolation(float alpha)
     m_PhysScene.ApplyInterpolation(alpha);
 }
 
+void MMMEngine::PhysxManager::SyncRigidsFromTransforms()
+{
+    if (!m_IsInitialized) return;
+    m_PhysScene.SyncRigidsFromTransforms();
+}
+
+
 void MMMEngine::PhysxManager::NotifyRigidAdded(RigidBodyComponent* rb)
 {
     if (!rb) return;
