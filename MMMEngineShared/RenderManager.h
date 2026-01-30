@@ -34,7 +34,7 @@ namespace MMMEngine
 	private:
 		RenderManager();
 
-		bool useBackBuffer = true;
+		bool useBackBuffer = false;
 		DirectX::SimpleMath::Matrix m_worldMatrix;
 		DirectX::SimpleMath::Matrix m_viewMatrix;
 		DirectX::SimpleMath::Matrix m_projMatrix;
@@ -53,7 +53,6 @@ namespace MMMEngine
 		std::weak_ptr<Material> m_pSkyboxMaterial;
 
 		void ApplyMatToContext(ID3D11DeviceContext4* _context, Material* _material);
-		void ApplyLightToMat(ID3D11DeviceContext4* _context, Light* _light, Material* _mat);
 		void ExcuteCommands();
 		void InitCache();
 
@@ -65,8 +64,6 @@ namespace MMMEngine
 		void Start();
 
 		void UpdateProperty(const std::wstring& _propName, const PropertyValue& _value, ShaderType _type);
-		
-		std::shared_ptr<Material> m_pFullScreenMat;
 	protected:
 		HWND m_hWnd;
 
@@ -90,7 +87,7 @@ namespace MMMEngine
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;		// 깊이값 처리를 위한 뎊스스텐실 뷰
 		Microsoft::WRL::ComPtr<ID3D11Texture2D1> m_pDepthStencilBuffer;			// 뎊스스텐실 텍스쳐버퍼
 
-		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pDafaultSamplerLinear;		// 샘플러 상태.
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pDafaultSampler;		// 샘플러 상태.
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_pDefaultRS;			// 기본 RS
 
 		Microsoft::WRL::ComPtr<ID3D11BlendState1> m_pDefaultBS;		// 기본 블랜드 스테이트

@@ -50,27 +50,11 @@ namespace MMMEngine {
 		_context->IASetInputLayout(_material->GetVShader()->m_pInputLayout.Get());
 
 		// TODO::샘플러 ShaderInfo 사용해 자동등록화 시키기 (UpdateProperty 사용, 프로퍼티로 샘플러 관리하기)
-		_context->PSSetSamplers(0, 1, m_pDafaultSamplerLinear.GetAddressOf());
+		_context->PSSetSamplers(0, 1, m_pDafaultSampler.GetAddressOf());
 
 		// 메테리얼
 		for (auto& [prop, val] : _material->GetProperties()) {
 			UpdateProperty(prop, val, type);
-		}
-	}
-
-	void RenderManager::ApplyLightToMat(ID3D11DeviceContext4* _context, Light* _light, Material* _mat)
-	{
-		if (_mat->GetFilePath().empty())
-			return;
-
-		if (_light->m_lightIndex < 0)
-			return;
-
-		for (auto& [prop, val] : _light->m_properties) {
-			auto it = _mat->m_properties.find(prop);
-			if (it != _mat->m_properties.end()) {
-				it->second = val;
-			}
 		}
 	}
 
@@ -124,10 +108,6 @@ namespace MMMEngine {
 
 				if (cMat != lMat)
 				{
-					// TODO::포인트라이트 만들시 밖으로 빼야함
-					for (auto& light : m_lights)
-						ApplyLightToMat(m_pDeviceContext.Get(), light, cMat.get());
-
 					ApplyMatToContext(m_pDeviceContext.Get(), cMat.get());
 					lastMaterial = cmd.material;
 					lMat = cMat;
@@ -346,7 +326,7 @@ namespace MMMEngine {
 		sampDesc.MinLOD = 0;
 		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
-		HR_T(m_pDevice->CreateSamplerState(&sampDesc, m_pDafaultSamplerLinear.GetAddressOf()));
+		HR_T(m_pDevice->CreateSamplerState(&sampDesc, m_pDafaultSampler.GetAddressOf()));
 
 
 		// === Scene 렌더타겟 초기화 ===
@@ -410,11 +390,6 @@ namespace MMMEngine {
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pCambuffer.GetAddressOf()));
 		bd.ByteWidth = sizeof(Render_TransformBuffer);
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pTransbuffer));
-
-		// 풀스크린 트라이앵글 메테리얼 만들기
-		m_pFullScreenMat = std::make_shared<Material>();
-		//m_pFullScreenMat->SetVShader(L"Shader/PP/FullScreenVS.hlsl");
-		//m_pFullScreenMat->SetPShader(L"Shader/PP/FullScreenPS.hlsl");
 	}
 	void RenderManager::ShutDown()
 	{
@@ -632,6 +607,9 @@ namespace MMMEngine {
 		m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView.Get(), m_backColor);
 		m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
+		// TODO :: 글로벌 쉐이더인포 삭제하기 (라이트는 관리했는데 스카이박스 데이터는 관리안함 바꾸셈)
+		ShaderInfo::Get().ClearWorldPropertyDatas();
+
 		// 렌더러 컨트롤
 		InitRenderers();
 		UpdateRenderers();
@@ -691,7 +669,21 @@ namespace MMMEngine {
 
 		// TODO::백버퍼에다 씬 즉시 드로우 (풀스크린 트라이앵글)
 		if (useBackBuffer) {
+			m_pDeviceContext->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView* const*>(m_pRenderTargetView.GetAddressOf()), nullptr);
 
+			auto& vs = ShaderInfo::Get().GetFullScreenVShader();
+			auto& ps = ShaderInfo::Get().GetFullScreenPShader();
+			m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			m_pDeviceContext->IASetInputLayout(nullptr);
+			m_pDeviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+			m_pDeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+			m_pDeviceContext->VSSetShader(vs->m_pVShader.Get(), nullptr, 0);
+			m_pDeviceContext->PSSetShader(ps->m_pPShader.Get(), nullptr, 0);
+
+			ID3D11ShaderResourceView* sceneSRV = m_pSceneSRV.Get();
+			m_pDeviceContext->PSSetShaderResources(0, 1, &sceneSRV);
+			m_pDeviceContext->PSSetSamplers(0, 1, m_pDafaultSampler.GetAddressOf());
+			m_pDeviceContext->Draw(3, 0);
 		}
 	}
 

@@ -28,12 +28,13 @@ void Initialize()
 
 	fs::path dataPath = cwd / "Data";
 
-	SetConsoleOutputCP(CP_UTF8);
+	//SetConsoleOutputCP(CP_UTF8);
 	auto app = GlobalRegistry::g_pApp;
 	auto hwnd = app->GetWindowHandle();
 	auto windowInfo = app->GetWindowInfo();
 
 	RenderManager::Get().StartUp(hwnd, windowInfo.width, windowInfo.height);
+	RenderManager::Get().UseBackBufferDraw(true);
 	InputManager::Get().StartUp(hwnd);
 	app->OnWindowSizeChanged.AddListener<InputManager, &InputManager::HandleWindowResize>(&InputManager::Get());
 	app->OnMouseWheelUpdate.AddListener<InputManager, &InputManager::HandleMouseWheelEvent>(&InputManager::Get());

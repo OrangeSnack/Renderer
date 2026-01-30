@@ -19,6 +19,7 @@ VSOutput main(uint vertexID : SV_VertexID)
 
     // UV 좌표 계산 (0~1 범위)
     output.uv = (pos * 0.5f) + 0.5f;
+    output.uv.g *= -1.0f;
 
     return output;
 }
