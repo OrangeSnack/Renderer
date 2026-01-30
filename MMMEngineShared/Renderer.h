@@ -10,7 +10,7 @@ namespace MMMEngine {
 		RTTR_REGISTRATION_FRIEND
 		friend class RenderManager;
 	protected:
-		uint32_t renderIndex = -1;
+		uint32_t renderIndex = UINT32_MAX;
 		bool isEnabled = true;
 
 		virtual void Render() {}

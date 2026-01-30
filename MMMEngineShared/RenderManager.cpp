@@ -53,10 +53,9 @@ namespace MMMEngine {
 		_context->PSSetSamplers(0, 1, m_pDafaultSamplerLinear.GetAddressOf());
 
 		// 메테리얼
-			for (auto& [prop, val] : _material->GetProperties()) {
-				ShaderType type = ShaderInfo::Get().GetShaderType(PS->GetFilePath());
-				UpdateProperty(prop, val, type);
-			}
+		for (auto& [prop, val] : _material->GetProperties()) {
+			UpdateProperty(prop, val, type);
+		}
 	}
 
 	void RenderManager::ApplyLightToMat(ID3D11DeviceContext4* _context, Light* _light, Material* _mat)
@@ -127,9 +126,9 @@ namespace MMMEngine {
 				{
 					// TODO::포인트라이트 만들시 밖으로 빼야함
 					for (auto& light : m_lights)
-						ApplyLightToMat(m_pDeviceContext.Get(), light, cmd.material);
+						ApplyLightToMat(m_pDeviceContext.Get(), light, cMat.get());
 
-					ApplyMatToContext(m_pDeviceContext.Get(), cmd.material);
+					ApplyMatToContext(m_pDeviceContext.Get(), cMat.get());
 					lastMaterial = cmd.material;
 					lMat = cMat;
 				}
@@ -147,7 +146,7 @@ namespace MMMEngine {
 				}
 
 				// 상수버퍼 등록
-				auto sType = ShaderInfo::Get().GetShaderType(lastMaterial->GetPShader()->GetFilePath());
+				auto sType = ShaderInfo::Get().GetShaderType(lMat->GetPShader()->GetFilePath());
 
 				// 상수버퍼 일렬업데이트
 				ShaderInfo::Get().UpdateCBuffers(sType);
@@ -450,6 +449,9 @@ namespace MMMEngine {
 				}
 				else if constexpr (std::is_same_v<T, ResPtr<MMMEngine::Texture2D>>)
 				{
+					if (arg == nullptr)
+						return;
+
 					ID3D11ShaderResourceView* srv = arg->m_pSRV.Get();
 					ShaderInfo::Get().UpdateProperty(m_pDeviceContext.Get(), _type, _propName, srv);
 				}
