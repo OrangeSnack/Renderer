@@ -112,6 +112,23 @@ namespace MMMEngine
 		ObjPtr<Camera> m_pMainCamera;	// 메인 카메라 참조
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCambuffer = nullptr;		// 캠 버퍼
 
+
+		// 쉐도우 버퍼
+		UINT m_shadowMapWidth = 1024;
+		UINT m_shadowMapHeight = 1024;
+		D3D11_VIEWPORT m_shadowVP;
+
+		DirectX::SimpleMath::Vector3 m_lightPos;
+		DirectX::SimpleMath::Matrix m_lightView;
+		DirectX::SimpleMath::Matrix m_lightProj;
+
+
+		Microsoft::WRL::ComPtr<ID3D11Texture2D1>          m_pShadowTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView1> m_pShadowSRV;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>	  m_pShadowDSV;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>			  m_pShadowBuffer;
+		void ShadowRender();	// 개별패스
+
 	public:
 		void StartUp(HWND _hwnd, UINT _ClientWidth, UINT _ClientHeight);
 		void ShutDown();
@@ -153,6 +170,8 @@ namespace MMMEngine
 
 		UINT GetSceneWidth() { return m_sceneWidth; }
 		UINT GetSceneHeight() { return m_sceneHeight; }
+
+		void SetShadowMapSize(UINT _size);
 
 		const Microsoft::WRL::ComPtr<ID3D11Device5> GetDevice() const { return m_pDevice; }
 		const Microsoft::WRL::ComPtr<ID3D11DeviceContext4> GetContext() const { return m_pDeviceContext; }

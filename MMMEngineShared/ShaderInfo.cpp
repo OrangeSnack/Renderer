@@ -141,6 +141,8 @@ void MMMEngine::ShaderInfo::StartUp()
 
 	m_pFullScreenVS = ResourceManager::Get().Load<VShader>(L"Shader/PP/FullScreenVS.hlsl");
 	m_pFullScreenPS = ResourceManager::Get().Load<PShader>(L"Shader/PP/FullScreenPS.hlsl");
+
+	m_pShadowPS = ResourceManager::Get().Load<PShader>(L"Shader/Shadow/ShadowPS.hlsl");
 	// --- JSON 템플릿 ---
 
 	// Json 읽기
@@ -176,6 +178,11 @@ MMMEngine::ResPtr<MMMEngine::VShader> MMMEngine::ShaderInfo::GetFullScreenVShade
 MMMEngine::ResPtr<MMMEngine::PShader> MMMEngine::ShaderInfo::GetFullScreenPShader()
 {
 	return m_pFullScreenPS;
+}
+
+MMMEngine::ResPtr<MMMEngine::PShader> MMMEngine::ShaderInfo::GetShadowPShader()
+{
+	return m_pShadowPS;
 }
 
 const MMMEngine::RenderType MMMEngine::ShaderInfo::GetRenderType(const std::wstring& _shaderPath)
@@ -439,6 +446,21 @@ void MMMEngine::ShaderInfo::ConvertMaterialType(const ShaderType _type, Material
 	{
 		_mat->RemoveProperty(propName);
 	}
+}
+
+const MMMEngine::PropertyValue& MMMEngine::ShaderInfo::GetGlobalPropVal(const ShaderType _type, const std::wstring _propName)
+{
+	static const MMMEngine::PropertyValue emptyValue{}; // 기본 생성된 빈 값
+
+	// 글로벌 맵에 있는지 확인
+	auto tit = m_globalPropMap.find(_type);
+	if (tit == m_globalPropMap.end())
+		return emptyValue;
+	auto nit = tit->second.find(_propName);
+	if (nit == tit->second.end())
+		return emptyValue;
+
+	return nit->second;
 }
 
 void MMMEngine::ShaderInfo::AddGlobalPropVal(const ShaderType _type, const std::wstring _propName, const PropertyValue& _value)
