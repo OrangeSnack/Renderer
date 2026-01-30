@@ -9,6 +9,7 @@
 #include "SceneManager.h"
 #include "SceneSerializer.h"
 #include "ProjectManager.h"
+#include "PhysxManager.h"
 #include "EditorRegistry.h"
 #include "StringHelper.h"
 

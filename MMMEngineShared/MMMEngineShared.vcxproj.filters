@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -23,6 +23,7 @@
     <ClCompile Include="ScriptLoader.cpp" />
     <ClCompile Include="StringHelper.cpp" />
     <ClCompile Include="TimeManager.cpp" />
+    <ClCompile Include="UserScriptMessageSignatures.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="CapsuleColliderComponent.cpp">
       <Filter>소스 파일\Core\Physcis API</Filter>
@@ -292,6 +293,9 @@
     <ClInclude Include="Light.h">
       <Filter>헤더 파일\Core\Render API\Component</Filter>
     </ClInclude>
+    <ClInclude Include="UserScriptMessageSignatures.h">
+      <Filter>헤더 파일\Core\Behaviour API</Filter>
+    </ClInclude>
     <ClInclude Include="UserScriptsCommon.h">
       <Filter>헤더 파일\Core\Behaviour API</Filter>
     </ClInclude>
@@ -534,6 +538,9 @@
       <Filter>소스 파일\Core\Render API\Resource</Filter>
     </ClCompile>
     <ClCompile Include="ScriptBehaviour.cpp">
+      <Filter>소스 파일\Core\Behaviour API</Filter>
+    </ClCompile>
+    <ClCompile Include="UserScriptMessageSignatures.cpp">
       <Filter>소스 파일\Core\Behaviour API</Filter>
     </ClCompile>
     <ClCompile Include="ScriptLoader.cpp">
