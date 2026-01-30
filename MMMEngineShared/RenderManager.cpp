@@ -499,22 +499,22 @@ namespace MMMEngine {
 		HR_T(m_pDevice->CreateDepthStencilView(m_pDepthStencilBuffer.Get(), nullptr, m_pDepthStencilView.GetAddressOf()));
 	}
 
-	void RenderManager::ResizeSceneSize(int _width, int _height, int _sceneWidth, int _sceneHeight)
+	void RenderManager::ResizeSceneSize(int _sceneWidth, int _sceneHeight)
 	{
 		m_sceneWidth = _sceneWidth;
 		m_sceneHeight = _sceneHeight;
 
 		// 기존 리소스 해제
-		if (m_pSceneRTV) { m_pSceneRTV->Release();      m_pSceneRTV = nullptr; }
-		if (m_pSceneTexture) { m_pSceneTexture->Release();  m_pSceneTexture = nullptr; }
-		if (m_pSceneSRV) { m_pSceneSRV->Release();      m_pSceneSRV = nullptr; }
-		if (m_pSceneDSV) { m_pSceneDSV->Release();      m_pSceneDSV = nullptr; }
-		if (m_pSceneDSB) { m_pSceneDSB->Release();		m_pSceneDSB = nullptr; }
+		if (m_pSceneRTV) { m_pSceneRTV->Release(); }
+		if (m_pSceneTexture) { m_pSceneTexture->Release(); }
+		if (m_pSceneSRV) { m_pSceneSRV->Release(); }
+		if (m_pSceneDSV) { m_pSceneDSV->Release(); }
+		if (m_pSceneDSB) { m_pSceneDSB->Release(); }
 
 		// 컬러 텍스처 설명
 		D3D11_TEXTURE2D_DESC1 colorDesc = {};
-		colorDesc.Width = _width;
-		colorDesc.Height = _height;
+		colorDesc.Width = _sceneWidth;
+		colorDesc.Height = _sceneHeight;
 		colorDesc.MipLevels = 1;
 		colorDesc.ArraySize = 1;
 		colorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT; // HDR 지원 포맷
@@ -534,8 +534,8 @@ namespace MMMEngine {
 
 		// Depth/Stencil 버퍼 설명
 		D3D11_TEXTURE2D_DESC1 depthDesc = {};
-		depthDesc.Width = _width;
-		depthDesc.Height = _height;
+		depthDesc.Width = _sceneWidth;
+		depthDesc.Height = _sceneHeight;
 		depthDesc.MipLevels = 1;
 		depthDesc.ArraySize = 1;
 		depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -550,36 +550,20 @@ namespace MMMEngine {
 		// DSV 생성
 		HR_T(m_pDevice->CreateDepthStencilView(m_pSceneDSB.Get(), nullptr, m_pSceneDSV.GetAddressOf()));
 		
-		float sceneAspect = (float)_sceneWidth / (float)_sceneHeight;
-		float backAspect = (float)_width / (float)_height;
-
-		float drawW, drawH;
-
-		if (backAspect > sceneAspect) {
-			drawH = (float)_height;
-			drawW = (float)_width * sceneAspect;
-		}
-		else {
-			drawW = (float)_width;
-			drawH = (float)_width / sceneAspect;
-		}
-
-		float offsetX = ((float)_width - drawW) * 0.5f;
-		float offsetY = ((float)_height - drawH) * 0.5f;
 
 		// 뷰포트 갱신
-		m_sceneViewport.Width = drawW;
-		m_sceneViewport.Height = drawH;
+		m_sceneViewport.Width = _sceneWidth;
+		m_sceneViewport.Height = _sceneHeight;
 		m_sceneViewport.MinDepth = 0.0f;
 		m_sceneViewport.MaxDepth = 1.0f;
-		m_sceneViewport.TopLeftX = offsetX;
-		m_sceneViewport.TopLeftY = offsetY;
+		m_sceneViewport.TopLeftX = 0;
+		m_sceneViewport.TopLeftY = 1;
 
 		// todo : 렌더러 작업자에게 꼭 고지하기
 		// 카메라 Aspect Ratio 변경
 		if (m_pMainCamera.IsValid())
 		{
-			m_pMainCamera->SetAspect(drawW / drawH);
+			m_pMainCamera->SetAspect(_sceneWidth / _sceneHeight);
 		}
 	}
 
@@ -667,7 +651,7 @@ namespace MMMEngine {
 		m_pDeviceContext->RSSetViewports(1, &m_swapViewport);
 		m_pDeviceContext->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView* const*>(m_pRenderTargetView.GetAddressOf()), nullptr);
 
-		// TODO::백버퍼에다 씬 즉시 드로우 (풀스크린 트라이앵글)
+		// (풀스크린 트라이앵글)
 		if (useBackBuffer) {
 			m_pDeviceContext->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView* const*>(m_pRenderTargetView.GetAddressOf()), nullptr);
 
@@ -683,6 +667,33 @@ namespace MMMEngine {
 			ID3D11ShaderResourceView* sceneSRV = m_pSceneSRV.Get();
 			m_pDeviceContext->PSSetShaderResources(0, 1, &sceneSRV);
 			m_pDeviceContext->PSSetSamplers(0, 1, m_pDafaultSampler.GetAddressOf());
+
+			// 씬 뷰포트 설정
+			float sceneAspect = (float)m_sceneWidth / (float)m_sceneHeight;
+			float swapchainAspect = (float)m_clientWidth / (float)m_clientHeight;
+
+			float drawW, drawH;
+
+			if (swapchainAspect > sceneAspect) {
+				drawH = (float)m_clientHeight;
+				drawW = (float)m_clientHeight * sceneAspect;
+			}
+			else {
+				drawW = (float)m_clientWidth;
+				drawH = (float)m_clientWidth / sceneAspect;
+			}
+
+			float offsetX = ((float)m_clientWidth - drawW) * 0.5f;
+			float offsetY = ((float)m_clientHeight - drawH) * 0.5f;
+
+
+			m_swapViewport.TopLeftX = offsetX;
+			m_swapViewport.TopLeftY = offsetY;
+			m_swapViewport.Width = drawW;
+			m_swapViewport.Height = drawH;
+			m_swapViewport.MinDepth = 0.0f;
+			m_swapViewport.MaxDepth = 1.0f;
+
 			m_pDeviceContext->Draw(3, 0);
 		}
 	}

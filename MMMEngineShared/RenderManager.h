@@ -74,7 +74,7 @@ namespace MMMEngine
 
 		int m_rSyncInterval = 1;
 		
-		float m_backColor[4] = { 0.0f, 0.5f, 0.5f, 1.0f };	// 백그라운드 컬러
+		float m_backColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };	// 백그라운드 컬러
 
 		// 디바이스
 		Microsoft::WRL::ComPtr<ID3D11Device5> m_pDevice;
@@ -122,7 +122,7 @@ namespace MMMEngine
 		void SetProjMatrix(DirectX::SimpleMath::Matrix& _proj);
 
 		void ResizeSwapChainSize(int width, int height);
-		void ResizeSceneSize(int _width, int _height, int _sceneWidth, int _sceneHeight);
+		void ResizeSceneSize(int _sceneWidth, int _sceneHeight);
 		void UseBackBufferDraw(const bool _value) { useBackBuffer = _value; }
 
 		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1> GetSceneRTV() { return m_pSceneRTV; }
