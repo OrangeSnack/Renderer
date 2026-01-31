@@ -713,9 +713,9 @@ namespace MMMEngine {
 		shadowBuffer.ShadowView = XMMatrixTranspose(DirectX::XMMatrixLookAtLH(lightPos, target, up));
 
 		// 직교 투영 행렬 (쉐도우맵 범위 설정)
-		float orthoWidth = 128.0f;   // 그림자 범위 (씬 크기에 맞게 조정)
-		float orthoHeight = 128.0f;
-		float nearZ = 0.1f;
+		float orthoWidth = 64.0f;   // 그림자 범위 (씬 크기에 맞게 조정)
+		float orthoHeight = 64.0f;
+		float nearZ = 100.0f;
 		float farZ = 1000.0f;
 
 		shadowBuffer.ShadowProjection =

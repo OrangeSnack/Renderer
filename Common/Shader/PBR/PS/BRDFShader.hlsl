@@ -65,7 +65,7 @@ float CalculateShadowPCF(float4 LightPos)
     if (currentShadowDepth < 0.0f || currentShadowDepth > 1.0f)
         return 1.0f;
 
-    float bias = 0.001f;
+    float bias = 0.0002f;
     currentShadowDepth -= bias;
 
 // 3x3 PCF
