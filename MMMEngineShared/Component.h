@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Object.h"
+#include "GameObject.h"
 #include "rttr/type"
 #include "Export.h"
 #include "GameObject.h"
@@ -29,7 +30,7 @@ namespace MMMEngine
 		inline ObjPtr<GameObject> GetGameObject() { return m_gameObject; };
 
 		template <typename T>
-		ObjPtr<T> GetComponent() { return m_gameObject->GetComponent<T>(); }
+		ObjPtr<T> GetComponent() { return m_gameObject->template GetComponent<T>(); }
 		ObjPtr<Transform> GetTransform();
 	};
 }
