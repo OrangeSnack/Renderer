@@ -407,6 +407,64 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 					rectCanvas.z * canvasInfo.scaleToScene.x,
 					rectCanvas.w * canvasInfo.scaleToScene.y);
 
+				// 선택된 UI의 RectTransform 영역 표시
+				{
+					ImDrawList* drawList = ImGui::GetWindowDrawList();
+					drawList->PushClipRect(imagePos, imageMax, true);
+					const ImVec2 minPos = ImVec2(imagePos.x + rectScene.x, imagePos.y + rectScene.y);
+					const ImVec2 maxPos = ImVec2(minPos.x + rectScene.z, minPos.y + rectScene.w);
+					const ImU32 rectColor = IM_COL32(255, 200, 80, 255);
+					drawList->AddRect(minPos, maxPos, rectColor, 0.0f, 0, 2.0f);
+
+					// 앵커 영역 표시 (부모 영역 기준)
+					DirectX::SimpleMath::Vector2 anchorCenter;
+					DirectX::SimpleMath::Vector2 anchorSpan;
+					ComputeAnchorData(rectTr, canvasInfo.canvasSize, anchorCenter, anchorSpan);
+					const DirectX::SimpleMath::Vector2 anchorSceneCenter = {
+						canvasInfo.sceneOffset.x + anchorCenter.x * canvasInfo.scaleToScene.x,
+						canvasInfo.sceneOffset.y + anchorCenter.y * canvasInfo.scaleToScene.y
+					};
+					const DirectX::SimpleMath::Vector2 anchorSceneSpan = {
+						anchorSpan.x * canvasInfo.scaleToScene.x,
+						anchorSpan.y * canvasInfo.scaleToScene.y
+					};
+					const ImVec2 anchorMin = ImVec2(
+						imagePos.x + anchorSceneCenter.x - anchorSceneSpan.x * 0.5f,
+						imagePos.y + anchorSceneCenter.y - anchorSceneSpan.y * 0.5f);
+					const ImVec2 anchorMax = ImVec2(
+						anchorMin.x + anchorSceneSpan.x,
+						anchorMin.y + anchorSceneSpan.y);
+					const ImU32 anchorColor = IM_COL32(120, 200, 255, 255);
+					const char* anchorIconTL = u8"\uf0d8"; // caret-up
+					const char* anchorIconTR = u8"\uf0da"; // caret-right
+					const char* anchorIconBL = u8"\uf0d9"; // caret-left
+					const char* anchorIconBR = u8"\uf0d7"; // caret-down
+					auto drawAnchorIcon = [&](ImVec2 pos, const char* icon)
+					{
+						const ImVec2 iconSize = ImGui::CalcTextSize(icon);
+						ImVec2 drawPos = ImVec2(pos.x - iconSize.x * 0.5f, pos.y - iconSize.y * 0.5f);
+						drawList->AddText(drawPos, anchorColor, icon);
+					};
+					drawAnchorIcon(anchorMin, anchorIconTL);
+					drawAnchorIcon(ImVec2(anchorMax.x, anchorMin.y), anchorIconTR);
+					drawAnchorIcon(ImVec2(anchorMin.x, anchorMax.y), anchorIconBL);
+					drawAnchorIcon(anchorMax, anchorIconBR);
+					drawList->AddRect(anchorMin, anchorMax, anchorColor, 0.0f, 0, 2.0f);
+					drawList->PopClipRect();
+
+					// 피벗 표시
+					const auto pivot = rectTr->GetPivot();
+					const ImVec2 pivotPos = ImVec2(
+						imagePos.x + rectScene.x + rectScene.z * pivot.x,
+						imagePos.y + rectScene.y + rectScene.w * pivot.y);
+					const float pivotRadius = 8.0f;
+					const ImU32 pivotColor = IM_COL32(120, 200, 255, 255);
+					ImDrawList* fg = ImGui::GetForegroundDrawList(ImGui::GetWindowViewport());
+					fg->PushClipRect(imagePos, imageMax, true);
+					fg->AddCircle(pivotPos, pivotRadius, pivotColor, 0, 3.5f);
+					fg->PopClipRect();
+				}
+
 				const auto pivot = rectTr->GetPivot();
 				const DirectX::SimpleMath::Vector2 pivotPosScene = {
 					rectScene.x + rectScene.z * pivot.x,
