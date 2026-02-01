@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "rttr/type"
 #include "rttr/registration_friend.h"
 #include "MUID.h"
@@ -6,11 +6,13 @@
 #include <cassert>
 
 #include "Export.h"
+#include "ResourceManager.h"
 
 namespace MMMEngine
 {
     class GameObject;
     class Component;
+    class Prefab;
 
     class MMMENGINE_API Object
 	{
@@ -64,6 +66,7 @@ namespace MMMEngine
 
         static ObjPtr<GameObject> Instantiate(const ObjPtr<GameObject>& original);
         static ObjPtr<Component> Instantiate(const ObjPtr<Component>& original);
+        static ObjPtr<GameObject> Instantiate(const ResPtr<Prefab>& prefab);
 
         template<typename T>
         static ObjPtr<T> Instantiate(const ObjPtr<T>& original);

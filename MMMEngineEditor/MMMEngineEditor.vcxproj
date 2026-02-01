@@ -182,6 +182,7 @@
     <ClInclude Include="InspectorWindow.h" />
     <ClInclude Include="PhysicsSettingsWindow.h" />
     <ClInclude Include="PlayerBuildWindow.h" />
+    <ClInclude Include="PrefabMaker.h" />
     <ClInclude Include="Project.h" />
     <ClInclude Include="ProjectManager.h" />
     <ClInclude Include="SceneChangeWindow.h" />
@@ -222,6 +223,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PhysicsSettingsWindow.cpp" />
     <ClCompile Include="PlayerBuildWindow.cpp" />
+    <ClCompile Include="PrefabMaker.cpp" />
     <ClCompile Include="ProjectManager.cpp" />
     <ClCompile Include="SceneChangeWindow.cpp" />
     <ClCompile Include="SceneListWindow.cpp" />
