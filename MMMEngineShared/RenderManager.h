@@ -67,6 +67,7 @@ namespace MMMEngine
 		ResPtr<PShader> m_pUIPShader;
 		std::unique_ptr<DirectX::SpriteBatch> m_uiSpriteBatch;
 		std::unordered_map<std::wstring, std::unique_ptr<DirectX::SpriteFont>> m_uiSpriteFontCache;
+		bool isOrtho = false;
 		
 		// 라이트 저장
 		std::vector<Light*> m_lights;
@@ -116,7 +117,7 @@ namespace MMMEngine
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pDafaultSampler;		// 샘플러 상태.
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_pDefaultRS;			// 기본 RS
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_pUIRS;				// UI RS (cull none)
-
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pCompareSampler;		// 비교 샘플러
 		Microsoft::WRL::ComPtr<ID3D11BlendState1> m_pDefaultBS;		// 기본 블랜드 스테이트
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_DefaultRS;	// 기본 레스터라이저 스테이트
 		D3D11_VIEWPORT m_swapViewport;							// 기본 뷰포트
@@ -139,6 +140,18 @@ namespace MMMEngine
 		ObjPtr<Camera> m_pMainCamera;	// 메인 카메라 참조
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCambuffer = nullptr;		// 캠 버퍼
 
+
+		// 쉐도우 버퍼
+		UINT m_shadowMapWidth = 4096;
+		UINT m_shadowMapHeight = 4096;
+		D3D11_VIEWPORT m_shadowVP;
+
+		Microsoft::WRL::ComPtr<ID3D11Texture2D1>          m_pShadowTexture;
+		ResPtr<Texture2D>  m_pShadowSRV;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>	  m_pShadowDSV;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>			  m_pShadowBuffer;
+		void ShadowRender( const DirectX::SimpleMath::Matrix& _camView);	// 개별패스
+
 	public:
 		struct SceneViewportRect
 		{
@@ -155,6 +168,7 @@ namespace MMMEngine
 		void SetWorldMatrix(DirectX::SimpleMath::Matrix& _world);
 		void SetViewMatrix(DirectX::SimpleMath::Matrix& _view);
 		void SetProjMatrix(DirectX::SimpleMath::Matrix& _proj);
+		void SetOrtho(bool _val) { isOrtho = _val; }
 
 		void ResizeSwapChainSize(int width, int height);
 		void ResizeSceneSize(int _sceneWidth, int _sceneHeight);
@@ -192,6 +206,8 @@ namespace MMMEngine
 
 		UINT GetSceneWidth() { return m_sceneWidth; }
 		UINT GetSceneHeight() { return m_sceneHeight; }
+
+		void SetShadowMapSize(UINT _size);
 
 		const Microsoft::WRL::ComPtr<ID3D11Device5> GetDevice() const { return m_pDevice; }
 		const Microsoft::WRL::ComPtr<ID3D11DeviceContext4> GetContext() const { return m_pDeviceContext; }
