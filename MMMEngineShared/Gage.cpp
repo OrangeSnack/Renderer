@@ -1,0 +1,94 @@
+﻿#include "Gage.h"
+#include "Canvas.h"
+#include "RectTransform.h"
+#include "RenderManager.h"
+#include "Texture2D.h"
+#include "rttr/registration"
+
+RTTR_REGISTRATION
+{
+	using namespace rttr;
+	using namespace MMMEngine;
+
+	registration::enumeration<GageFillDirection>("GageFillDirection")
+		(
+			value("LeftToRight", GageFillDirection::LeftToRight),
+			value("RightToLeft", GageFillDirection::RightToLeft),
+			value("BottomToTop", GageFillDirection::BottomToTop),
+			value("TopToBottom", GageFillDirection::TopToBottom)
+		);
+
+	registration::class_<Gage>("Gage")
+		(rttr::metadata("wrapper_type_name", "ObjPtr<Gage>"))
+		.property("Color", &Gage::GetColor, &Gage::SetColor)
+		.property("BackgroundTexture", &Gage::GetBackgroundTexture, &Gage::SetBackgroundTexture)
+		.property("FillTexture", &Gage::GetFillTexture, &Gage::SetFillTexture)
+		.property("Value", &Gage::GetValue, &Gage::SetValue)
+		.property("FillDirection", &Gage::GetFillDirection, &Gage::SetFillDirection);
+
+	registration::class_<ObjPtr<Gage>>("ObjPtr<Gage>")
+		.constructor<>([]() { return Object::NewObject<Gage>(); })
+		.method("Inject", &ObjPtr<Gage>::Inject);
+}
+
+void MMMEngine::Gage::SetValue(float v)
+{
+	m_value = (v < 0.0f) ? 0.0f : (v > 1.0f) ? 1.0f : v;
+}
+
+void MMMEngine::Gage::RenderUI(RenderManager& renderer)
+{
+	if (!GetCanvas().IsValid())
+		return;
+
+	auto rectTransform = GetRectTransform();
+	if (!rectTransform.IsValid())
+		return;
+
+	auto canvasSize = GetCanvas()->GetCanvasSize();
+	auto rect = rectTransform->GetRectInCanvas(canvasSize);
+
+	auto scale = GetCanvas()->GetScaleToScene();
+	rect.x *= scale.x;
+	rect.y *= scale.y;
+	rect.z *= scale.x;
+	rect.w *= scale.y;
+
+	// 배경
+	renderer.DrawUIElement(rect, { 0.0f, 0.0f, 1.0f, 1.0f }, GetColor(),
+		m_backgroundTexture ? m_backgroundTexture : m_fillTexture);
+
+	float v = (m_value < 0.0f) ? 0.0f : (m_value > 1.0f) ? 1.0f : m_value;
+	if (v <= 0.0f || !m_fillTexture)
+		return;
+
+	using namespace DirectX::SimpleMath;
+	Vector4 fillRect = rect;
+	Vector4 fillUV = { 0.0f, 0.0f, 1.0f, 1.0f };
+
+	switch (m_fillDirection)
+	{
+	case GageFillDirection::LeftToRight:
+		fillRect.z = rect.z * v;
+		fillUV.z = v;
+		break;
+	case GageFillDirection::RightToLeft:
+		fillRect.x = rect.x + rect.z * (1.0f - v);
+		fillRect.z = rect.z * v;
+		fillUV.x = 1.0f - v;
+		fillUV.z = 1.0f;
+		break;
+	case GageFillDirection::BottomToTop:
+		fillRect.y = rect.y + rect.w * (1.0f - v);
+		fillRect.w = rect.w * v;
+		fillUV.y = 1.0f - v;
+		fillUV.w = 1.0f;
+		break;
+	case GageFillDirection::TopToBottom:
+		fillRect.w = rect.w * v;
+		fillUV.w = v;
+		break;
+	}
+
+	renderer.DrawUIElement(fillRect, fillUV, GetColor(), m_fillTexture);
+}

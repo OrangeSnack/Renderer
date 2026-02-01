@@ -39,7 +39,7 @@ namespace MMMEngine
 		bool			m_isDestroyed = false;
 
         inline void		MarkDestroy() { if (m_isDestroyed) return; m_isDestroyed = true; Dispose();  }
-		inline void		SetMUID(const Utility::MUID& muid) { m_muid = muid; }
+		void            SetMUID (const Utility::MUID& muid);
 	protected:
         Object();
         virtual ~Object();
