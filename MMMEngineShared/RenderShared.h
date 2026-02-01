@@ -77,7 +77,7 @@ namespace MMMEngine {
 	struct Mesh_QuatKey
 	{
 		float timeSec = 0.f;
-		DirectX::SimpleMath::Vector4 value{};
+		DirectX::SimpleMath::Quaternion value{};
 	};
 
 	struct Mesh_AnimTrack

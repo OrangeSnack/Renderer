@@ -94,6 +94,9 @@
     <ClCompile Include="SkinRenderer.cpp">
       <Filter>소스 파일\Core\Render API\Component</Filter>
     </ClCompile>
+    <ClCompile Include="Animator.cpp">
+      <Filter>소스 파일\Core\Render API\Component</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -315,6 +318,9 @@
       <Filter>헤더 파일\Core\Render API</Filter>
     </ClInclude>
     <ClInclude Include="SkinRenderer.h">
+      <Filter>헤더 파일\Core\Render API\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Animator.h">
       <Filter>헤더 파일\Core\Render API\Component</Filter>
     </ClInclude>
   </ItemGroup>
