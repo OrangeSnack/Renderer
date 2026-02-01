@@ -29,6 +29,39 @@ static bool PointInRect(float px, float py, float rx, float ry, float rw, float 
 	return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
 }
 
+static bool TryGetPointerLocal(
+	const MMMEngine::ObjPtr<MMMEngine::RectTransform>& rectTr,
+	const DirectX::SimpleMath::Vector2& canvasSize,
+	const DirectX::SimpleMath::Vector2& pointerInCanvas,
+	DirectX::SimpleMath::Vector2& outLocal01)
+{
+	using namespace DirectX::SimpleMath;
+	auto rect = rectTr->GetRectInCanvas(canvasSize);
+	const auto pivot = rectTr->GetPivot();
+	const Vector2 pivotPos = { rect.x + rect.z * pivot.x, rect.y + rect.w * pivot.y };
+
+	const auto worldMat = rectTr->GetWorldMatrix();
+	Vector2 rightDir = { worldMat._11, worldMat._12 };
+	Vector2 upDir = { worldMat._21, worldMat._22 };
+	const float rightLen = std::sqrt(rightDir.x * rightDir.x + rightDir.y * rightDir.y);
+	const float upLen = std::sqrt(upDir.x * upDir.x + upDir.y * upDir.y);
+	if (rightLen > 1e-6f) rightDir /= rightLen; else rightDir = { 1.0f, 0.0f };
+	if (upLen > 1e-6f) upDir /= upLen; else upDir = { 0.0f, 1.0f };
+
+	const float det = rightDir.x * upDir.y - rightDir.y * upDir.x;
+	if (std::abs(det) < 1e-6f)
+		return false;
+
+	const Vector2 d = pointerInCanvas - pivotPos;
+	const float invDet = 1.0f / det;
+	const float localX = (d.x * upDir.y - d.y * upDir.x) * invDet;
+	const float localY = (-d.x * rightDir.y + d.y * rightDir.x) * invDet;
+
+	outLocal01.x = rect.z > 1e-6f ? (localX / rect.z + pivot.x) : pivot.x;
+	outLocal01.y = rect.w > 1e-6f ? (localY / rect.w + pivot.y) : pivot.y;
+	return true;
+}
+
 void MMMEngine::Button::UpdatePointer(const DirectX::SimpleMath::Vector2& canvasSize,
 	const DirectX::SimpleMath::Vector2& pointerInCanvas,
 	bool isMouseDown)
@@ -38,7 +71,17 @@ void MMMEngine::Button::UpdatePointer(const DirectX::SimpleMath::Vector2& canvas
 		return;
 
 	auto rect = rectTr->GetRectInCanvas(canvasSize);
-	bool inside = PointInRect(pointerInCanvas.x, pointerInCanvas.y, rect.x, rect.y, rect.z, rect.w);
+	bool inside = false;
+	DirectX::SimpleMath::Vector2 local01;
+	if (TryGetPointerLocal(rectTr, canvasSize, pointerInCanvas, local01))
+	{
+		inside = local01.x >= 0.0f && local01.x <= 1.0f
+			&& local01.y >= 0.0f && local01.y <= 1.0f;
+	}
+	else
+	{
+		inside = PointInRect(pointerInCanvas.x, pointerInCanvas.y, rect.x, rect.y, rect.z, rect.w);
+	}
 
 	if (inside)
 	{

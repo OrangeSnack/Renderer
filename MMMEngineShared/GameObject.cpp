@@ -138,7 +138,7 @@ void MMMEngine::GameObject::EnsureRectTransform()
 	}
 
 	oldTransform->SetGameObject(nullptr);
-	Object::Destroy(oldTransform);
+	ObjectManager::Get().Destroy(oldTransform);
 }
 
 MMMEngine::GameObject::GameObject() 

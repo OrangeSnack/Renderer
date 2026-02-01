@@ -1,4 +1,4 @@
-#ifndef NOMINMAX
+﻿#ifndef NOMINMAX
 #define NOMINMAX
 #endif
 
@@ -223,8 +223,9 @@ namespace MMMEngine
 			const DirectX::SimpleMath::Vector4& uvRect,
 			const DirectX::SimpleMath::Color& color,
 			const ResPtr<Texture2D>& texture,
-			float rotationRad,
-			const DirectX::SimpleMath::Vector2& pivot);
+			const DirectX::SimpleMath::Vector2& pivot,
+			const DirectX::SimpleMath::Vector2& rightDir,
+			const DirectX::SimpleMath::Vector2& upDir);
 		void DrawUIText(const DirectX::SimpleMath::Vector4& rect,
 			const std::wstring& text,
 			const ResPtr<Font>& font,

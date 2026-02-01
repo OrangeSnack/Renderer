@@ -1,4 +1,4 @@
-#include "RenderManager.h"
+﻿#include "RenderManager.h"
 
 #include "RendererTools.h"
 #include "RenderShared.h"
@@ -36,7 +36,8 @@ namespace
 		Vector4 uvRect;
 		Vector4 color;
 		Vector4 screenParams; // x=width, y=height, z=useTexture, w=unused
-		Vector4 transformParams; // x=pivotX, y=pivotY, z=cos, w=sin
+		Vector4 transformParams0; // x=pivotX, y=pivotY, z=rightX, w=rightY
+		Vector4 transformParams1; // x=upX, y=upY, z=unused, w=unused
 		Matrix viewProj;     // reserved
 	};
 
@@ -1479,8 +1480,8 @@ void RenderManager::EndCanvas()
 }
 
 	void RenderManager::DrawUIElement(const Vector4& rect, const Vector4& uvRect,
-		const Color& color, const ResPtr<Texture2D>& texture, float rotationRad,
-		const Vector2& pivot)
+		const Color& color, const ResPtr<Texture2D>& texture,
+		const Vector2& pivot, const Vector2& rightDir, const Vector2& upDir)
 	{
 		if (!m_pUIBuffer || m_sceneWidth == 0 || m_sceneHeight == 0)
 			return;
@@ -1494,11 +1495,16 @@ void RenderManager::EndCanvas()
 			static_cast<float>(m_sceneHeight),
 			texture ? 1.0f : 0.0f,
 			0.0f);
-		data.transformParams = Vector4(
+		data.transformParams0 = Vector4(
 			pivot.x,
 			pivot.y,
-			std::cos(rotationRad),
-			std::sin(rotationRad));
+			rightDir.x,
+			rightDir.y);
+		data.transformParams1 = Vector4(
+			upDir.x,
+			upDir.y,
+			0.0f,
+			0.0f);
 		data.viewProj = Matrix::Identity.Transpose();
 
 		m_pDeviceContext->UpdateSubresource1(m_pUIBuffer.Get(), 0, nullptr, &data, 0, 0, D3D11_COPY_DISCARD);

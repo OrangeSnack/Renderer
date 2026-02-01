@@ -141,6 +141,38 @@ namespace
 	{
 		return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
 	}
+
+	bool PointInRotatedRect(float px, float py,
+		const DirectX::SimpleMath::Vector4& rectScene,
+		const DirectX::SimpleMath::Vector2& pivot,
+		const DirectX::SimpleMath::Quaternion& worldRot)
+	{
+		using namespace DirectX::SimpleMath;
+		if (rectScene.z <= 1e-6f || rectScene.w <= 1e-6f)
+			return false;
+
+		const Vector2 pivotPosScene = {
+			rectScene.x + rectScene.z * pivot.x,
+			rectScene.y + rectScene.w * pivot.y
+		};
+
+		const auto right3 = Vector3::Transform(Vector3::UnitX, worldRot);
+		const auto up3 = Vector3::Transform(Vector3::UnitY, worldRot);
+		Vector2 rightDir = { right3.x, right3.y };
+		Vector2 upDir = { up3.x, up3.y };
+		const float rightLen = std::sqrt(rightDir.x * rightDir.x + rightDir.y * rightDir.y);
+		const float upLen = std::sqrt(upDir.x * upDir.x + upDir.y * upDir.y);
+		if (rightLen > 1e-6f) rightDir /= rightLen; else rightDir = { 1.0f, 0.0f };
+		if (upLen > 1e-6f) upDir /= upLen; else upDir = { 0.0f, 1.0f };
+
+		const Vector2 d = { px - pivotPosScene.x, py - pivotPosScene.y };
+		const float localX = d.x * rightDir.x + d.y * rightDir.y;
+		const float localY = d.x * upDir.x + d.y * upDir.y;
+
+		const float localU = localX / rectScene.z + pivot.x;
+		const float localV = localY / rectScene.w + pivot.y;
+		return localU >= 0.0f && localU <= 1.0f && localV >= 0.0f && localV <= 1.0f;
+	}
 }
 
 void MMMEngine::Editor::SceneViewWindow::Initialize(ID3D11Device* device, ID3D11DeviceContext* context, int initWidth, int initHeight)
@@ -411,10 +443,37 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 				{
 					ImDrawList* drawList = ImGui::GetWindowDrawList();
 					drawList->PushClipRect(imagePos, imageMax, true);
-					const ImVec2 minPos = ImVec2(imagePos.x + rectScene.x, imagePos.y + rectScene.y);
-					const ImVec2 maxPos = ImVec2(minPos.x + rectScene.z, minPos.y + rectScene.w);
 					const ImU32 rectColor = IM_COL32(255, 200, 80, 255);
-					drawList->AddRect(minPos, maxPos, rectColor, 0.0f, 0, 2.0f);
+					const auto pivot = rectTr->GetPivot();
+					const DirectX::SimpleMath::Vector2 pivotPosScene = {
+						rectScene.x + rectScene.z * pivot.x,
+						rectScene.y + rectScene.w * pivot.y
+					};
+					const auto worldRot = rectTr->GetWorldRotation();
+					const auto right3 = DirectX::SimpleMath::Vector3::Transform(DirectX::SimpleMath::Vector3::UnitX, worldRot);
+					const auto up3 = DirectX::SimpleMath::Vector3::Transform(DirectX::SimpleMath::Vector3::UnitY, worldRot);
+					DirectX::SimpleMath::Vector2 rightDir = { right3.x, right3.y };
+					DirectX::SimpleMath::Vector2 upDir = { up3.x, up3.y };
+					const float rightLen = std::sqrt(rightDir.x * rightDir.x + rightDir.y * rightDir.y);
+					const float upLen = std::sqrt(upDir.x * upDir.x + upDir.y * upDir.y);
+					if (rightLen > 1e-6f) rightDir /= rightLen; else rightDir = { 1.0f, 0.0f };
+					if (upLen > 1e-6f) upDir /= upLen; else upDir = { 0.0f, 1.0f };
+
+					auto toScreen = [&](float localX, float localY)
+					{
+						const DirectX::SimpleMath::Vector2 offset = { localX - rectScene.z * pivot.x, localY - rectScene.w * pivot.y };
+						const DirectX::SimpleMath::Vector2 posScene = {
+							pivotPosScene.x + rightDir.x * offset.x + upDir.x * offset.y,
+							pivotPosScene.y + rightDir.y * offset.x + upDir.y * offset.y
+						};
+						return ImVec2(imagePos.x + posScene.x, imagePos.y + posScene.y);
+					};
+
+					const ImVec2 p0 = toScreen(0.0f, 0.0f);
+					const ImVec2 p1 = toScreen(rectScene.z, 0.0f);
+					const ImVec2 p2 = toScreen(rectScene.z, rectScene.w);
+					const ImVec2 p3 = toScreen(0.0f, rectScene.w);
+					drawList->AddQuad(p0, p1, p2, p3, rectColor, 2.0f);
 
 					// 앵커 영역 표시 (부모 영역 기준)
 					DirectX::SimpleMath::Vector2 anchorCenter;
@@ -453,7 +512,6 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 					drawList->PopClipRect();
 
 					// 피벗 표시
-					const auto pivot = rectTr->GetPivot();
 					const ImVec2 pivotPos = ImVec2(
 						imagePos.x + rectScene.x + rectScene.z * pivot.x,
 						imagePos.y + rectScene.y + rectScene.w * pivot.y);
@@ -721,7 +779,8 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 		ImGui::SameLine();
 
-		if (m_ui2DMode)
+		const bool uiColorPushed = m_ui2DMode;
+		if (uiColorPushed)
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.7f, 0.25f, 1.0f));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.8f, 0.35f, 1.0f));
@@ -733,10 +792,9 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		}
 		if (ImGui::IsItemHovered())
 			toolbuttonHovered = true;
-		if (m_ui2DMode)
-		{
+
+		if(uiColorPushed)
 			ImGui::PopStyleColor(3);
-		}
 
 		// --- 카메라 설정 팝업 버튼 추가 ---
 		ImGui::SameLine();
@@ -1104,7 +1162,9 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 								rectCanvas.z * canvasInfo.scaleToScene.x,
 								rectCanvas.w * canvasInfo.scaleToScene.y);
 
-							if (PointInRect(sceneX, sceneY, rectScene.x, rectScene.y, rectScene.z, rectScene.w))
+							const auto pivot = rectTr->GetPivot();
+							const auto worldRot = rectTr->GetWorldRotation();
+							if (PointInRotatedRect(sceneX, sceneY, rectScene, pivot, worldRot))
 							{
 								picked = graphic->GetGameObject();
 							}

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "rttr/type"
 #include "rttr/registration_friend.h"
 #include "MUID.h"

@@ -4,7 +4,8 @@ cbuffer UIElementBuffer : register(b0)
     float4 gUvRect;
     float4 gColor;
     float4 gScreenParams; // x=width, y=height, z=useTexture, w=unused
-    float4 gTransformParams; // x=pivotX, y=pivotY, z=cos, w=sin
+    float4 gTransformParams0; // x=pivotX, y=pivotY, z=rightX, w=rightY
+    float4 gTransformParams1; // x=upX, y=upY, z=unused, w=unused
     float4x4 gViewProj;   // reserved
 };
 
@@ -28,16 +29,13 @@ VSOut main(uint vertexId : SV_VertexID)
     };
 
     float2 local = quad[vertexId];
-    float2 pivot = gTransformParams.xy;
-    float cosA = gTransformParams.z;
-    float sinA = gTransformParams.w;
-    float2 centered = local - pivot;
-    float2 rotated;
-    rotated.x = centered.x * cosA - centered.y * sinA;
-    rotated.y = centered.x * sinA + centered.y * cosA;
-    float2 localRot = rotated + pivot;
+    float2 pivot = gTransformParams0.xy;
+    float2 rightDir = gTransformParams0.zw;
+    float2 upDir = gTransformParams1.xy;
 
-    float2 localPos2 = gRect.xy + localRot * gRect.zw;
+    float2 localOffset = (local - pivot) * gRect.zw;
+    float2 pivotPos = gRect.xy + gRect.zw * pivot;
+    float2 localPos2 = pivotPos + rightDir * localOffset.x + upDir * localOffset.y;
 
     float4 pos;
     float2 ndc;

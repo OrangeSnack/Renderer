@@ -1,4 +1,4 @@
-#include "Graphic.h"
+﻿#include "Graphic.h"
 #include "Canvas.h"
 #include "RectTransform.h"
 #include "RenderManager.h"
@@ -125,8 +125,13 @@ void MMMEngine::Graphic::RenderUI(RenderManager& renderer)
 		rect.z != 0.0f ? (pivotScene.x - rect.x) / rect.z : 0.0f,
 		rect.w != 0.0f ? (pivotScene.y - rect.y) / rect.w : 0.0f
 	};
-	const auto rotEuler = rectTransform->GetWorldEulerRotation();
-	const float rotationRad = DirectX::XMConvertToRadians(rotEuler.z);
+	const auto worldMat = rectTransform->GetWorldMatrix();
+	DirectX::SimpleMath::Vector2 rightDir = { worldMat._11, worldMat._12 };
+	DirectX::SimpleMath::Vector2 upDir = { worldMat._21, worldMat._22 };
+	const float rightLen = std::sqrt(rightDir.x * rightDir.x + rightDir.y * rightDir.y);
+	const float upLen = std::sqrt(upDir.x * upDir.x + upDir.y * upDir.y);
+	if (rightLen > 1e-6f) rightDir /= rightLen; else rightDir = { 1.0f, 0.0f };
+	if (upLen > 1e-6f) upDir /= upLen; else upDir = { 0.0f, 1.0f };
 
-	renderer.DrawUIElement(rect, GetUVRect(), m_color, m_texture, rotationRad, pivotN);
+	renderer.DrawUIElement(rect, GetUVRect(), m_color, m_texture, pivotN, rightDir, upDir);
 }
