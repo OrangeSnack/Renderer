@@ -588,6 +588,8 @@ namespace MMMEngine {
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pTransbuffer));
 		bd.ByteWidth = sizeof(Render_ShadowBuffer);
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pShadowBuffer));
+		bd.ByteWidth = sizeof(Render_UIBuffer);
+		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pUIBuffer.GetAddressOf()));
 
 		// 그림자 버퍼용
 		D3D11_TEXTURE2D_DESC1 shadowDesc = {};
