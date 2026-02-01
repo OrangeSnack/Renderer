@@ -192,6 +192,7 @@ namespace MMMEngine
 		void BeginFrame();
 		void Render();
 		void RenderOnlyRenderer();
+		void RenderUIWithSize(UINT width, UINT height);
 		void RenderPickingIds(ID3D11VertexShader* vs, ID3D11PixelShader* ps, ID3D11InputLayout* layout, ID3D11Buffer* idBuffer);
 		void RenderSelectedMask(ID3D11VertexShader* vs, ID3D11PixelShader* ps, ID3D11InputLayout* layout, const uint32_t* ids, uint32_t count);
 		void EndFrame();

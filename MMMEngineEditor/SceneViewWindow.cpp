@@ -14,6 +14,9 @@
 #include "ColliderComponent.h"
 #include "Camera.h"
 #include "RigidBodyComponent.h"
+#include "Canvas.h"
+#include "Graphic.h"
+#include "RectTransform.h"
 #include <memory>
 #include <algorithm>
 #include <cmath>
@@ -41,6 +44,92 @@ namespace
 		float threshold = 0.2f;
 		DirectX::SimpleMath::Vector2 padding1 = { 0.0f, 0.0f };
 	};
+
+	struct UiCanvasInfo
+	{
+		DirectX::SimpleMath::Vector2 canvasSize = { 0.0f, 0.0f };
+		DirectX::SimpleMath::Vector2 scaleToScene = { 1.0f, 1.0f };
+	};
+
+	UiCanvasInfo GetCanvasInfo(Canvas* canvas, float sceneWidth, float sceneHeight)
+	{
+		using namespace DirectX::SimpleMath;
+		UiCanvasInfo info;
+		Vector2 sceneSize = { sceneWidth, sceneHeight };
+		if (!canvas)
+		{
+			info.canvasSize = sceneSize;
+			info.scaleToScene = { 1.0f, 1.0f };
+			return info;
+		}
+
+		if (canvas->GetScaleMode() == CanvasScaleMode::ScaleWithScreenSize)
+		{
+			auto ref = canvas->GetReferenceResolution();
+			info.canvasSize = ref;
+			info.scaleToScene = {
+				ref.x > 0.0f ? sceneWidth / ref.x : 1.0f,
+				ref.y > 0.0f ? sceneHeight / ref.y : 1.0f
+			};
+			return info;
+		}
+
+		info.canvasSize = sceneSize;
+		info.scaleToScene = { 1.0f, 1.0f };
+		return info;
+	}
+
+	Canvas* FindCanvasForTransform(const ObjPtr<Transform>& tr)
+	{
+		for (auto t = tr; t != nullptr; t = t->GetParent())
+		{
+			auto go = t->GetGameObject();
+			if (!go.IsValid())
+				continue;
+			if (auto canvas = go->GetComponent<Canvas>(); canvas.IsValid())
+				return canvas.operator->();
+		}
+		return nullptr;
+	}
+
+	void ComputeAnchorData(ObjPtr<RectTransform> rect,
+		const DirectX::SimpleMath::Vector2& canvasSize,
+		DirectX::SimpleMath::Vector2& anchorCenter,
+		DirectX::SimpleMath::Vector2& anchorSpan)
+	{
+		using namespace DirectX::SimpleMath;
+		Vector2 parentMin = Vector2::Zero;
+		Vector2 parentSize = canvasSize;
+
+		if (auto parent = rect->GetParent())
+		{
+			if (auto parentRect = parent.Cast<RectTransform>())
+			{
+				Vector4 parentRectCanvas = parentRect->GetRectInCanvas(canvasSize);
+				parentMin = { parentRectCanvas.x, parentRectCanvas.y };
+				parentSize = { parentRectCanvas.z, parentRectCanvas.w };
+			}
+		}
+
+		const Vector2 anchorMin = rect->GetAnchorMin();
+		const Vector2 anchorMax = rect->GetAnchorMax();
+		const Vector2 anchorMinPos = {
+			parentMin.x + parentSize.x * anchorMin.x,
+			parentMin.y + parentSize.y * anchorMin.y
+		};
+		const Vector2 anchorMaxPos = {
+			parentMin.x + parentSize.x * anchorMax.x,
+			parentMin.y + parentSize.y * anchorMax.y
+		};
+
+		anchorCenter = (anchorMinPos + anchorMaxPos) * 0.5f;
+		anchorSpan = { anchorMaxPos.x - anchorMinPos.x, anchorMaxPos.y - anchorMinPos.y };
+	}
+
+	bool PointInRect(float px, float py, float rx, float ry, float rw, float rh)
+	{
+		return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
+	}
 }
 
 void MMMEngine::Editor::SceneViewWindow::Initialize(ID3D11Device* device, ID3D11DeviceContext* context, int initWidth, int initHeight)
@@ -268,80 +357,189 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 	// ImGuizmo는 별도의 DrawList에 그려짐
 	if (g_selectedGameObject.IsValid() && (int)m_guizmoOperation != 0)
 	{
-		gizmoDrawn = true;
-
-		ImGuizmo::SetRect(imagePos.x, imagePos.y, imageSize.x, imageSize.y);
-
-		float snapValue[3] = { 0.f, 0.f, 0.f };
-		bool useSnap = ImGui::GetIO().KeyCtrl;
-
-		if (useSnap)
+		if (m_ui2DMode)
 		{
-			if (m_guizmoOperation == ImGuizmo::TRANSLATE)
-				snapValue[0] = snapValue[1] = snapValue[2] = 0.5f; // 0.5 단위 이동
-			else if (m_guizmoOperation == ImGuizmo::ROTATE)
-				snapValue[0] = snapValue[1] = snapValue[2] = 15.0f; // 15도 단위 회전
-			else if (m_guizmoOperation == ImGuizmo::SCALE)
-				snapValue[0] = snapValue[1] = snapValue[2] = 0.1f; // 0.1 단위 스케일
-		}
+			auto rectTr = g_selectedGameObject->GetTransform().Cast<RectTransform>();
+			if (rectTr.IsValid())
+			{
+				ImGuizmo::OPERATION op = m_guizmoOperation;
+				if (op != ImGuizmo::TRANSLATE && op != ImGuizmo::SCALE)
+					op = ImGuizmo::TRANSLATE;
 
-		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-		ImGuizmo::SetOrthographic(m_pCam->IsOrthographic());
+				gizmoDrawn = true;
+				ImGuizmo::SetRect(imagePos.x, imagePos.y, imageSize.x, imageSize.y);
 
-		auto viewMat = m_pCam->GetViewMatrix();
-		auto projMat = m_pCam->GetProjMatrix();
-		
-		auto modelMat = Matrix::Identity;
-			
-		if(g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed()
-			&& g_selectedGameObject->GetTransform().IsValid() && !g_selectedGameObject->GetTransform()->IsDestroyed())
-			modelMat = g_selectedGameObject->GetTransform()->GetWorldMatrix(); // 값이라도 로컬에 저장
+				float snapValue[3] = { 0.f, 0.f, 0.f };
+				bool useSnap = ImGui::GetIO().KeyCtrl;
+				if (useSnap)
+				{
+					if (op == ImGuizmo::TRANSLATE)
+						snapValue[0] = snapValue[1] = snapValue[2] = 1.0f;
+					else if (op == ImGuizmo::SCALE)
+						snapValue[0] = snapValue[1] = snapValue[2] = 1.0f;
+				}
 
-		float* viewPtr = &viewMat.m[0][0];
-		float* projPtr = &projMat.m[0][0];
-		float* modelPtr = &modelMat.m[0][0];
+				ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+				ImGuizmo::SetOrthographic(true);
 
-		ImGuizmo::Manipulate(viewPtr, projPtr, m_guizmoOperation, m_guizmoMode, modelPtr, NULL, useSnap ? snapValue : NULL);
+				auto viewMat = Matrix::Identity;
+				auto projMat = Matrix::Identity;
 
-		if (ImGuizmo::IsUsing())
-		{
-			Vector3 t, s;
-			Quaternion r;
-			modelMat.Decompose(s, r, t);
+				auto canvas = FindCanvasForTransform(rectTr);
+				const float sceneWidth = static_cast<float>(m_width);
+				const float sceneHeight = static_cast<float>(m_height);
+				const auto canvasInfo = GetCanvasInfo(canvas, sceneWidth, sceneHeight);
+				auto rectCanvas = rectTr->GetRectInCanvas(canvasInfo.canvasSize);
+				auto rectScene = DirectX::SimpleMath::Vector4(
+					rectCanvas.x * canvasInfo.scaleToScene.x,
+					rectCanvas.y * canvasInfo.scaleToScene.y,
+					rectCanvas.z * canvasInfo.scaleToScene.x,
+					rectCanvas.w * canvasInfo.scaleToScene.y);
 
-			auto tr = g_selectedGameObject->GetTransform();
-
-			// 3. SnapToZero 적용 (미세한 오차 제거)
-			auto SnapToZero = [](float& v, float eps = 1e-4f) {
-				if (std::abs(v) < eps) v = 0.0f;
+				const auto pivot = rectTr->GetPivot();
+				const DirectX::SimpleMath::Vector2 pivotPosScene = {
+					rectScene.x + rectScene.z * pivot.x,
+					rectScene.y + rectScene.w * pivot.y
 				};
 
-			if (m_guizmoOperation == ImGuizmo::ROTATE)
-			{
-				s = tr->GetWorldScale();
-			}
-			else
-			{
-				SnapToZero(s.x); SnapToZero(s.y); SnapToZero(s.z);
-			}
-
-			SnapToZero(t.x); SnapToZero(t.y); SnapToZero(t.z);
-
-			r.Normalize();
-
-			tr->SetWorldPosition(t);
-			tr->SetWorldRotation(r);
-			tr->SetWorldScale(s);
-
-			if (g_editor_scene_playing)
-			{
-				auto rbPtr = g_selectedGameObject->GetComponent<RigidBodyComponent>();
-				if (rbPtr.IsValid())
+				if (sceneWidth > 0.0f && sceneHeight > 0.0f)
 				{
-					if (rbPtr->GetKinematic())
-						rbPtr->SetKinematicTarget(t, r);
-					else
-						rbPtr->Editor_changeTrans(t, r);
+					// UI는 화면 좌표계(좌상단 원점)를 사용하므로 이에 맞는 투영을 사용합니다.
+					projMat = Matrix::CreateOrthographicOffCenter(
+						0.0f, sceneWidth,
+						sceneHeight, 0.0f,
+						-1.0f, 1.0f);
+				}
+
+				Matrix modelMat =
+					Matrix::CreateScale(rectScene.z, rectScene.w, 1.0f) *
+					Matrix::CreateTranslation(pivotPosScene.x, pivotPosScene.y, 0.0f);
+
+				float* viewPtr = &viewMat.m[0][0];
+				float* projPtr = &projMat.m[0][0];
+				float* modelPtr = &modelMat.m[0][0];
+
+				ImGuizmo::Manipulate(viewPtr, projPtr, op, ImGuizmo::LOCAL, modelPtr, nullptr, useSnap ? snapValue : nullptr);
+
+				if (ImGuizmo::IsUsing())
+				{
+					Vector3 t, s;
+					Quaternion r;
+					modelMat.Decompose(s, r, t);
+
+					s.x = std::abs(s.x);
+					s.y = std::abs(s.y);
+
+					const DirectX::SimpleMath::Vector2 newPivotScene = {
+						t.x,
+						t.y
+					};
+					const DirectX::SimpleMath::Vector2 newPivotCanvas = {
+						canvasInfo.scaleToScene.x > 0.0f ? newPivotScene.x / canvasInfo.scaleToScene.x : newPivotScene.x,
+						canvasInfo.scaleToScene.y > 0.0f ? newPivotScene.y / canvasInfo.scaleToScene.y : newPivotScene.y
+					};
+
+					DirectX::SimpleMath::Vector2 anchorCenter;
+					DirectX::SimpleMath::Vector2 anchorSpan;
+					ComputeAnchorData(rectTr, canvasInfo.canvasSize, anchorCenter, anchorSpan);
+
+					rectTr->SetAnchoredPosition(newPivotCanvas - anchorCenter);
+
+					const DirectX::SimpleMath::Vector2 sizeScene = {
+						s.x,
+						s.y
+					};
+
+					DirectX::SimpleMath::Vector2 sizeCanvas = {
+						canvasInfo.scaleToScene.x > 0.0f ? sizeScene.x / canvasInfo.scaleToScene.x : sizeScene.x,
+						canvasInfo.scaleToScene.y > 0.0f ? sizeScene.y / canvasInfo.scaleToScene.y : sizeScene.y
+					};
+
+					const auto worldScale = rectTr->GetWorldScale();
+					if (std::abs(worldScale.x) > 1e-4f) sizeCanvas.x /= worldScale.x;
+					if (std::abs(worldScale.y) > 1e-4f) sizeCanvas.y /= worldScale.y;
+
+					rectTr->SetSizeDelta(sizeCanvas - anchorSpan);
+				}
+			}
+		}
+		else
+		{
+			gizmoDrawn = true;
+
+			ImGuizmo::SetRect(imagePos.x, imagePos.y, imageSize.x, imageSize.y);
+
+			float snapValue[3] = { 0.f, 0.f, 0.f };
+			bool useSnap = ImGui::GetIO().KeyCtrl;
+
+			if (useSnap)
+			{
+				if (m_guizmoOperation == ImGuizmo::TRANSLATE)
+					snapValue[0] = snapValue[1] = snapValue[2] = 0.5f; // 0.5 단위 이동
+				else if (m_guizmoOperation == ImGuizmo::ROTATE)
+					snapValue[0] = snapValue[1] = snapValue[2] = 15.0f; // 15도 단위 회전
+				else if (m_guizmoOperation == ImGuizmo::SCALE)
+					snapValue[0] = snapValue[1] = snapValue[2] = 0.1f; // 0.1 단위 스케일
+			}
+
+			ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+			ImGuizmo::SetOrthographic(m_pCam->IsOrthographic());
+
+			auto viewMat = m_pCam->GetViewMatrix();
+			auto projMat = m_pCam->GetProjMatrix();
+
+			auto modelMat = Matrix::Identity;
+
+			if (g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed()
+				&& g_selectedGameObject->GetTransform().IsValid() && !g_selectedGameObject->GetTransform()->IsDestroyed())
+				modelMat = g_selectedGameObject->GetTransform()->GetWorldMatrix(); // 값이라도 로컬에 저장
+
+			float* viewPtr = &viewMat.m[0][0];
+			float* projPtr = &projMat.m[0][0];
+			float* modelPtr = &modelMat.m[0][0];
+
+			ImGuizmo::Manipulate(viewPtr, projPtr, m_guizmoOperation, m_guizmoMode, modelPtr, NULL, useSnap ? snapValue : NULL);
+
+			if (ImGuizmo::IsUsing())
+			{
+				Vector3 t, s;
+				Quaternion r;
+				modelMat.Decompose(s, r, t);
+
+				auto tr = g_selectedGameObject->GetTransform();
+
+				// 3. SnapToZero 적용 (미세한 오차 제거)
+				auto SnapToZero = [](float& v, float eps = 1e-4f) {
+					if (std::abs(v) < eps) v = 0.0f;
+					};
+
+				if (m_guizmoOperation == ImGuizmo::ROTATE)
+				{
+					s = tr->GetWorldScale();
+				}
+				else
+				{
+					SnapToZero(s.x); SnapToZero(s.y); SnapToZero(s.z);
+				}
+
+				SnapToZero(t.x); SnapToZero(t.y); SnapToZero(t.z);
+
+				r.Normalize();
+
+				tr->SetWorldPosition(t);
+				tr->SetWorldRotation(r);
+				tr->SetWorldScale(s);
+
+				if (g_editor_scene_playing)
+				{
+					auto rbPtr = g_selectedGameObject->GetComponent<RigidBodyComponent>();
+					if (rbPtr.IsValid())
+					{
+						if (rbPtr->GetKinematic())
+							rbPtr->SetKinematicTarget(t, r);
+						else
+							rbPtr->Editor_changeTrans(t, r);
+					}
 				}
 			}
 		}
@@ -357,6 +555,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 		auto scaling = m_guizmoOperation == ImGuizmo::OPERATION::SCALE;
 		auto local = m_guizmoMode == ImGuizmo::MODE::LOCAL;
 		auto world = m_guizmoMode == ImGuizmo::MODE::WORLD;
+		const bool prev2DMode = m_ui2DMode;
 
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
@@ -436,6 +635,27 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			toolbuttonHovered = true;
 		ImGui::EndDisabled();
 
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+
+		if (m_ui2DMode)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.7f, 0.25f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.8f, 0.35f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+		}
+		if (ImGui::Button("2D", buttonsize))
+		{
+			m_ui2DMode = !m_ui2DMode;
+		}
+		if (ImGui::IsItemHovered())
+			toolbuttonHovered = true;
+		if (m_ui2DMode)
+		{
+			ImGui::PopStyleColor(3);
+		}
+
 		// --- 카메라 설정 팝업 버튼 추가 ---
 		ImGui::SameLine();
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -473,6 +693,33 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			if (ImGui::DragFloat("Far", &f, 1.0f, 10.0f, 10000.0f)) m_pCam->SetFarPlane(f);
 
 			ImGui::EndPopup();
+		}
+
+		if (prev2DMode != m_ui2DMode && m_pCam)
+		{
+			if (m_ui2DMode)
+			{
+				m_savedCamPos = m_pCam->GetPosition();
+				m_savedCamRot = m_pCam->GetRotation();
+				m_savedOrthoSize = m_pCam->GetOrthoSize();
+				m_savedOrthoTarget = m_pCam->IsOrthographicTarget();
+				m_hasSaved2DState = true;
+
+				auto pos = m_pCam->GetPosition();
+				pos.z = m_ui2DCameraDistance;
+				m_pCam->SetPosition(pos);
+				m_pCam->SetEulerRotation({ 0.0f, 0.0f, 0.0f });
+				m_pCam->SetOrthographic(true);
+				m_pCam->SyncInputState();
+			}
+			else if (m_hasSaved2DState)
+			{
+				m_pCam->SetPosition(m_savedCamPos);
+				m_pCam->SetRotation(m_savedCamRot);
+				m_pCam->SetOrthoSize(m_savedOrthoSize);
+				m_pCam->SetOrthographic(m_savedOrthoTarget);
+				m_pCam->SyncInputState();
+			}
 		}
 		ImGui::PopStyleVar(2);
 		// ----------------------------------
@@ -734,34 +981,87 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			{
 				float u = (mousePos.x - imagePos.x) / imageSize.x;
 				float v = (mousePos.y - imagePos.y) / imageSize.y;
-				int x = static_cast<int>(u * static_cast<float>(m_width));
-				int y = static_cast<int>(v * static_cast<float>(m_height));
+				const float sceneX = u * static_cast<float>(m_width);
+				const float sceneY = v * static_cast<float>(m_height);
 
-				if (x >= 0 && y >= 0 && x < m_width && y < m_height && m_pIdStagingTex)
+				if (m_ui2DMode)
 				{
-					m_cachedContext->CopyResource(m_pIdStagingTex.Get(), m_pIdTexture.Get());
-
-					D3D11_MAPPED_SUBRESOURCE mapped = {};
-					if (SUCCEEDED(m_cachedContext->Map(m_pIdStagingTex.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+					ObjPtr<GameObject> picked = nullptr;
+					const auto& canvases = RenderManager::Get().GetCanvases();
+					for (auto* canvas : canvases)
 					{
-						auto* row = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(mapped.pData) + y * mapped.RowPitch);
-						uint32_t pickedId = row[x];
-						m_cachedContext->Unmap(m_pIdStagingTex.Get(), 0);
+						if (!canvas || !canvas->IsActiveAndEnabled())
+							continue;
 
-						if (pickedId == 0)
+						std::vector<ObjPtr<Graphic>> graphics;
+						graphics.reserve(canvas->GetGraphics().size());
+						for (auto& graphic : canvas->GetGraphics())
 						{
-							g_selectedGameObject = nullptr;
+							if (!graphic.IsValid() || !graphic->IsActiveAndEnabled())
+								continue;
+							graphics.push_back(graphic);
 						}
-						else
-						{
-							auto* renderer = RenderManager::Get().GetRendererById(pickedId - 1);
-							if (renderer && renderer->GetGameObject().IsValid() && !renderer->GetGameObject()->IsDestroyed())
+
+						std::stable_sort(graphics.begin(), graphics.end(),
+							[](const ObjPtr<Graphic>& a, const ObjPtr<Graphic>& b)
 							{
-								g_selectedGameObject = renderer->GetGameObject();
+								return a->GetRenderOrder() < b->GetRenderOrder();
+							});
+
+						const auto canvasInfo = GetCanvasInfo(canvas, static_cast<float>(m_width), static_cast<float>(m_height));
+						for (auto& graphic : graphics)
+						{
+							auto rectTr = graphic->GetRectTransform();
+							if (!rectTr.IsValid())
+								continue;
+
+							auto rectCanvas = rectTr->GetRectInCanvas(canvasInfo.canvasSize);
+							auto rectScene = DirectX::SimpleMath::Vector4(
+								rectCanvas.x * canvasInfo.scaleToScene.x,
+								rectCanvas.y * canvasInfo.scaleToScene.y,
+								rectCanvas.z * canvasInfo.scaleToScene.x,
+								rectCanvas.w * canvasInfo.scaleToScene.y);
+
+							if (PointInRect(sceneX, sceneY, rectScene.x, rectScene.y, rectScene.z, rectScene.w))
+							{
+								picked = graphic->GetGameObject();
+							}
+						}
+					}
+
+					g_selectedGameObject = picked;
+				}
+				else
+				{
+					int x = static_cast<int>(sceneX);
+					int y = static_cast<int>(sceneY);
+
+					if (x >= 0 && y >= 0 && x < m_width && y < m_height && m_pIdStagingTex)
+					{
+						m_cachedContext->CopyResource(m_pIdStagingTex.Get(), m_pIdTexture.Get());
+
+						D3D11_MAPPED_SUBRESOURCE mapped = {};
+						if (SUCCEEDED(m_cachedContext->Map(m_pIdStagingTex.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+						{
+							auto* row = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(mapped.pData) + y * mapped.RowPitch);
+							uint32_t pickedId = row[x];
+							m_cachedContext->Unmap(m_pIdStagingTex.Get(), 0);
+
+							if (pickedId == 0)
+							{
+								g_selectedGameObject = nullptr;
 							}
 							else
 							{
-								g_selectedGameObject = nullptr;
+								auto* renderer = RenderManager::Get().GetRendererById(pickedId - 1);
+								if (renderer && renderer->GetGameObject().IsValid() && !renderer->GetGameObject()->IsDestroyed())
+								{
+									g_selectedGameObject = renderer->GetGameObject();
+								}
+								else
+								{
+									g_selectedGameObject = nullptr;
+								}
 							}
 						}
 					}
@@ -961,10 +1261,22 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 			m_pOutlinePS = ResourceManager::Get().Load<PShader>(L"Shader/Editor/OutlinePS.hlsl");
 	}
 
+	if (m_ui2DMode && m_pCam)
+	{
+		m_pCam->SetOrthographic(true);
+	}
+
 	m_pCam->UpdateProjectionBlend();
 	if (m_isFocused && !m_blockCameraInput)
 		m_pCam->InputUpdate((int)m_guizmoOperation);
 	m_pCam->UpdateState();
+	if (m_ui2DMode && m_pCam)
+	{
+		auto pos = m_pCam->GetPosition();
+		pos.z = m_ui2DCameraDistance;
+		m_pCam->SetPosition(pos);
+		m_pCam->SetEulerRotation({ 0.0f, 0.0f, 0.0f });
+	}
 
 	auto view = m_pCam->GetViewMatrix();
 	auto proj = m_pCam->GetProjMatrix();
@@ -997,7 +1309,8 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	context->ClearRenderTargetView(rtv, clearColor);
 	context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	m_pGridRenderer->Render(context, *m_pCam);
+	if (!m_ui2DMode)
+		m_pGridRenderer->Render(context, *m_pCam);
 
 	RenderManager::Get().RenderOnlyRenderer();
 
@@ -1244,6 +1557,9 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 			context->PSSetShaderResources(0, 1, &nullSRV2);
 		}
 	}
+
+	if (m_ui2DMode)
+		RenderManager::Get().RenderUIWithSize(static_cast<UINT>(m_width), static_cast<UINT>(m_height));
 
 	// 여기서 함수 끝나면 guard 소멸자에서 원래 RT/Viewport/Blend 등 자동 복원됨
 }

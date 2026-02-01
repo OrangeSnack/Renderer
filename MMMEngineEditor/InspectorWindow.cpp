@@ -268,7 +268,7 @@ struct EventMessageOption
     MMMEngine::Utility::MUID targetMUID;
 };
 
-static bool IsScreenSpaceCanvasRoot(const ObjPtr<GameObject>& go, ObjPtr<Canvas>& outCanvas)
+static bool IsScreenSpaceCanvasRoot(const ObjPtr<GameObject>& go, Canvas*& outCanvas)
 {
     outCanvas = nullptr;
     if (!go.IsValid())
@@ -278,7 +278,7 @@ static bool IsScreenSpaceCanvasRoot(const ObjPtr<GameObject>& go, ObjPtr<Canvas>
     if (!canvas.IsValid())
         return false;
 
-    outCanvas = canvas;
+    outCanvas = canvas.operator->(); //WTF??
     return true;
 }
 
@@ -597,14 +597,14 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst, O
 
     bool lockRefResolution = false;
     bool lockRectSize = false;
-    ObjPtr<Canvas> rectCanvas;
+    Canvas* rectCanvas = nullptr;
     DirectX::SimpleMath::Vector2 rectCanvasSize = { 0.0f, 0.0f };
     std::string tname = t.get_name().to_string();
     if (t == rttr::type::get<RectTransform>())
     {
         auto rectPtr = ObjectManager::Get().GetPtr<RectTransform>(objPtr.GetPtrID(), objPtr.GetPtrGeneration());
         lockRectSize = IsScreenSpaceCanvasRoot(rectPtr->GetGameObject(), rectCanvas);
-        if (lockRectSize && rectCanvas.IsValid())
+        if (lockRectSize && rectCanvas)
         {
             rectCanvasSize = rectCanvas->GetCanvasSize();
         }

@@ -1227,6 +1227,22 @@ namespace MMMEngine {
 		ExcuteCommands();
 	}
 
+	void RenderManager::RenderUIWithSize(UINT width, UINT height)
+	{
+		if (width == 0 || height == 0)
+			return;
+
+		const UINT prevWidth = m_sceneWidth;
+		const UINT prevHeight = m_sceneHeight;
+		m_sceneWidth = width;
+		m_sceneHeight = height;
+
+		RenderUI();
+
+		m_sceneWidth = prevWidth;
+		m_sceneHeight = prevHeight;
+	}
+
 	void RenderManager::RenderPickingIds(ID3D11VertexShader* vs, ID3D11PixelShader* ps, ID3D11InputLayout* layout, ID3D11Buffer* idBuffer)
 	{
 		if (!vs || !ps || !layout || !idBuffer)
