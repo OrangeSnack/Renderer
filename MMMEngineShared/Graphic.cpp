@@ -10,7 +10,8 @@ RTTR_REGISTRATION
 	using namespace MMMEngine;
 
 	registration::class_<Graphic>("Graphic")
-		(rttr::metadata("wrapper_type_name", "ObjPtr<Graphic>"),rttr::metadata("INSPECTOR","DONT_ADD_COMP"));
+		(rttr::metadata("wrapper_type_name", "ObjPtr<Graphic>"), rttr::metadata("INSPECTOR","DONT_ADD_COMP"))
+		.property("RenderOrder", &Graphic::GetRenderOrder, &Graphic::SetRenderOrder);
 
 	registration::class_<ObjPtr<Graphic>>("ObjPtr<Graphic>")
 		.constructor<>([]() {

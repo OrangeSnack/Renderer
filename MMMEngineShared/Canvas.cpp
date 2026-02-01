@@ -99,10 +99,23 @@ void MMMEngine::Canvas::RenderUI(RenderManager& renderer)
 	if (!IsActiveAndEnabled())
 		return;
 
+	std::vector<ObjPtr<Graphic>> graphics;
+	graphics.reserve(m_graphics.size());
 	for (auto& graphic : m_graphics)
 	{
 		if (!graphic.IsValid())
 			continue;
+		graphics.push_back(graphic);
+	}
+
+	std::stable_sort(graphics.begin(), graphics.end(),
+		[](const ObjPtr<Graphic>& a, const ObjPtr<Graphic>& b)
+		{
+			return a->GetRenderOrder() < b->GetRenderOrder();
+		});
+
+	for (auto& graphic : graphics)
+	{
 		if (!graphic->IsActiveAndEnabled())
 			continue;
 		graphic->RenderUI(renderer);

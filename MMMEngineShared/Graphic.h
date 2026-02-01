@@ -21,6 +21,7 @@ namespace MMMEngine
 		ObjPtr<Canvas> m_canvas;
 		DirectX::SimpleMath::Color m_color = { 1.0f,1.0f,1.0f,1.0f };
 		ResPtr<Texture2D> m_texture = nullptr;
+		int m_renderOrder = 0;
 
 		void RefreshCanvas(ObjPtr<Transform> newParent);
 		void HandleTransformParentChanged(ObjPtr<Transform> newParent);
@@ -38,6 +39,9 @@ namespace MMMEngine
 
 		const ResPtr<Texture2D>& GetTexture() { return m_texture; }
 		void SetTexture(const ResPtr<Texture2D>& texture) { m_texture = texture; }
+
+		int GetRenderOrder() const { return m_renderOrder; }
+		void SetRenderOrder(int order) { m_renderOrder = order; }
 
 		ObjPtr<Canvas> GetCanvas() const { return m_canvas; }
 		ObjPtr<RectTransform> GetRectTransform();
