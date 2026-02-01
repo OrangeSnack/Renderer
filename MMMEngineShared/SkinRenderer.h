@@ -1,0 +1,36 @@
+﻿#pragma once
+#include "Renderer.h"
+#include "Export.h"
+#include "ResourceManager.h"
+#include "rttr/type"
+
+namespace MMMEngine {
+	class SkeletalMesh;
+	class Material;
+	class MMMENGINE_API SkinRenderer : public Renderer
+	{
+		RTTR_ENABLE(Renderer)
+		RTTR_REGISTRATION_FRIEND
+	private:
+		// GPU 버퍼
+		ResPtr<SkeletalMesh> mesh = nullptr;
+
+		void Initialize() override;
+		void UnInitialize() override;
+		void Init() override;
+		void Render() override;
+	public:
+		ResPtr<SkeletalMesh>& GetMesh() { return mesh; }
+		void SetMesh(ResPtr<SkeletalMesh>& _mesh);
+
+		void SetCastShadow(bool _val);
+		bool GetCastShadow();
+		void SetReceiveShadow(bool _val);
+		bool GetReceiveShadow();
+
+		//void SetMaterial(std::vector<ResPtr<Material>> _materials);
+		//std::vector<ResPtr<Material>> GetMaterial();
+	};
+}
+
+

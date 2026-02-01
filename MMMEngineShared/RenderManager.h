@@ -118,6 +118,9 @@ namespace MMMEngine
 		ObjPtr<Camera> m_pMainCamera;	// 메인 카메라 참조
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCambuffer = nullptr;		// 캠 버퍼
 
+		// 스킨드매시
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pOffsetBuffer = nullptr;		// 본 오프셋 버퍼
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pAnimBuffer = nullptr;		// 본 애니메이션 버퍼
 
 		// 쉐도우 버퍼
 		UINT m_shadowMapWidth = 4096;
@@ -128,6 +131,7 @@ namespace MMMEngine
 		ResPtr<Texture2D>  m_pShadowSRV;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>	  m_pShadowDSV;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>			  m_pShadowBuffer;
+
 		void ShadowRender( const DirectX::SimpleMath::Matrix& _camView);	// 개별패스
 
 	public:

@@ -17,8 +17,8 @@ RTTR_REGISTRATION
 
 	registration::class_<StaticMesh>("StaticMesh")
 		.constructor<>()(policy::ctor::as_std_shared_ptr)
-		.property("castShadows", &StaticMesh::castShadows)
-		.property("receiveShadows", &StaticMesh::receiveShadows);
+		.property("meshData", &StaticMesh::meshData)
+		.property("meshGroupData", &StaticMesh::meshGroupData);
 
 	type::register_converter_func(
 		[](std::shared_ptr<Resource> from, bool& ok) -> std::shared_ptr<StaticMesh>
@@ -34,7 +34,7 @@ RTTR_REGISTRATION
 	);
 }
 
-Microsoft::WRL::ComPtr<ID3D11Buffer> CreateVertexBuffer(const std::vector<MMMEngine::Mesh_Vertex>& _vertices)
+Microsoft::WRL::ComPtr<ID3D11Buffer> MMMEngine::StaticMesh::CreateVertexBuffer(const std::vector<MMMEngine::Mesh_Vertex>& _vertices)
 {
 	// 예외 확인
 	if (_vertices.empty())
@@ -62,7 +62,7 @@ Microsoft::WRL::ComPtr<ID3D11Buffer> CreateVertexBuffer(const std::vector<MMMEng
 	return buffer;
 }
 
-Microsoft::WRL::ComPtr<ID3D11Buffer> CreateIndexBuffer(const std::vector<UINT>& _indices)
+Microsoft::WRL::ComPtr<ID3D11Buffer> MMMEngine::StaticMesh::CreateIndexBuffer(const std::vector<UINT>& _indices)
 {
 	// 출력할 버퍼 생성
 	Microsoft::WRL::ComPtr<ID3D11Buffer> buffer;

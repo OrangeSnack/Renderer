@@ -9,6 +9,7 @@
 
 #include "StaticMesh.h"
 #include "rttr/registration.h"
+#include "SkinRenderer.h"
 
 RTTR_REGISTRATION
 {
@@ -40,7 +41,7 @@ bool MMMEngine::MeshRenderer::GetCastShadow()
 	if (!mesh)
 		return false;
 
-	return mesh->castShadows;
+	return castShadows;
 }
 
 void MMMEngine::MeshRenderer::SetCastShadow(bool _val)
@@ -48,7 +49,7 @@ void MMMEngine::MeshRenderer::SetCastShadow(bool _val)
 	if (!mesh)
 		return;
 
-	mesh->castShadows = _val;
+	castShadows = _val;
 }
 
 void MMMEngine::MeshRenderer::SetReceiveShadow(bool _val)
@@ -56,7 +57,7 @@ void MMMEngine::MeshRenderer::SetReceiveShadow(bool _val)
 	if (!mesh)
 		return;
 
-	mesh->receiveShadows = _val;
+	receiveShadows = _val;
 }
 
 bool MMMEngine::MeshRenderer::GetReceiveShadow()
@@ -64,7 +65,7 @@ bool MMMEngine::MeshRenderer::GetReceiveShadow()
 	if (!mesh)
 		return false;
 
-	return mesh->receiveShadows;
+	return receiveShadows;
 }
 
 //std::vector<MMMEngine::ResPtr<MMMEngine::Material>> MMMEngine::MeshRenderer::GetMaterial()
@@ -124,8 +125,8 @@ void MMMEngine::MeshRenderer::Render()
 			command.worldMatIndex = RenderManager::Get().AddMatrix(GetTransform()->GetWorldMatrix());
 			command.indiciesSize = mesh->indexSizes[idx];
 			command.rendererID = renderIndex;
-			command.castShadow = mesh->castShadows;
-			command.receiveShadow = mesh->receiveShadows;
+			command.castShadow = castShadows;
+			command.receiveShadow = receiveShadows;
 
 			// TODO::CamDistance 보내줘야함!!
 			command.camDistance = 0.0f;

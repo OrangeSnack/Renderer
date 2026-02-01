@@ -12,6 +12,8 @@ namespace MMMEngine {
 	protected:
 		uint32_t renderIndex = UINT32_MAX;
 		bool isEnabled = true;
+		bool castShadows = true;
+		bool receiveShadows = true;
 
 		virtual void Render() {}
 		virtual void Init() {}
