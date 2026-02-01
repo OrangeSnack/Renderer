@@ -1,4 +1,4 @@
-﻿#include "Graphic.h"
+#include "Graphic.h"
 #include "Canvas.h"
 #include "RectTransform.h"
 #include "RenderManager.h"
@@ -112,6 +112,21 @@ void MMMEngine::Graphic::RenderUI(RenderManager& renderer)
 	rect.y *= scale.y;
 	rect.z *= scale.x;
 	rect.w *= scale.y;
+	const auto offset = m_canvas->GetSceneOffset();
+	rect.x += offset.x;
+	rect.y += offset.y;
 
-	renderer.DrawUIElement(rect, GetUVRect(), m_color, m_texture);
+	const auto pivot = rectTransform->GetPivot();
+	const DirectX::SimpleMath::Vector2 pivotScene = {
+		rect.x + rect.z * pivot.x,
+		rect.y + rect.w * pivot.y
+	};
+	const DirectX::SimpleMath::Vector2 pivotN = {
+		rect.z != 0.0f ? (pivotScene.x - rect.x) / rect.z : 0.0f,
+		rect.w != 0.0f ? (pivotScene.y - rect.y) / rect.w : 0.0f
+	};
+	const auto rotEuler = rectTransform->GetWorldEulerRotation();
+	const float rotationRad = DirectX::XMConvertToRadians(rotEuler.z);
+
+	renderer.DrawUIElement(rect, GetUVRect(), m_color, m_texture, rotationRad, pivotN);
 }

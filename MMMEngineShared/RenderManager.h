@@ -1,4 +1,4 @@
-﻿#ifndef NOMINMAX
+#ifndef NOMINMAX
 #define NOMINMAX
 #endif
 
@@ -222,11 +222,15 @@ namespace MMMEngine
 		void DrawUIElement(const DirectX::SimpleMath::Vector4& rect,
 			const DirectX::SimpleMath::Vector4& uvRect,
 			const DirectX::SimpleMath::Color& color,
-			const ResPtr<Texture2D>& texture);
+			const ResPtr<Texture2D>& texture,
+			float rotationRad,
+			const DirectX::SimpleMath::Vector2& pivot);
 		void DrawUIText(const DirectX::SimpleMath::Vector4& rect,
 			const std::wstring& text,
 			const ResPtr<Font>& font,
 			const DirectX::SimpleMath::Color& color,
-			TextAlignment alignment);
+			TextAlignment alignment,
+			float rotationRad,
+			const DirectX::SimpleMath::Vector2& pivotScene);
 	};
 }

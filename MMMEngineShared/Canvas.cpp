@@ -1,4 +1,4 @@
-﻿#include "Canvas.h"
+#include "Canvas.h"
 #include "Graphic.h"
 #include "RectTransform.h"
 #include "RenderManager.h"
@@ -61,9 +61,32 @@ DirectX::SimpleMath::Vector2 MMMEngine::Canvas::GetScaleToScene() const
 	RenderManager::Get().GetSceneSize(sceneW, sceneH);
 	if (m_referenceResolution.x <= 0.0f || m_referenceResolution.y <= 0.0f)
 		return { 1.0f, 1.0f };
+	const float scaleX = static_cast<float>(sceneW) / m_referenceResolution.x;
+	const float scaleY = static_cast<float>(sceneH) / m_referenceResolution.y;
+	const float uniform = std::min(scaleX, scaleY);
+	return { uniform, uniform };
+}
+
+DirectX::SimpleMath::Vector2 MMMEngine::Canvas::GetSceneOffset() const
+{
+	if (m_scaleMode != CanvasScaleMode::ScaleWithScreenSize)
+		return { 0.0f, 0.0f };
+
+	UINT sceneW = 0, sceneH = 0;
+	RenderManager::Get().GetSceneSize(sceneW, sceneH);
+	if (m_referenceResolution.x <= 0.0f || m_referenceResolution.y <= 0.0f)
+		return { 0.0f, 0.0f };
+
+	const float scaleX = static_cast<float>(sceneW) / m_referenceResolution.x;
+	const float scaleY = static_cast<float>(sceneH) / m_referenceResolution.y;
+	const float uniform = std::min(scaleX, scaleY);
+	const DirectX::SimpleMath::Vector2 scaledSize = {
+		m_referenceResolution.x * uniform,
+		m_referenceResolution.y * uniform
+	};
 	return {
-		static_cast<float>(sceneW) / m_referenceResolution.x,
-		static_cast<float>(sceneH) / m_referenceResolution.y
+		(static_cast<float>(sceneW) - scaledSize.x) * 0.5f,
+		(static_cast<float>(sceneH) - scaledSize.y) * 0.5f
 	};
 }
 

@@ -1,4 +1,4 @@
-﻿#include "RenderManager.h"
+#include "RenderManager.h"
 
 #include "RendererTools.h"
 #include "RenderShared.h"
@@ -36,6 +36,7 @@ namespace
 		Vector4 uvRect;
 		Vector4 color;
 		Vector4 screenParams; // x=width, y=height, z=useTexture, w=unused
+		Vector4 transformParams; // x=pivotX, y=pivotY, z=cos, w=sin
 		Matrix viewProj;     // reserved
 	};
 
@@ -1478,7 +1479,8 @@ void RenderManager::EndCanvas()
 }
 
 	void RenderManager::DrawUIElement(const Vector4& rect, const Vector4& uvRect,
-		const Color& color, const ResPtr<Texture2D>& texture)
+		const Color& color, const ResPtr<Texture2D>& texture, float rotationRad,
+		const Vector2& pivot)
 	{
 		if (!m_pUIBuffer || m_sceneWidth == 0 || m_sceneHeight == 0)
 			return;
@@ -1492,6 +1494,11 @@ void RenderManager::EndCanvas()
 			static_cast<float>(m_sceneHeight),
 			texture ? 1.0f : 0.0f,
 			0.0f);
+		data.transformParams = Vector4(
+			pivot.x,
+			pivot.y,
+			std::cos(rotationRad),
+			std::sin(rotationRad));
 		data.viewProj = Matrix::Identity.Transpose();
 
 		m_pDeviceContext->UpdateSubresource1(m_pUIBuffer.Get(), 0, nullptr, &data, 0, 0, D3D11_COPY_DISCARD);
@@ -1505,7 +1512,9 @@ void RenderManager::EndCanvas()
 		const std::wstring& text,
 		const ResPtr<Font>& font,
 		const Color& color,
-		TextAlignment alignment)
+		TextAlignment alignment,
+		float rotationRad,
+		const Vector2& pivotScene)
 	{
 		if (text.empty() || !font)
 			return;
@@ -1593,7 +1602,12 @@ void RenderManager::EndCanvas()
 		const float y = rect.y;
 		try
 		{
-			spriteFont->DrawString(m_uiSpriteBatch.get(), renderText.c_str(), DirectX::XMFLOAT2(x, y), color);
+			const DirectX::XMFLOAT2 pos(x, y);
+			const DirectX::XMFLOAT2 origin(
+				pivotScene.x - pos.x,
+				pivotScene.y - pos.y);
+			spriteFont->DrawString(m_uiSpriteBatch.get(), renderText.c_str(),
+				pos, color, rotationRad, origin);
 		}
 		catch (const std::exception&)
 		{

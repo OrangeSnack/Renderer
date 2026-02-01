@@ -1,4 +1,4 @@
-﻿#include "UIEventManager.h"
+#include "UIEventManager.h"
 
 #include "RenderManager.h"
 #include "Canvas.h"
@@ -42,6 +42,9 @@ void MMMEngine::UIEventManager::UpdateFromScenePointer(const DirectX::SimpleMath
 			continue;
 
 		Vector2 pointerCanvas = pointerScene;
+		const auto offset = canvas->GetSceneOffset();
+		pointerCanvas.x -= offset.x;
+		pointerCanvas.y -= offset.y;
 		const auto scale = canvas->GetScaleToScene();
 		if (scale.x != 0.0f && scale.y != 0.0f)
 		{

@@ -1,4 +1,4 @@
-﻿#include "Gage.h"
+#include "Gage.h"
 #include "Canvas.h"
 #include "RectTransform.h"
 #include "RenderManager.h"
@@ -53,10 +53,31 @@ void MMMEngine::Gage::RenderUI(RenderManager& renderer)
 	rect.y *= scale.y;
 	rect.z *= scale.x;
 	rect.w *= scale.y;
+	const auto offset = GetCanvas()->GetSceneOffset();
+	rect.x += offset.x;
+	rect.y += offset.y;
+
+	const auto pivot = rectTransform->GetPivot();
+	const DirectX::SimpleMath::Vector2 pivotScene = {
+		rect.x + rect.z * pivot.x,
+		rect.y + rect.w * pivot.y
+	};
+	const auto rotEuler = rectTransform->GetWorldEulerRotation();
+	const float rotationRad = DirectX::XMConvertToRadians(rotEuler.z);
+	auto makePivotN = [](const DirectX::SimpleMath::Vector4& r,
+		const DirectX::SimpleMath::Vector2& pivotScenePos)
+	{
+		return DirectX::SimpleMath::Vector2{
+			r.z != 0.0f ? (pivotScenePos.x - r.x) / r.z : 0.0f,
+			r.w != 0.0f ? (pivotScenePos.y - r.y) / r.w : 0.0f
+		};
+	};
+	const auto pivotN = makePivotN(rect, pivotScene);
 
 	// 배경
 	renderer.DrawUIElement(rect, { 0.0f, 0.0f, 1.0f, 1.0f }, GetColor(),
-		m_backgroundTexture ? m_backgroundTexture : m_fillTexture);
+		m_backgroundTexture ? m_backgroundTexture : m_fillTexture,
+		rotationRad, pivotN);
 
 	float v = (m_value < 0.0f) ? 0.0f : (m_value > 1.0f) ? 1.0f : m_value;
 	if (v <= 0.0f || !m_fillTexture)
@@ -90,5 +111,6 @@ void MMMEngine::Gage::RenderUI(RenderManager& renderer)
 		break;
 	}
 
-	renderer.DrawUIElement(fillRect, fillUV, GetColor(), m_fillTexture);
+	const auto fillPivotN = makePivotN(fillRect, pivotScene);
+	renderer.DrawUIElement(fillRect, fillUV, GetColor(), m_fillTexture, rotationRad, fillPivotN);
 }

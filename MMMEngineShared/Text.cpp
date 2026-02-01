@@ -1,4 +1,4 @@
-﻿#include "Text.h"
+#include "Text.h"
 #include "Font.h"
 #include "Canvas.h"
 #include "RectTransform.h"
@@ -64,8 +64,19 @@ void MMMEngine::Text::RenderUI(RenderManager& renderer)
 	rect.y *= scale.y;
 	rect.z *= scale.x;
 	rect.w *= scale.y;
+	const auto offset = canvas->GetSceneOffset();
+	rect.x += offset.x;
+	rect.y += offset.y;
 
-	renderer.DrawUIText(rect, m_text, m_font, GetColor(), m_alignment);
+	const auto pivot = rectTransform->GetPivot();
+	const DirectX::SimpleMath::Vector2 pivotScene = {
+		rect.x + rect.z * pivot.x,
+		rect.y + rect.w * pivot.y
+	};
+	const auto rotEuler = rectTransform->GetWorldEulerRotation();
+	const float rotationRad = DirectX::XMConvertToRadians(rotEuler.z);
+
+	renderer.DrawUIText(rect, m_text, m_font, GetColor(), m_alignment, rotationRad, pivotScene);
 }
 
 std::string MMMEngine::Text::GetTextUtf8() const

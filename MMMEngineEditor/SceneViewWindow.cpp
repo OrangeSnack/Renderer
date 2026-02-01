@@ -49,6 +49,7 @@ namespace
 	{
 		DirectX::SimpleMath::Vector2 canvasSize = { 0.0f, 0.0f };
 		DirectX::SimpleMath::Vector2 scaleToScene = { 1.0f, 1.0f };
+		DirectX::SimpleMath::Vector2 sceneOffset = { 0.0f, 0.0f };
 	};
 
 	UiCanvasInfo GetCanvasInfo(Canvas* canvas, float sceneWidth, float sceneHeight)
@@ -60,6 +61,7 @@ namespace
 		{
 			info.canvasSize = sceneSize;
 			info.scaleToScene = { 1.0f, 1.0f };
+			info.sceneOffset = { 0.0f, 0.0f };
 			return info;
 		}
 
@@ -67,15 +69,24 @@ namespace
 		{
 			auto ref = canvas->GetReferenceResolution();
 			info.canvasSize = ref;
-			info.scaleToScene = {
-				ref.x > 0.0f ? sceneWidth / ref.x : 1.0f,
-				ref.y > 0.0f ? sceneHeight / ref.y : 1.0f
+			const float scaleX = ref.x > 0.0f ? sceneWidth / ref.x : 1.0f;
+			const float scaleY = ref.y > 0.0f ? sceneHeight / ref.y : 1.0f;
+			const float uniform = std::min(scaleX, scaleY);
+			info.scaleToScene = { uniform, uniform };
+			const DirectX::SimpleMath::Vector2 scaledSize = {
+				ref.x * uniform,
+				ref.y * uniform
+			};
+			info.sceneOffset = {
+				(sceneWidth - scaledSize.x) * 0.5f,
+				(sceneHeight - scaledSize.y) * 0.5f
 			};
 			return info;
 		}
 
 		info.canvasSize = sceneSize;
 		info.scaleToScene = { 1.0f, 1.0f };
+		info.sceneOffset = { 0.0f, 0.0f };
 		return info;
 	}
 
@@ -363,7 +374,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			if (rectTr.IsValid())
 			{
 				ImGuizmo::OPERATION op = m_guizmoOperation;
-				if (op != ImGuizmo::TRANSLATE && op != ImGuizmo::SCALE)
+				if (op != ImGuizmo::TRANSLATE && op != ImGuizmo::SCALE && op != ImGuizmo::ROTATE)
 					op = ImGuizmo::TRANSLATE;
 
 				gizmoDrawn = true;
@@ -391,8 +402,8 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 				const auto canvasInfo = GetCanvasInfo(canvas, sceneWidth, sceneHeight);
 				auto rectCanvas = rectTr->GetRectInCanvas(canvasInfo.canvasSize);
 				auto rectScene = DirectX::SimpleMath::Vector4(
-					rectCanvas.x * canvasInfo.scaleToScene.x,
-					rectCanvas.y * canvasInfo.scaleToScene.y,
+					canvasInfo.sceneOffset.x + rectCanvas.x * canvasInfo.scaleToScene.x,
+					canvasInfo.sceneOffset.y + rectCanvas.y * canvasInfo.scaleToScene.y,
 					rectCanvas.z * canvasInfo.scaleToScene.x,
 					rectCanvas.w * canvasInfo.scaleToScene.y);
 
@@ -411,8 +422,11 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 						-1.0f, 1.0f);
 				}
 
+				const auto currentEuler = rectTr->GetWorldEulerRotation();
+				const float currentRotZ = DirectX::XMConvertToRadians(currentEuler.z);
 				Matrix modelMat =
 					Matrix::CreateScale(rectScene.z, rectScene.w, 1.0f) *
+					Matrix::CreateRotationZ(currentRotZ) *
 					Matrix::CreateTranslation(pivotPosScene.x, pivotPosScene.y, 0.0f);
 
 				float* viewPtr = &viewMat.m[0][0];
@@ -435,8 +449,8 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 						t.y
 					};
 					const DirectX::SimpleMath::Vector2 newPivotCanvas = {
-						canvasInfo.scaleToScene.x > 0.0f ? newPivotScene.x / canvasInfo.scaleToScene.x : newPivotScene.x,
-						canvasInfo.scaleToScene.y > 0.0f ? newPivotScene.y / canvasInfo.scaleToScene.y : newPivotScene.y
+						canvasInfo.scaleToScene.x > 0.0f ? (newPivotScene.x - canvasInfo.sceneOffset.x) / canvasInfo.scaleToScene.x : newPivotScene.x,
+						canvasInfo.scaleToScene.y > 0.0f ? (newPivotScene.y - canvasInfo.sceneOffset.y) / canvasInfo.scaleToScene.y : newPivotScene.y
 					};
 
 					DirectX::SimpleMath::Vector2 anchorCenter;
@@ -444,6 +458,16 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 					ComputeAnchorData(rectTr, canvasInfo.canvasSize, anchorCenter, anchorSpan);
 
 					rectTr->SetAnchoredPosition(newPivotCanvas - anchorCenter);
+
+					const auto newEulerRad = r.ToEuler();
+					DirectX::SimpleMath::Vector3 newEulerDeg = {
+						DirectX::XMConvertToDegrees(newEulerRad.x),
+						DirectX::XMConvertToDegrees(newEulerRad.y),
+						DirectX::XMConvertToDegrees(newEulerRad.z)
+					};
+					DirectX::SimpleMath::Vector3 appliedEuler = currentEuler;
+					appliedEuler.z = newEulerDeg.z;
+					rectTr->SetWorldEulerRotation(appliedEuler);
 
 					const DirectX::SimpleMath::Vector2 sizeScene = {
 						s.x,
@@ -645,7 +669,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.8f, 0.35f, 1.0f));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
 		}
-		if (ImGui::Button("2D", buttonsize))
+		if (ImGui::Button("UI", buttonsize))
 		{
 			m_ui2DMode = !m_ui2DMode;
 		}
@@ -1017,8 +1041,8 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 							auto rectCanvas = rectTr->GetRectInCanvas(canvasInfo.canvasSize);
 							auto rectScene = DirectX::SimpleMath::Vector4(
-								rectCanvas.x * canvasInfo.scaleToScene.x,
-								rectCanvas.y * canvasInfo.scaleToScene.y,
+								canvasInfo.sceneOffset.x + rectCanvas.x * canvasInfo.scaleToScene.x,
+								canvasInfo.sceneOffset.y + rectCanvas.y * canvasInfo.scaleToScene.y,
 								rectCanvas.z * canvasInfo.scaleToScene.x,
 								rectCanvas.w * canvasInfo.scaleToScene.y);
 

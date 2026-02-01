@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Export.h"
 #include "Behaviour.h"
@@ -49,8 +49,10 @@ namespace MMMEngine
 		/// 레이아웃용 캔버스 크기 (SceneSize 또는 ReferenceResolution)
 		DirectX::SimpleMath::Vector2 GetCanvasSize();
 
-		/// 캔버스 좌표 -> 씬 픽셀 변환 스케일 (ConstantPixelSize=(1,1), ScaleWithScreenSize=scene/ref)
+		/// 캔버스 좌표 -> 씬 픽셀 변환 스케일 (ConstantPixelSize=(1,1), ScaleWithScreenSize=scene/ref, 균일 스케일)
 		DirectX::SimpleMath::Vector2 GetScaleToScene() const;
+		/// ScaleWithScreenSize일 때 씬 내 여백(레터박스) 오프셋
+		DirectX::SimpleMath::Vector2 GetSceneOffset() const;
 
 		void RegisterGraphic(ObjPtr<Graphic> graphic);
 		void UnregisterGraphic(ObjPtr<Graphic> graphic);

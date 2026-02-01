@@ -1,4 +1,4 @@
-﻿#include "HandleGage.h"
+#include "HandleGage.h"
 #include "RectTransform.h"
 #include "Canvas.h"
 #include "RenderManager.h"
@@ -130,9 +130,30 @@ void MMMEngine::HandleGage::RenderUI(RenderManager& renderer)
 	rect.y *= scale.y;
 	rect.z *= scale.x;
 	rect.w *= scale.y;
+	const auto offset = GetCanvas()->GetSceneOffset();
+	rect.x += offset.x;
+	rect.y += offset.y;
+
+	const auto pivot = rectTransform->GetPivot();
+	const DirectX::SimpleMath::Vector2 pivotScene = {
+		rect.x + rect.z * pivot.x,
+		rect.y + rect.w * pivot.y
+	};
+	const auto rotEuler = rectTransform->GetWorldEulerRotation();
+	const float rotationRad = DirectX::XMConvertToRadians(rotEuler.z);
+	auto makePivotN = [](const DirectX::SimpleMath::Vector4& r,
+		const DirectX::SimpleMath::Vector2& pivotScenePos)
+	{
+		return DirectX::SimpleMath::Vector2{
+			r.z != 0.0f ? (pivotScenePos.x - r.x) / r.z : 0.0f,
+			r.w != 0.0f ? (pivotScenePos.y - r.y) / r.w : 0.0f
+		};
+	};
+	const auto pivotN = makePivotN(rect, pivotScene);
 
 	renderer.DrawUIElement(rect, { 0.0f, 0.0f, 1.0f, 1.0f }, GetColor(),
-		m_backgroundTexture ? m_backgroundTexture : m_fillTexture);
+		m_backgroundTexture ? m_backgroundTexture : m_fillTexture,
+		rotationRad, pivotN);
 
 	float v = (m_value < 0.0f) ? 0.0f : (m_value > 1.0f) ? 1.0f : m_value;
 	if (v > 0.0f && m_fillTexture)
@@ -165,7 +186,8 @@ void MMMEngine::HandleGage::RenderUI(RenderManager& renderer)
 			break;
 		}
 
-		renderer.DrawUIElement(fillRect, fillUV, GetColor(), m_fillTexture);
+		const auto fillPivotN = makePivotN(fillRect, pivotScene);
+		renderer.DrawUIElement(fillRect, fillUV, GetColor(), m_fillTexture, rotationRad, fillPivotN);
 	}
 
 	if (!m_handleTexture)
@@ -179,8 +201,12 @@ void MMMEngine::HandleGage::RenderUI(RenderManager& renderer)
 	handleRect.y *= scale.y;
 	handleRect.z *= scale.x;
 	handleRect.w *= scale.y;
+	handleRect.x += offset.x;
+	handleRect.y += offset.y;
 
-	renderer.DrawUIElement(handleRect, { 0.0f, 0.0f, 1.0f, 1.0f }, GetColor(), m_handleTexture);
+	const auto handlePivotN = makePivotN(handleRect, pivotScene);
+	renderer.DrawUIElement(handleRect, { 0.0f, 0.0f, 1.0f, 1.0f }, GetColor(), m_handleTexture,
+		rotationRad, handlePivotN);
 }
 
 static bool PointInRect(float px, float py, float rx, float ry, float rw, float rh)
