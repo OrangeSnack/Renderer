@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Object.h"
 #include "GameObject.h"
 #include "rttr/type"
@@ -27,7 +27,8 @@ namespace MMMEngine
 	public:
 		virtual ~Component() = default;
 
-		inline ObjPtr<GameObject> GetGameObject() { return m_gameObject; };
+		inline ObjPtr<GameObject> GetGameObject() const { return m_gameObject; };
+		virtual bool RequiresRectTransform() const { return false; }
 
 		template <typename T>
 		ObjPtr<T> GetComponent() { return m_gameObject->template GetComponent<T>(); }

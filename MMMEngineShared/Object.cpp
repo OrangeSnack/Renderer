@@ -1,4 +1,4 @@
-﻿#include "GameObject.h"
+#include "GameObject.h"
 #include "Object.h"
 #include "Component.h"
 #include "MissingScriptBehaviour.h"
@@ -42,11 +42,13 @@ RTTR_REGISTRATION
 		.method("Inject", &ObjPtr<Object>::Inject);
 }
 
+// 지역함수 -> Object::Instantiate 구현에 사용
 namespace
 {
 	using namespace MMMEngine;
 	using namespace rttr;
 
+	// 클론 진행 상황을 추적하는 구조체
 	struct CloneContext
 	{
 		std::unordered_map<const Object*, ObjPtr<Object>> objectMap;
@@ -440,6 +442,16 @@ MMMEngine::Object::Object() : m_instanceID(s_nextInstanceID++)
 	m_muid = MUID::NewMUID();
 	m_ptrID = UINT32_MAX;
 	m_ptrGen = 0;
+}
+
+void MMMEngine::Object::SetMUID(const Utility::MUID& muid)
+{
+    if (m_muid == muid)
+        return;
+
+    Utility::MUID oldMuid = m_muid;
+    m_muid = muid;
+    ObjectManager::Get().UpdateObjectMUID(this, oldMuid, m_muid);
 }
 
 MMMEngine::Object::~Object()

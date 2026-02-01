@@ -9,15 +9,59 @@
 #include "Camera.h"
 #include "Renderer.h"
 #include "Material.h"
+#include "Canvas.h"
+#include "VShader.h"
+#include "PShader.h"
+#include "Texture2D.h"
+#include "Font.h"
+#include "Text.h"
 
 #include "rttr/registration.h"
 #include <cmath>
+#include <algorithm>
+#include <exception>
+#include <filesystem>
 
 DEFINE_SINGLETON(MMMEngine::RenderManager)
 
 using namespace Microsoft::WRL;
 using namespace DirectX::SimpleMath;
 using namespace DirectX;
+
+namespace
+{
+	struct Render_UIBuffer
+	{
+		Vector4 rect;
+		Vector4 uvRect;
+		Vector4 color;
+		Vector4 screenParams; // x=width, y=height, z=useTexture, w=unused
+		Matrix viewProj;     // reserved
+	};
+
+	std::wstring FilterTextForSpriteFont(const DirectX::SpriteFont& spriteFont, const std::wstring& text)
+	{
+		if (text.empty())
+			return {};
+
+		wchar_t fallback = 0;
+		if (spriteFont.ContainsCharacter(L'?'))
+			fallback = L'?';
+		else if (spriteFont.ContainsCharacter(L' '))
+			fallback = L' ';
+
+		std::wstring filtered;
+		filtered.reserve(text.size());
+		for (wchar_t ch : text)
+		{
+			if (spriteFont.ContainsCharacter(ch))
+				filtered.push_back(ch);
+			else if (fallback != 0)
+				filtered.push_back(fallback);
+		}
+		return filtered;
+	}
+}
 
 RTTR_REGISTRATION{
 	using namespace rttr;
@@ -184,6 +228,115 @@ namespace MMMEngine {
 		}
 	}
 
+	void RenderManager::EnsureUIShaders()
+	{
+		if (m_pUIVShader && m_pUIPShader)
+			return;
+
+		if (ResourceManager::Get().GetCurrentRootPath().empty())
+			return;
+
+		if (!m_pUIVShader)
+			m_pUIVShader = ResourceManager::Get().Load<VShader>(L"Shader/UI/UIQuadVS.hlsl");
+		if (!m_pUIPShader)
+			m_pUIPShader = ResourceManager::Get().Load<PShader>(L"Shader/UI/UIQuadPS.hlsl");
+	}
+
+	void RenderManager::EnsureUISpriteBatch()
+	{
+		if (m_uiSpriteBatch || !m_pDeviceContext)
+			return;
+
+		m_uiSpriteBatch = std::make_unique<DirectX::SpriteBatch>(m_pDeviceContext.Get());
+	}
+
+	DirectX::SpriteFont* RenderManager::GetSpriteFont(const ResPtr<Font>& font)
+	{
+		if (!font || !m_pDevice)
+			return nullptr;
+
+		std::filesystem::path root = ResourceManager::Get().GetCurrentRootPath();
+		std::filesystem::path filePath = font->GetFilePath();
+		std::filesystem::path fullPath = root.empty() ? filePath : (root / filePath);
+		std::wstring key = fullPath.wstring();
+		if (key.empty())
+			return nullptr;
+
+		auto it = m_uiSpriteFontCache.find(key);
+		if (it != m_uiSpriteFontCache.end())
+			return it->second.get();
+
+		try
+		{
+			std::unique_ptr<DirectX::SpriteFont> spriteFont;
+			if (font->HasSpriteFontData())
+			{
+				const auto& data = font->GetSpriteFontData();
+				spriteFont = std::make_unique<DirectX::SpriteFont>(m_pDevice.Get(), data.data(), data.size());
+			}
+			else
+			{
+				spriteFont = std::make_unique<DirectX::SpriteFont>(m_pDevice.Get(), fullPath.c_str());
+			}
+
+			// Missing glyphs cause runtime_error unless a default character is set.
+			if (spriteFont->ContainsCharacter(L'?'))
+				spriteFont->SetDefaultCharacter(L'?');
+			else if (spriteFont->ContainsCharacter(L' '))
+				spriteFont->SetDefaultCharacter(L' ');
+
+			auto* result = spriteFont.get();
+			m_uiSpriteFontCache.emplace(key, std::move(spriteFont));
+			return result;
+		}
+		catch (const std::exception&)
+		{
+			return nullptr;
+		}
+	}
+
+	void RenderManager::RenderUI()
+	{
+		if (m_canvases.empty())
+			return;
+
+		EnsureUIShaders();
+		if (!m_pUIVShader || !m_pUIPShader || !m_pUIBuffer)
+			return;
+
+		auto context = m_pDeviceContext.Get();
+
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(nullptr);
+		context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+		context->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+
+		context->VSSetShader(m_pUIVShader->m_pVShader.Get(), nullptr, 0);
+		context->PSSetShader(m_pUIPShader->m_pPShader.Get(), nullptr, 0);
+		context->VSSetConstantBuffers(0, 1, m_pUIBuffer.GetAddressOf());
+		context->PSSetConstantBuffers(0, 1, m_pUIBuffer.GetAddressOf());
+		context->PSSetSamplers(0, 1, m_pDafaultSampler.GetAddressOf());
+
+		float blendFactor[4] = { 0,0,0,0 };
+		context->OMSetBlendState(m_pUIBlendState.Get(), blendFactor, 0xffffffff);
+		context->OMSetDepthStencilState(m_pUIDepthState.Get(), 0);
+		context->RSSetState(m_pDefaultRS.Get());
+
+		for (auto* canvas : m_canvases)
+		{
+			if (!canvas)
+				continue;
+			BeginCanvas(canvas);
+			canvas->RenderUI(*this);
+			EndCanvas();
+		}
+
+		ID3D11ShaderResourceView* nullSrv = nullptr;
+		context->PSSetShaderResources(0, 1, &nullSrv);
+		context->OMSetDepthStencilState(nullptr, 0);
+		context->OMSetBlendState(m_pDefaultBS.Get(), blendFactor, 0xffffffff);
+	}
+
 	void RenderManager::StartUp(HWND _hwnd, UINT _ClientWidth, UINT _ClientHeight)
 	{
 		// 디바이스 생성
@@ -293,19 +446,33 @@ namespace MMMEngine {
 		defaultRsDesc.AntialiasedLineEnable = FALSE;
 		HR_T(m_pDevice->CreateRasterizerState2(&defaultRsDesc, m_pDefaultRS.GetAddressOf()));
 
-		// 블랜드 스테이트 생성
-		D3D11_BLEND_DESC1 blendDesc = {};
-		blendDesc.AlphaToCoverageEnable = FALSE;
-		blendDesc.IndependentBlendEnable = FALSE;
-		blendDesc.RenderTarget[0].BlendEnable = FALSE;
-		blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-		HR_T(m_pDevice->CreateBlendState1(&blendDesc, m_pDefaultBS.GetAddressOf()));
-		assert(m_pDefaultBS && "RenderPipe::InitD3D : defaultBS not initialized!!");
+	// 블랜드 스테이트 생성
+	D3D11_BLEND_DESC1 blendDesc = {};
+	blendDesc.AlphaToCoverageEnable = FALSE;
+	blendDesc.IndependentBlendEnable = FALSE;
+	blendDesc.RenderTarget[0].BlendEnable = FALSE;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	HR_T(m_pDevice->CreateBlendState1(&blendDesc, m_pDefaultBS.GetAddressOf()));
+	assert(m_pDefaultBS && "RenderPipe::InitD3D : defaultBS not initialized!!");
 
-		// 레스터라이저 스테이트 생성
-		D3D11_RASTERIZER_DESC2 rsDesc = {};
-		rsDesc.FillMode = D3D11_FILL_SOLID;
-		rsDesc.CullMode = D3D11_CULL_BACK;
+	// UI 블렌드 스테이트 생성 (알파 블렌딩)
+	D3D11_BLEND_DESC1 uiBlendDesc = {};
+	uiBlendDesc.AlphaToCoverageEnable = FALSE;
+	uiBlendDesc.IndependentBlendEnable = FALSE;
+	uiBlendDesc.RenderTarget[0].BlendEnable = TRUE;
+	uiBlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	uiBlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	uiBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	uiBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	uiBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+	uiBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	uiBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	HR_T(m_pDevice->CreateBlendState1(&uiBlendDesc, m_pUIBlendState.GetAddressOf()));
+
+	// 레스터라이저 스테이트 생성
+	D3D11_RASTERIZER_DESC2 rsDesc = {};
+	rsDesc.FillMode = D3D11_FILL_SOLID;
+	rsDesc.CullMode = D3D11_CULL_BACK;
 		rsDesc.FrontCounterClockwise = FALSE;
 		rsDesc.DepthBias = 0;
 		rsDesc.DepthBiasClamp = 0.0f;
@@ -313,9 +480,22 @@ namespace MMMEngine {
 		rsDesc.DepthClipEnable = TRUE;
 		rsDesc.ScissorEnable = FALSE;
 		rsDesc.MultisampleEnable = FALSE;
-		rsDesc.AntialiasedLineEnable = FALSE;
-		HR_T(m_pDevice->CreateRasterizerState2(&rsDesc, m_pDefaultRS.GetAddressOf()));
-		assert(m_pDefaultRS && "RenderPipe::InitD3D : defaultRS not initialized!!");
+	rsDesc.AntialiasedLineEnable = FALSE;
+	HR_T(m_pDevice->CreateRasterizerState2(&rsDesc, m_pDefaultRS.GetAddressOf()));
+	assert(m_pDefaultRS && "RenderPipe::InitD3D : defaultRS not initialized!!");
+
+	// UI 전용 RS (양면 렌더)
+	D3D11_RASTERIZER_DESC2 uiRsDesc = defaultRsDesc;
+	uiRsDesc.CullMode = D3D11_CULL_NONE;
+	HR_T(m_pDevice->CreateRasterizerState2(&uiRsDesc, m_pUIRS.GetAddressOf()));
+
+	// UI 깊이 스테이트 생성 (깊이 테스트/쓰기 비활성화)
+	D3D11_DEPTH_STENCIL_DESC uiDepthDesc = {};
+	uiDepthDesc.DepthEnable = FALSE;
+	uiDepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	uiDepthDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+	uiDepthDesc.StencilEnable = FALSE;
+	HR_T(m_pDevice->CreateDepthStencilState(&uiDepthDesc, m_pUIDepthState.GetAddressOf()));
 	
 		// 샘플러 만들기
 		D3D11_SAMPLER_DESC sampDesc = {};
@@ -387,10 +567,12 @@ namespace MMMEngine {
 		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		bd.CPUAccessFlags = 0;
 
-		bd.ByteWidth = sizeof(Render_CamBuffer);
-		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pCambuffer.GetAddressOf()));
-		bd.ByteWidth = sizeof(Render_TransformBuffer);
-		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pTransbuffer));
+	bd.ByteWidth = sizeof(Render_CamBuffer);
+	HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pCambuffer.GetAddressOf()));
+	bd.ByteWidth = sizeof(Render_TransformBuffer);
+	HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pTransbuffer));
+	bd.ByteWidth = sizeof(Render_UIBuffer);
+	HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pUIBuffer.GetAddressOf()));
 	}
 	void RenderManager::ShutDown()
 	{
@@ -568,6 +750,49 @@ namespace MMMEngine {
 		}
 	}
 
+	bool RenderManager::GetSceneDisplayRect(SceneViewportRect& outRect) const
+	{
+		if (m_clientWidth == 0 || m_clientHeight == 0 || m_sceneWidth == 0 || m_sceneHeight == 0)
+			return false;
+
+		if (!useBackBuffer)
+		{
+			outRect.x = 0.0f;
+			outRect.y = 0.0f;
+			outRect.width = static_cast<float>(m_sceneWidth);
+			outRect.height = static_cast<float>(m_sceneHeight);
+			return true;
+		}
+
+		const float sceneAspect = static_cast<float>(m_sceneWidth) / static_cast<float>(m_sceneHeight);
+		const float swapchainAspect = static_cast<float>(m_clientWidth) / static_cast<float>(m_clientHeight);
+
+		float drawWf = 0.0f;
+		float drawHf = 0.0f;
+
+		if (swapchainAspect > sceneAspect)
+		{
+			drawHf = static_cast<float>(m_clientHeight);
+			drawWf = drawHf * sceneAspect;
+		}
+		else
+		{
+			drawWf = static_cast<float>(m_clientWidth);
+			drawHf = drawWf / sceneAspect;
+		}
+
+		const int drawW = static_cast<int>(std::round(drawWf));
+		const int drawH = static_cast<int>(std::round(drawHf));
+		const int offsetX = (static_cast<int>(m_clientWidth) - drawW) / 2;
+		const int offsetY = (static_cast<int>(m_clientHeight) - drawH) / 2;
+
+		outRect.x = static_cast<float>(offsetX);
+		outRect.y = static_cast<float>(offsetY);
+		outRect.width = static_cast<float>(drawW);
+		outRect.height = static_cast<float>(drawH);
+		return true;
+	}
+
 	void RenderManager::AddCommand(RenderType _type, RenderCommand&& _command)
 	{
 		m_renderCommands[_type].push_back(std::move(_command));
@@ -616,6 +841,10 @@ namespace MMMEngine {
 			m_pDeviceContext->ClearRenderTargetView(m_pSceneRTV.Get(), m_backColor);
 			m_pDeviceContext->ClearDepthStencilView(m_pSceneDSV.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
+			m_pDeviceContext->RSSetViewports(1, &m_sceneViewport);
+			m_pDeviceContext->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView* const*>(m_pSceneRTV.GetAddressOf()), m_pSceneDSV.Get());
+			RenderUI();
+
 			m_pDeviceContext->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView* const*>(m_pRenderTargetView.GetAddressOf()), nullptr);
 			return;
 		}
@@ -647,6 +876,9 @@ namespace MMMEngine {
 
 		// 렌더커맨드 소팅, 실행
 		ExcuteCommands();
+
+		// UI 렌더링
+		RenderUI();
 		
 		// 씬렌더 해제
 		m_pDeviceContext->RSSetViewports(1, &m_swapViewport);
@@ -656,8 +888,8 @@ namespace MMMEngine {
 		if (useBackBuffer) {
 			m_pDeviceContext->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView* const*>(m_pRenderTargetView.GetAddressOf()), nullptr);
 
-			auto& vs = ShaderInfo::Get().GetFullScreenVShader();
-			auto& ps = ShaderInfo::Get().GetFullScreenPShader();
+			auto vs = ShaderInfo::Get().GetFullScreenVShader();
+			auto ps = ShaderInfo::Get().GetFullScreenPShader();
 			m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			m_pDeviceContext->IASetInputLayout(nullptr);
 			m_pDeviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
@@ -927,5 +1159,163 @@ namespace MMMEngine {
 		if (it == m_rendererIdMap.end())
 			return nullptr;
 		return it->second;
+	}
+
+	void RenderManager::RegisterCanvas(Canvas* canvas)
+	{
+		if (!canvas)
+			return;
+
+		auto it = std::find(m_canvases.begin(), m_canvases.end(), canvas);
+		if (it != m_canvases.end())
+			return;
+
+		m_canvases.push_back(canvas);
+	}
+
+	void RenderManager::UnRegisterCanvas(Canvas* canvas)
+	{
+		auto it = std::find(m_canvases.begin(), m_canvases.end(), canvas);
+		if (it == m_canvases.end())
+			return;
+
+		*it = m_canvases.back();
+		m_canvases.pop_back();
+	}
+
+void RenderManager::BeginCanvas(Canvas* canvas)
+{
+		(void)canvas;
+}
+
+void RenderManager::EndCanvas()
+{
+}
+
+	void RenderManager::DrawUIElement(const Vector4& rect, const Vector4& uvRect,
+		const Color& color, const ResPtr<Texture2D>& texture)
+	{
+		if (!m_pUIBuffer || m_sceneWidth == 0 || m_sceneHeight == 0)
+			return;
+
+		Render_UIBuffer data = {};
+		data.rect = rect;
+		data.uvRect = uvRect;
+		data.color = color;
+		data.screenParams = Vector4(
+			static_cast<float>(m_sceneWidth),
+			static_cast<float>(m_sceneHeight),
+			texture ? 1.0f : 0.0f,
+			0.0f);
+		data.viewProj = Matrix::Identity.Transpose();
+
+		m_pDeviceContext->UpdateSubresource1(m_pUIBuffer.Get(), 0, nullptr, &data, 0, 0, D3D11_COPY_DISCARD);
+
+		ID3D11ShaderResourceView* srv = texture ? texture->m_pSRV.Get() : nullptr;
+		m_pDeviceContext->PSSetShaderResources(0, 1, &srv);
+		m_pDeviceContext->Draw(6, 0);
+	}
+
+	void RenderManager::DrawUIText(const Vector4& rect,
+		const std::wstring& text,
+		const ResPtr<Font>& font,
+		const Color& color,
+		TextAlignment alignment)
+	{
+		if (text.empty() || !font)
+			return;
+		if (!m_pDeviceContext)
+			return;
+
+		EnsureUISpriteBatch();
+		auto* spriteFont = GetSpriteFont(font);
+		if (!m_uiSpriteBatch || !spriteFont)
+			return;
+
+		m_uiSpriteBatch->SetRotation(DXGI_MODE_ROTATION_IDENTITY);
+
+		const DirectX::XMMATRIX transform = DirectX::XMMatrixIdentity();
+
+		ID3D11RasterizerState* uiRs = m_pUIRS ? m_pUIRS.Get() : m_pDefaultRS.Get();
+		m_uiSpriteBatch->Begin(DirectX::SpriteSortMode_Deferred,
+			m_pUIBlendState.Get(),
+			m_pDafaultSampler.Get(),
+			m_pUIDepthState.Get(),
+			uiRs,
+			nullptr,
+			transform);
+
+		auto endSpriteBatch = [this]()
+		{
+			m_uiSpriteBatch->End();
+
+			// Restore UI pipeline for subsequent UI elements.
+			EnsureUIShaders();
+			if (!m_pUIVShader || !m_pUIPShader || !m_pUIBuffer)
+				return;
+
+			auto context = m_pDeviceContext.Get();
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->IASetInputLayout(nullptr);
+			context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+			context->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+			context->VSSetShader(m_pUIVShader->m_pVShader.Get(), nullptr, 0);
+			context->PSSetShader(m_pUIPShader->m_pPShader.Get(), nullptr, 0);
+			context->VSSetConstantBuffers(0, 1, m_pUIBuffer.GetAddressOf());
+			context->PSSetConstantBuffers(0, 1, m_pUIBuffer.GetAddressOf());
+			context->PSSetSamplers(0, 1, m_pDafaultSampler.GetAddressOf());
+
+			float blendFactor[4] = { 0,0,0,0 };
+			context->OMSetBlendState(m_pUIBlendState.Get(), blendFactor, 0xffffffff);
+			context->OMSetDepthStencilState(m_pUIDepthState.Get(), 0);
+		context->RSSetState(m_pUIRS ? m_pUIRS.Get() : m_pDefaultRS.Get());
+		};
+
+		std::wstring renderText = text;
+		DirectX::XMVECTOR sizeVec = DirectX::XMVectorZero();
+		try
+		{
+			sizeVec = spriteFont->MeasureString(renderText.c_str(), false);
+		}
+		catch (const std::exception&)
+		{
+			renderText = FilterTextForSpriteFont(*spriteFont, renderText);
+			if (renderText.empty())
+			{
+				endSpriteBatch();
+				return;
+			}
+
+			try
+			{
+				sizeVec = spriteFont->MeasureString(renderText.c_str(), false);
+			}
+			catch (const std::exception&)
+			{
+				endSpriteBatch();
+				return;
+			}
+		}
+
+		const float textWidth = DirectX::XMVectorGetX(sizeVec);
+
+		float x = rect.x;
+		if (alignment == TextAlignment::Center)
+			x += (rect.z - textWidth) * 0.5f;
+		else if (alignment == TextAlignment::Right)
+			x += (rect.z - textWidth);
+
+		const float y = rect.y;
+		try
+		{
+			spriteFont->DrawString(m_uiSpriteBatch.get(), renderText.c_str(), DirectX::XMFLOAT2(x, y), color);
+		}
+		catch (const std::exception&)
+		{
+			endSpriteBatch();
+			return;
+		}
+
+		endSpriteBatch();
 	}
 }

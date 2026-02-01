@@ -91,6 +91,39 @@
     <ClCompile Include="PhysicsSettings.cpp">
       <Filter>소스 파일\Core\Physcis API</Filter>
     </ClCompile>
+    <ClCompile Include="Canvas.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphic.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UIEventManager.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="RectTransform.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Font.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Gage.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="HandleGage.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Image.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Text.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="SerializableEvent.cpp">
+      <Filter>소스 파일\Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -124,7 +157,6 @@
     <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="ScriptBehaviour.h" />
     <ClInclude Include="ScriptLoader.h" />
-    <ClInclude Include="SerializableEvent.h" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="StringHelper.h" />
     <ClInclude Include="TimeManager.h" />
@@ -310,6 +342,39 @@
     </ClInclude>
     <ClInclude Include="RenderShared.h">
       <Filter>헤더 파일\Core\Render API</Filter>
+    </ClInclude>
+    <ClInclude Include="Canvas.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphic.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UIEventManager.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="RectTransform.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Button.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Text.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="HandleGage.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Gage.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="SerializableEvent.h">
+      <Filter>헤더 파일\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -586,5 +651,19 @@
     <Filter Include="소스 파일\Core\Physcis API">
       <UniqueIdentifier>{e66850de-f491-4f75-9843-c4ad5567a533}</UniqueIdentifier>
     </Filter>
+    <Filter Include="헤더 파일\Core\Render API\UI">
+      <UniqueIdentifier>{ff296328-4b9f-4378-89fc-7be63fac9a1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Core\Render API\UI\Component">
+      <UniqueIdentifier>{62c29bfc-b5ec-466b-88ba-70f729c2884a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Core\Render API\UI">
+      <UniqueIdentifier>{5533b0f4-5c95-4749-b67a-23eca08b16a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Core\Render API\UI\Component">
+      <UniqueIdentifier>{fb82b831-5a8a-4323-a003-6e612f46404d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
+
+
