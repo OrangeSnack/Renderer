@@ -1,4 +1,4 @@
-#include "SceneManager.h"
+﻿#include "SceneManager.h"
 #include "SceneSerializer.h"
 #include "StringHelper.h"
 #include "ObjectManager.h"

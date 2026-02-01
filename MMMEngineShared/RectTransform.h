@@ -42,5 +42,12 @@ namespace MMMEngine
 
 		// Returns rect in canvas space (x, y, width, height) using pixel coordinates.
 		DirectX::SimpleMath::Vector4 GetRectInCanvas(const DirectX::SimpleMath::Vector2& canvasSize) const;
+
+		// Anchor helpers (parent rect in canvas space)
+		void GetAnchorData(const DirectX::SimpleMath::Vector2& canvasSize,
+			DirectX::SimpleMath::Vector2& anchorCenter,
+			DirectX::SimpleMath::Vector2& anchorSpan) const;
+		DirectX::SimpleMath::Vector4 GetAnchorRectInCanvas(
+			const DirectX::SimpleMath::Vector2& canvasSize) const;
 	};
 }

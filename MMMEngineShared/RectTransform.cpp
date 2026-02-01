@@ -126,3 +126,48 @@ Vector4 MMMEngine::RectTransform::GetRectInCanvas(const Vector2& canvasSize) con
 
 	return Vector4(rectMin.x, rectMin.y, size.x, size.y);
 }
+
+void MMMEngine::RectTransform::GetAnchorData(const Vector2& canvasSize,
+	Vector2& anchorCenter,
+	Vector2& anchorSpan) const
+{
+	Vector2 parentMin = Vector2::Zero;
+	Vector2 parentSize = canvasSize;
+
+	if (auto parent = GetParent())
+	{
+		if (auto parentRect = parent.Cast<RectTransform>())
+		{
+			Vector4 rect = parentRect->GetRectInCanvas(canvasSize);
+			parentMin = { rect.x, rect.y };
+			parentSize = { rect.z, rect.w };
+		}
+	}
+
+	const Vector2 anchorMin = GetAnchorMin();
+	const Vector2 anchorMax = GetAnchorMax();
+	const Vector2 anchorMinPos = {
+		parentMin.x + parentSize.x * anchorMin.x,
+		parentMin.y + parentSize.y * anchorMin.y
+	};
+	const Vector2 anchorMaxPos = {
+		parentMin.x + parentSize.x * anchorMax.x,
+		parentMin.y + parentSize.y * anchorMax.y
+	};
+
+	anchorCenter = (anchorMinPos + anchorMaxPos) * 0.5f;
+	anchorSpan = { anchorMaxPos.x - anchorMinPos.x, anchorMaxPos.y - anchorMinPos.y };
+}
+
+Vector4 MMMEngine::RectTransform::GetAnchorRectInCanvas(const Vector2& canvasSize) const
+{
+	Vector2 anchorCenter;
+	Vector2 anchorSpan;
+	GetAnchorData(canvasSize, anchorCenter, anchorSpan);
+
+	const Vector2 rectMin = {
+		anchorCenter.x - anchorSpan.x * 0.5f,
+		anchorCenter.y - anchorSpan.y * 0.5f
+	};
+	return Vector4(rectMin.x, rectMin.y, anchorSpan.x, anchorSpan.y);
+}
