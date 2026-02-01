@@ -270,6 +270,50 @@ physx::PxTransform MMMEngine::ColliderComponent::GetWorldPosPx() const
 }
 
 
+void MMMEngine::ColliderComponent::SetChildValue(ObjPtr<Transform> T)
+{
+    if(T != nullptr)  Child_value = true;
+}
+
+bool MMMEngine::ColliderComponent::GetChildValue()
+{
+    return Child_value;
+}
+
+void MMMEngine::ColliderComponent::NoticeCompoundCollider(ObjPtr<Transform> preParent)
+{
+    ObjPtr<GameObject> NextParent_obj{};
+    if (preParent.IsValid())
+    {
+        NextParent_obj = preParent->GetGameObject();
+    }
+    ObjPtr<GameObject> CurParent_obj{};
+    auto CurParent = GetTransform()->GetParent();
+    if (CurParent.IsValid())
+    {
+        CurParent_obj = CurParent->GetGameObject();
+    }
+    auto Self_obj = GetGameObject();
+
+    MMMEngine::PhysxManager::Get().NotifyCompoundColliderAdded(NextParent_obj, CurParent_obj, Self_obj);
+}
+
+void MMMEngine::ColliderComponent::SetLocalShape()
+{
+    if (!m_Shape) return;
+    auto* actor = m_Shape->getActor();
+    if (!actor) return;
+
+    Vector3 goWorldPos = GetTransform()->GetWorldPosition();
+    Quaternion goWorldRot = GetTransform()->GetWorldRotation();
+    physx::PxTransform goWorldPx = ToPxTrans(goWorldPos, goWorldRot);
+
+    physx::PxTransform actorWorld = actor->getGlobalPose();
+    physx::PxTransform rigidOffset = actorWorld.getInverse() * goWorldPx;
+
+    SetRigidOffsetPose(rigidOffset);
+}
+
 void MMMEngine::ColliderComponent::SetShape(physx::PxShape* shape, bool owned)
 {
     if (m_Shape)
@@ -313,12 +357,18 @@ void MMMEngine::ColliderComponent::Initialize()
 		BuildShape(&physics, mat);
 	}
 	MMMEngine::PhysxManager::Get().NotifyColliderAdded(this);
+    
+    GetGameObject()->GetTransform()->onUpdateTransformTree.AddListener<ColliderComponent, &ColliderComponent::NoticeCompoundCollider>(this);
 }
 
 void MMMEngine::ColliderComponent::UnInitialize()
 {
-    PhysxManager::Get().NotifyColliderRemoved(this);
+    if(GetGameObject().IsValid())
+    {
+        GetGameObject()->GetTransform()->onUpdateTransformTree.RemoveListener<ColliderComponent, &ColliderComponent::NoticeCompoundCollider>(this);
+    }
 
+    PhysxManager::Get().NotifyColliderRemoved(this);
     if (m_Shape)
     {
         if (auto* actor = m_Shape->getActor())
@@ -337,5 +387,24 @@ void MMMEngine::ColliderComponent::UnInitialize()
     }
     m_Material = nullptr;
     m_MaterialOwned = false;
+}
+
+void MMMEngine::ColliderComponent::DetachShapeFromActor()
+{
+    if (m_Shape)
+    {
+        if (auto* actor = m_Shape->getActor())
+            actor->detachShape(*m_Shape);
+    }
+}
+
+void MMMEngine::ColliderComponent::AttachShapeFromActor(physx::PxRigidActor* Actor)
+{
+
+    if (!Actor || !m_Shape) return;
+    
+    Actor->attachShape(*m_Shape);
+
+    return;
 }
 
