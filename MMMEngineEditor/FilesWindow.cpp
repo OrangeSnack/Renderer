@@ -632,7 +632,8 @@ void MMMEngine::Editor::FilesWindow::CreateNewScript(const std::string& parentDi
     if (headerFile.is_open())
     {
         headerFile <<
-            R"(#include "rttr/type"
+			R"(#pragma once
+#include "rttr/type"
 #include "ScriptBehaviour.h"
 #include "UserScriptsCommon.h"
 

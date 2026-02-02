@@ -22,6 +22,7 @@
     <ClCompile Include="MUID.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
+    <ClCompile Include="ObjectSerializer.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="PhysicsEventCallback.cpp" />
     <ClCompile Include="PhysicsFilter.cpp" />
@@ -211,6 +212,7 @@
     <ClInclude Include="MMMTime.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectManager.h" />
+    <ClInclude Include="ObjectSerializer.h" />
     <ClInclude Include="ResourceSerializer.h" />
     <ClInclude Include="RigidBodyComponent.h" />
     <ClInclude Include="SafeRelease.h" />
@@ -448,6 +450,9 @@
     <ClInclude Include="ObjectManager.h">
       <Filter>헤더 파일\Core\Object API</Filter>
     </ClInclude>
+    <ClInclude Include="ObjectSerializer.h">
+      <Filter>헤더 파일\Core\Object API</Filter>
+    </ClInclude>
     <ClInclude Include="Delegates.hpp">
       <Filter>헤더 파일\Utility</Filter>
     </ClInclude>
@@ -604,6 +609,9 @@
       <Filter>소스 파일\Core</Filter>
     </ClCompile>
     <ClCompile Include="ObjectManager.cpp">
+      <Filter>소스 파일\Core\Object API</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectSerializer.cpp">
       <Filter>소스 파일\Core\Object API</Filter>
     </ClCompile>
     <ClCompile Include="Transform.cpp">
