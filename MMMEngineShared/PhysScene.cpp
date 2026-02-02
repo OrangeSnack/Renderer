@@ -31,6 +31,8 @@ bool MMMEngine::PhysScene::Create(const PhysSceneDesc& desc)
 
 bool MMMEngine::PhysScene::CreateScene()
 {
+
+
 	auto& physics = PhysicX::Get().GetPhysics();
 
 	physx::PxSceneDesc pxDesc(physics.getTolerancesScale());
@@ -314,12 +316,11 @@ void MMMEngine::PhysScene::AttachCollider(MMMEngine::RigidBodyComponent* rb, MMM
 		assert(false && "Shape가 없는 상태 로직 확인이 필요");
 	}
 
+	//if (col->GetGameObject()->GetTransform()->GetParent() != nullptr)
+	//{
+	//	col->SetChildValue(true);
+	//}
 
-
-	// 자식 콜라이더 로컬포즈 반영이 필요하면 여기서 setLocalPose 해줘야 함
-	// 예: shape->setLocalPose( ToPxTrans(colLocalOffsetPos, colLocalOffsetRot) );
-	// (col이 rb 기준 로컬오프셋을 계산할 수 있는 함수가 필요)
-	// Todo: 로컬포즈 반영이 필요하다면 여기서 코드 작성
 
 
 	// 필터 적용
@@ -369,6 +370,7 @@ void MMMEngine::PhysScene::DetachCollider(MMMEngine::RigidBodyComponent* rb, MMM
 		rb = ownerRb;;
 
 	rb->DetachCollider(col);
+	//col->SetChildValue(false);
 
 	auto itList = m_collidersByRigid.find(rb);
 	if (itList != m_collidersByRigid.end())
@@ -482,6 +484,14 @@ void MMMEngine::PhysScene::RebuildCollider(MMMEngine::ColliderComponent* col, co
 
 void MMMEngine::PhysScene::PushRigidsToPhysics()
 {
+	for (auto& [col, rb] : m_ownerByCollider)
+	{
+		if (col == nullptr) continue;
+		if (!col->GetGameObject().IsValid()) continue;
+		/*if (!col->GetChildValue()) continue;*/
+		col->SetLocalShape();
+	}
+
 	for (auto* rb : m_rigids)
 	{
 		if (!rb) continue;
@@ -524,6 +534,11 @@ void MMMEngine::PhysScene::ChangeRigidType(MMMEngine::RigidBodyComponent* rb, co
 		if (auto* oldActor = rb->GetPxActor())
 			m_scene->removeActor(*oldActor);
 	}
+	
+	for (auto* it : cols)
+	{
+		it->DetachShapeFromActor();
+	}
 
 	//기존 actor 파괴
 	rb->DestroyActor();
@@ -549,8 +564,7 @@ void MMMEngine::PhysScene::ChangeRigidType(MMMEngine::RigidBodyComponent* rb, co
 		uint32_t layer = col->GetEffectiveLayer();
 		col->SetFilterData(matrix.MakeSimFilter(layer), matrix.MakeQueryFilter(layer));
 
-		// actor에 shape만 붙이기 (rb->AttachCollider(관리형) 대신)
-		rb->AttachShapeOnly(shape);
+		rb->AttachCollider(col);
 	}
 
 	//씬에 다시 등록
@@ -598,5 +612,73 @@ void MMMEngine::PhysScene::ResetFilteringFor(MMMEngine::ColliderComponent* col)
 
 	// PhysX에 "필터링 다시 계산" 요청
 	m_scene->resetFiltering(*actor);
+}
+
+void MMMEngine::PhysScene::TransferCollider(MMMEngine::RigidBodyComponent* oldRb, MMMEngine::RigidBodyComponent* newRb, MMMEngine::ColliderComponent* col, const CollisionMatrix& matrix)
+{
+	if (!col || !newRb) return;
+	if (!newRb->GetPxActor())
+	{
+		std::cout << "Conpound 등록중 Actor 없어서 오류" << std::endl;
+		return; // newRb는 이미 Register되어 있어야 함
+	}
+
+	// old에서 detach
+	if (oldRb)
+	{
+		DetachCollider(oldRb, col); // ownerByCollider / collidersByRigid 정리 포함
+	}
+
+	// newRb 기준 local pose 계산
+	auto go = col->GetGameObject();
+	if (go.IsValid())
+	{
+		Vector3 goWorldPos = go->GetTransform()->GetWorldPosition();
+		Quaternion goWorldRot = go->GetTransform()->GetWorldRotation();
+
+		physx::PxTransform goWorldPx = ToPxTrans(goWorldPos, goWorldRot);
+		physx::PxTransform actorWorld = newRb->GetPxActor()->getGlobalPose();
+		physx::PxTransform rigidOffset = actorWorld.getInverse() * goWorldPx;
+
+		col->SetRigidOffsetPose(rigidOffset);
+	}
+
+	// 새 rb에 attach + 필터 재적용
+	AttachCollider(newRb, col, matrix);
+}
+
+void MMMEngine::PhysScene::ForgetCollider(MMMEngine::ColliderComponent* col)
+{
+	if (!col) return;
+
+	// ownerByCollider 기준으로 정리
+	auto itOwner = m_ownerByCollider.find(col);
+	if (itOwner != m_ownerByCollider.end())
+	{
+		auto* rb = itOwner->second;
+		m_ownerByCollider.erase(itOwner);
+
+		if (rb)
+		{
+			auto itList = m_collidersByRigid.find(rb);
+			if (itList != m_collidersByRigid.end())
+			{
+				EraseOne(itList->second, col);
+				if (itList->second.empty())
+					m_collidersByRigid.erase(itList);
+			}
+		}
+		return;
+	}
+
+	// 안전장치: 혹시 ownerByCollider가 없는 경우 전체 리스트에서 제거
+	for (auto it = m_collidersByRigid.begin(); it != m_collidersByRigid.end(); )
+	{
+		EraseOne(it->second, col);
+		if (it->second.empty())
+			it = m_collidersByRigid.erase(it);
+		else
+			++it;
+	}
 }
 

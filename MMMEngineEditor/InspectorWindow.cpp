@@ -1,8 +1,13 @@
 ﻿#include "InspectorWindow.h"
 #include "SceneManager.h"
+#include "ObjectManager.h"
 #include "Transform.h"
+#include "RectTransform.h"
 #include "Resource.h"
 #include "RigidBodyComponent.h"
+#include "Behaviour.h"
+#include "SerializableEvent.h"
+#include "Canvas.h"
 #include <regex>
 
 #include "EditorRegistry.h"
@@ -14,29 +19,17 @@ using namespace DirectX;
 #include "ProjectManager.h"
 #include "ResourceManager.h"
 #include <rttr/variant_sequential_view.h>
+#include <algorithm>
 #include <optional>
-#include <iterator> 
-#include <Material.h>
+#include <iterator>
+#include <unordered_set>
+#include <cctype>
+#include <cstdint>
+#include <limits>
 
 using namespace MMMEngine;
 using namespace MMMEngine::Editor;
 using namespace MMMEngine::Utility;
-
-static rttr::variant MakeDefaultElement(rttr::type elemType)
-{
-    // 기본 생성이 가능한 타입이어야 함 (POD/기본형/기본생성자 있는 struct 등)
-    if (elemType.is_arithmetic())
-    {
-        if (elemType == rttr::type::get<int>())   return 0;
-        if (elemType == rttr::type::get<float>()) return 0.0f;
-        if (elemType == rttr::type::get<bool>())  return false;
-    }
-    if (elemType == rttr::type::get<DirectX::SimpleMath::Vector3>())
-        return DirectX::SimpleMath::Vector3(0, 0, 0);
-
-    // 그 외는 RTTR create()
-    return elemType.create(); // 실패하면 invalid 가능
-}
 
 static void ApplyRigidBodyFromTransformIfPlaying(const ObjPtr<GameObject>& go)
 {
@@ -60,49 +53,441 @@ static void ApplyRigidBodyFromTransformIfPlaying(const ObjPtr<GameObject>& go)
         rbPtr->Editor_changeTrans(tr->GetWorldPosition(), tr->GetWorldRotation());
 }
 
-static bool ConvertToType(rttr::variant& v, const rttr::type& target)
+namespace
 {
-	// 오버로드 강제 선택: bool variant::convert(const rttr::type&)
-	auto fn = static_cast<bool (rttr::variant::*)(const rttr::type&)>(&rttr::variant::convert);
-	return (v.*fn)(target);
+    static std::string TrimCopy(const std::string& s)
+    {
+        size_t start = 0;
+        while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start])))
+            ++start;
+        size_t end = s.size();
+        while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1])))
+            --end;
+        return s.substr(start, end - start);
+    }
+
+    static std::string ToLowerCopy(std::string s)
+    {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return s;
+    }
+
+    static std::vector<std::string> Split(const std::string& s, char delim)
+    {
+        std::vector<std::string> out;
+        std::string current;
+        for (char c : s)
+        {
+            if (c == delim)
+            {
+                out.push_back(current);
+                current.clear();
+            }
+            else
+            {
+                current.push_back(c);
+            }
+        }
+        out.push_back(current);
+        return out;
+    }
+
+    static bool TryParseDouble(const std::string& s, double& out)
+    {
+        std::string trimmed = TrimCopy(s);
+        if (trimmed.empty())
+            return false;
+        try
+        {
+            size_t idx = 0;
+            out = std::stod(trimmed, &idx);
+            return idx == trimmed.size();
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
+    struct NumericRange
+    {
+        bool has = false;
+        double min = 0.0;
+        double max = 0.0;
+    };
+
+    static NumericRange GetNumericRange(const rttr::property* prop, rttr::instance inst)
+    {
+        NumericRange range;
+        if (!prop || !inst.is_valid())
+            return range;
+
+        rttr::variant md = prop->get_metadata("RANGE");
+        if (!md.is_valid())
+            return range;
+
+        if (md.is_type<std::string>())
+        {
+            const std::string raw = md.get_value<std::string>();
+            std::string left;
+            std::string right;
+            size_t sep = raw.find(',');
+            if (sep != std::string::npos)
+            {
+                left = raw.substr(0, sep);
+                right = raw.substr(sep + 1);
+            }
+            else
+            {
+                sep = raw.find("..");
+                if (sep != std::string::npos)
+                {
+                    left = raw.substr(0, sep);
+                    right = raw.substr(sep + 2);
+                }
+                else
+                {
+                    return range;
+                }
+            }
+
+            if (TryParseDouble(left, range.min) && TryParseDouble(right, range.max))
+            {
+                range.has = true;
+                if (range.min > range.max)
+                    std::swap(range.min, range.max);
+            }
+            return range;
+        }
+
+        if (md.can_convert<Vector2>())
+        {
+            Vector2 v = md.get_value<Vector2>();
+            range.min = static_cast<double>(v.x);
+            range.max = static_cast<double>(v.y);
+            range.has = true;
+            if (range.min > range.max)
+                std::swap(range.min, range.max);
+            return range;
+        }
+
+        return range;
+    }
+
+    static std::string NormalizeBoolKey(const std::string& key)
+    {
+        std::string k = ToLowerCopy(TrimCopy(key));
+        if (k == "true" || k == "1" || k == "yes" || k == "on")
+            return "true";
+        if (k == "false" || k == "0" || k == "no" || k == "off")
+            return "false";
+        if (k == "*")
+            return "*";
+        return k;
+    }
+
+    struct InspectorChainMapping
+    {
+        std::unordered_map<std::string, std::vector<std::string>> valueToTargets;
+        std::unordered_set<std::string> allTargets;
+    };
+
+    static InspectorChainMapping ParseInspectorChainMapping(const std::string& raw, const std::string& defaultKey, bool normalizeBoolKeys)
+    {
+        InspectorChainMapping mapping;
+        for (const auto& entryRaw : Split(raw, ';'))
+        {
+            std::string entry = TrimCopy(entryRaw);
+            if (entry.empty())
+                continue;
+
+            std::string key;
+            std::string rhs;
+            size_t eqPos = entry.find('=');
+            if (eqPos == std::string::npos)
+            {
+                key = defaultKey;
+                rhs = entry;
+            }
+            else
+            {
+                key = TrimCopy(entry.substr(0, eqPos));
+                rhs = TrimCopy(entry.substr(eqPos + 1));
+            }
+
+            if (normalizeBoolKeys)
+                key = NormalizeBoolKey(key);
+
+            if (key.empty() || rhs.empty())
+                continue;
+
+            auto& targets = mapping.valueToTargets[key];
+            for (const auto& propRaw : Split(rhs, ','))
+            {
+                std::string propName = TrimCopy(propRaw);
+                if (propName.empty())
+                    continue;
+                targets.push_back(propName);
+                mapping.allTargets.insert(propName);
+            }
+        }
+        return mapping;
+    }
+
+    static std::unordered_set<std::string> BuildAllowedTargets(const InspectorChainMapping& mapping, const std::vector<std::string>& keys)
+    {
+        std::unordered_set<std::string> allowed;
+        auto addTargets = [&](const std::string& key)
+        {
+            auto it = mapping.valueToTargets.find(key);
+            if (it == mapping.valueToTargets.end())
+                return;
+            for (const auto& name : it->second)
+                allowed.insert(name);
+        };
+
+        addTargets("*");
+        for (const auto& key : keys)
+            addTargets(key);
+        return allowed;
+    }
+
+    static bool TryGetVariantInt64(const rttr::variant& var, int64_t& out)
+    {
+        if (!var.is_valid())
+            return false;
+        if (var.can_convert<int>())
+        {
+            out = static_cast<int64_t>(var.to_int());
+            return true;
+        }
+        if (var.can_convert<int64_t>())
+        {
+            out = var.get_value<int64_t>();
+            return true;
+        }
+        return false;
+    }
+
+    static bool IsNumericString(const std::string& s)
+    {
+        if (s.empty())
+            return false;
+        size_t i = 0;
+        if (s[0] == '-' || s[0] == '+')
+            i = 1;
+        if (i >= s.size())
+            return false;
+        for (; i < s.size(); ++i)
+        {
+            if (!std::isdigit(static_cast<unsigned char>(s[i])))
+                return false;
+        }
+        return true;
+    }
+
+    static std::unordered_map<std::string, bool> BuildInspectorChainVisibility(rttr::instance inst, const rttr::type& t)
+    {
+        std::unordered_map<std::string, bool> visibility;
+
+        for (auto& prop : t.get_properties())
+        {
+            rttr::variant md = prop.get_metadata("INSPECTOR_CHAIN");
+            if (!md.is_valid() || !md.is_type<std::string>())
+                continue;
+
+            const std::string raw = md.get_value<std::string>();
+            if (raw.empty())
+                continue;
+
+            rttr::variant controllerVar = prop.get_value(inst);
+            if (!controllerVar.is_valid())
+                continue;
+
+            const std::string controllerName = prop.get_name().to_string();
+            rttr::type controllerType = prop.get_type();
+            std::unordered_set<std::string> allowed;
+            InspectorChainMapping mapping;
+
+            if (controllerType == rttr::type::get<bool>())
+            {
+                mapping = ParseInspectorChainMapping(raw, "true", true);
+                const std::string key = controllerVar.to_bool() ? "true" : "false";
+                allowed = BuildAllowedTargets(mapping, { key });
+            }
+            else if (controllerType.is_enumeration())
+            {
+                mapping = ParseInspectorChainMapping(raw, "*", false);
+                rttr::enumeration enumType = controllerType.get_enumeration();
+                std::string currentName = enumType.value_to_name(controllerVar).to_string();
+                std::string currentLower = ToLowerCopy(currentName);
+
+                std::vector<std::string> matchedKeys;
+                for (const auto& entry : mapping.valueToTargets)
+                {
+                    const std::string& key = entry.first;
+                    if (key == "*")
+                        continue;
+                    if (key == currentName || ToLowerCopy(key) == currentLower)
+                    {
+                        matchedKeys.push_back(key);
+                        continue;
+                    }
+                    if (IsNumericString(key))
+                    {
+                        int64_t currentValue = 0;
+                        if (TryGetVariantInt64(controllerVar, currentValue))
+                        {
+                            if (std::stoll(key) == currentValue)
+                                matchedKeys.push_back(key);
+                        }
+                    }
+                }
+                allowed = BuildAllowedTargets(mapping, matchedKeys);
+            }
+            else
+            {
+                continue;
+            }
+
+            for (const auto& target : mapping.allTargets)
+            {
+                if (target == controllerName)
+                    continue;
+
+                bool allow = allowed.find(target) != allowed.end();
+                auto it = visibility.find(target);
+                if (it == visibility.end())
+                    visibility[target] = allow;
+                else
+                    it->second = it->second && allow;
+            }
+        }
+
+        return visibility;
+    }
 }
 
-static bool DrawElementPOD(const char* label, rttr::variant& elem, rttr::type elemType, bool readOnly)
+/// 단순 타입(Vector2/3/4, float, int, bool, Color, enum) 그리기 및 편집. var를 갱신하고, 처리한 타입이면 true.
+/// prop/inst가 주어지면 숫자 타입에 RANGE 메타데이터 적용. (sequential 요소용으로는 nullptr/빈 instance 전달)
+static bool DrawSimplePropertyValue(const char* label, rttr::variant& var, rttr::type propType, bool readOnly,
+    bool* outChanged, const rttr::property* prop = nullptr, rttr::instance inst = rttr::instance())
 {
     bool changed = false;
+    if (outChanged) *outChanged = false;
 
-    if (elemType == rttr::type::get<int>())
+    if (propType == rttr::type::get<int>())
     {
-        int v = elem.to_int();
+        int v = var.to_int();
+        NumericRange range = GetNumericRange(prop, inst);
+        int minVal = static_cast<int>(range.min);
+        int maxVal = static_cast<int>(range.max);
         if (readOnly) ImGui::BeginDisabled(true);
-        changed = ImGui::DragInt(label, &v);
+        changed = ImGui::DragInt(label, &v, 1.0f, range.has ? minVal : 0, range.has ? maxVal : 0);
         if (readOnly) ImGui::EndDisabled();
-        if (changed && !readOnly) elem = v;
+        if (changed && !readOnly) var = v;
     }
-    else if (elemType == rttr::type::get<float>())
+    else if (propType == rttr::type::get<uint32_t>())
     {
-        float v = elem.to_double(); // float로도 안전
+        uint32_t v = var.to_uint32();
+        NumericRange range = GetNumericRange(prop, inst);
+        uint32_t minVal = 0;
+        uint32_t maxVal = std::numeric_limits<uint32_t>::max();
+        if (range.has)
+        {
+            double clampedMin = std::clamp(range.min, 0.0, static_cast<double>(std::numeric_limits<uint32_t>::max()));
+            double clampedMax = std::clamp(range.max, 0.0, static_cast<double>(std::numeric_limits<uint32_t>::max()));
+            minVal = static_cast<uint32_t>(clampedMin);
+            maxVal = static_cast<uint32_t>(clampedMax);
+            if (minVal > maxVal)
+                std::swap(minVal, maxVal);
+        }
+        const void* pMin = range.has ? static_cast<const void*>(&minVal) : nullptr;
+        const void* pMax = range.has ? static_cast<const void*>(&maxVal) : nullptr;
         if (readOnly) ImGui::BeginDisabled(true);
-        changed = ImGui::DragFloat(label, &v, 0.01f);
+        changed = ImGui::DragScalar(label, ImGuiDataType_U32, &v, 1.0f, pMin, pMax, "%u");
         if (readOnly) ImGui::EndDisabled();
-        if (changed && !readOnly) elem = v;
+        if (changed && !readOnly) var = v;
     }
-    else if (elemType == rttr::type::get<bool>())
+    else if (propType == rttr::type::get<float>())
     {
-        bool v = elem.to_bool();
+        float v = static_cast<float>(var.to_double());
+        NumericRange range = GetNumericRange(prop, inst);
+        float minVal = static_cast<float>(range.min);
+        float maxVal = static_cast<float>(range.max);
+        if (readOnly) ImGui::BeginDisabled(true);
+        changed = ImGui::DragFloat(label, &v, 0.01f, range.has ? minVal : 0.0f, range.has ? maxVal : 0.0f);
+        if (readOnly) ImGui::EndDisabled();
+        if (changed && !readOnly) var = v;
+    }
+    else if (propType == rttr::type::get<bool>())
+    {
+        bool v = var.to_bool();
         if (readOnly) ImGui::BeginDisabled(true);
         changed = ImGui::Checkbox(label, &v);
         if (readOnly) ImGui::EndDisabled();
-        if (changed && !readOnly) elem = v;
+        if (changed && !readOnly) var = v;
     }
-    else if (elemType == rttr::type::get<DirectX::SimpleMath::Vector3>())
+    else if (propType == rttr::type::get<Vector2>())
     {
-        auto v = elem.get_value<DirectX::SimpleMath::Vector3>();
+        auto v = var.get_value<Vector2>();
+        float d[2] = { v.x, v.y };
+        if (readOnly) ImGui::BeginDisabled(true);
+        changed = ImGui::DragFloat2(label, d, 0.1f);
+        if (readOnly) ImGui::EndDisabled();
+        if (changed && !readOnly) var = Vector2(d[0], d[1]);
+    }
+    else if (propType == rttr::type::get<Vector3>())
+    {
+        auto v = var.get_value<Vector3>();
         float d[3] = { v.x, v.y, v.z };
         if (readOnly) ImGui::BeginDisabled(true);
         changed = ImGui::DragFloat3(label, d, 0.1f);
         if (readOnly) ImGui::EndDisabled();
-        if (changed && !readOnly) elem = DirectX::SimpleMath::Vector3(d[0], d[1], d[2]);
+        if (changed && !readOnly) var = Vector3(d[0], d[1], d[2]);
+    }
+    else if (propType == rttr::type::get<Vector4>())
+    {
+        auto v = var.get_value<Vector4>();
+        float d[4] = { v.x, v.y, v.z, v.w };
+        if (readOnly) ImGui::BeginDisabled(true);
+        changed = ImGui::DragFloat4(label, d, 0.1f);
+        if (readOnly) ImGui::EndDisabled();
+        if (changed && !readOnly) var = Vector4(d[0], d[1], d[2], d[3]);
+    }
+    else if (propType == rttr::type::get<Color>())
+    {
+        Color c = var.get_value<Color>();
+        float rgba[4] = { c.x, c.y, c.z, c.w };
+        if (readOnly) ImGui::BeginDisabled(true);
+        changed = ImGui::ColorEdit4(label, rgba, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar);
+        if (readOnly) ImGui::EndDisabled();
+        if (changed && !readOnly) var = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+    }
+    else if (propType.is_enumeration())
+    {
+        rttr::enumeration enumType = propType.get_enumeration();
+        std::string currentName = enumType.value_to_name(var).to_string();
+        if (readOnly) ImGui::BeginDisabled(true);
+        if (ImGui::BeginCombo(label, currentName.c_str()))
+        {
+            for (const auto& enumName : enumType.get_names())
+            {
+                std::string enumNameStr = enumName.to_string();
+                bool isSelected = (enumNameStr == currentName);
+                if (ImGui::Selectable(enumNameStr.c_str(), isSelected))
+                {
+                    if (!readOnly)
+                    {
+                        rttr::variant newVal = enumType.name_to_value(enumName);
+                        if (newVal.is_valid()) { var = newVal; changed = true; }
+                    }
+                }
+                if (isSelected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        if (readOnly) ImGui::EndDisabled();
     }
 	//else if (elemType.get_name().to_string().find("shared_ptr") != std::string::npos)
 	//{
@@ -206,10 +591,305 @@ static bool DrawElementPOD(const char* label, rttr::variant& elem, rttr::type el
 	//}
     else
     {
-        ImGui::TextDisabled("%s (unsupported: %s)", label, elemType.get_name().to_string().c_str());
+        return false; // 미지원 타입
     }
 
-    return changed;
+    if (outChanged) *outChanged = changed;
+    return true;
+}
+
+static ObjPtr<Object> ResolveObjectByMUID(const std::string& muidStr)
+{
+    if (muidStr.empty())
+        return nullptr;
+
+    if (auto obj = ObjectManager::Get().GetObjectByMUID(muidStr); obj.IsValid())
+        return obj;
+
+    auto parsed = Utility::MUID::Parse(muidStr);
+    if (!parsed.has_value() || parsed->IsEmpty())
+        return nullptr;
+
+    const Utility::MUID& targetMuid = parsed.value();
+
+    auto scanGameObjects = [&](const std::vector<ObjPtr<GameObject>>& gameObjects) -> ObjPtr<Object>
+    {
+        for (const auto& go : gameObjects)
+        {
+            if (!go.IsValid())
+                continue;
+
+            if (go->GetMUID() == targetMuid)
+                return go;
+
+            ObjPtr<Transform> tr = go->GetTransform();
+            if (tr.IsValid() && tr->GetMUID() == targetMuid)
+                return tr;
+
+            for (const auto& comp : go->GetAllComponents())
+            {
+                if (comp.IsValid() && comp->GetMUID() == targetMuid)
+                    return comp;
+            }
+        }
+        return nullptr;
+    };
+
+    if (auto obj = scanGameObjects(SceneManager::Get().GetAllGameObjectInCurrentScene()); obj.IsValid())
+        return obj;
+
+    return scanGameObjects(SceneManager::Get().GetAllGameObjectInDDOL());
+}
+
+static ObjPtr<GameObject> GetTargetGameObjectFromMUID(const std::string& muidStr)
+{
+    if (muidStr.empty())
+        return nullptr;
+
+    ObjPtr<Object> obj = ResolveObjectByMUID(muidStr);
+    if (!obj.IsValid())
+        return nullptr;
+
+    if (auto goPtr = obj.Cast<GameObject>(); goPtr.IsValid())
+        return goPtr;
+
+    if (auto compPtr = obj.Cast<Component>(); compPtr.IsValid())
+        return compPtr->GetGameObject();
+
+    return nullptr;
+}
+
+static std::string GetDisplayNameForMUID(const std::string& muidStr)
+{
+    if (muidStr.empty())
+        return "Drop GameObject";
+
+    ObjPtr<Object> obj = ResolveObjectByMUID(muidStr);
+    if (!obj.IsValid())
+        return "Missing";
+
+    if (auto go = obj.Cast<GameObject>(); go.IsValid())
+        return go->GetName();
+
+    if (auto comp = obj.Cast<Component>(); comp.IsValid())
+    {
+        std::string typeName = rttr::type::get(*comp).get_name().to_string();
+        ObjPtr<GameObject> owner = comp->GetGameObject();
+        if (owner.IsValid())
+            return owner->GetName() + " (" + typeName + ")";
+
+        return typeName;
+    }
+
+    return "Missing";
+}
+
+static std::string GetMessagePreviewLabel(const PersistentCall& call)
+{
+    if (call.GetMessageName().empty())
+        return "None";
+
+    ObjPtr<Object> obj = ResolveObjectByMUID(call.GetTargetMUID());
+    if (!obj.IsValid())
+        return call.GetMessageName();
+
+    ObjPtr<Behaviour> behaviour = obj.Cast<Behaviour>();
+    if (!behaviour.IsValid())
+        return call.GetMessageName();
+
+    std::string typeName = rttr::type::get(*behaviour).get_name().to_string();
+    return typeName + "::" + call.GetMessageName();
+}
+
+struct EventMessageOption
+{
+    std::string label;
+    std::string messageName;
+    MMMEngine::Utility::MUID targetMUID;
+};
+
+static bool IsScreenSpaceCanvasRoot(const ObjPtr<GameObject>& go, Canvas*& outCanvas)
+{
+    outCanvas = nullptr;
+    if (!go.IsValid())
+        return false;
+
+    auto canvas = go->GetComponent<Canvas>();
+    if (!canvas.IsValid())
+        return false;
+
+    outCanvas = canvas.operator->(); //WTF??
+    return true;
+}
+
+static void CollectEventMessageOptions(const ObjPtr<GameObject>& go, bool floatEvent,
+    std::vector<EventMessageOption>& outOptions)
+{
+    outOptions.clear();
+    if (!go.IsValid())
+        return;
+
+    for (auto& comp : go->GetAllComponents())
+    {
+        ObjPtr<Behaviour> behaviour = comp.Cast<Behaviour>();
+        if (!behaviour.IsValid())
+            continue;
+
+        std::vector<std::string> messageNames;
+        if (floatEvent)
+            behaviour->GetFloatMessageNames(messageNames);
+        else
+            behaviour->GetVoidMessageNames(messageNames);
+
+        if (messageNames.empty())
+            continue;
+
+        std::string typeName = rttr::type::get(*behaviour).get_name().to_string();
+        for (const auto& msgName : messageNames)
+        {
+            EventMessageOption option;
+            option.label = typeName + "::" + msgName;
+            option.messageName = msgName;
+            option.targetMUID = behaviour->GetMUID();
+            outOptions.push_back(std::move(option));
+        }
+    }
+
+    std::sort(outOptions.begin(), outOptions.end(),
+        [](const EventMessageOption& a, const EventMessageOption& b)
+        {
+            return a.label < b.label;
+        });
+}
+
+/// SerializableEvent / SerializableEventT<float> 전용 그리기. 처리한 타입이면 true.
+static bool DrawSerializableEventProperty(const std::string& name, rttr::variant& var, rttr::type propType,
+    const rttr::property& prop, rttr::instance inst, bool readOnly)
+{
+    auto drawCalls = [&](std::vector<PersistentCall>& calls, bool floatEvent)
+    {
+        ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+        std::string headerLabel = name + "  [" + std::to_string(calls.size()) + "]###" + name;
+        bool opened = ImGui::CollapsingHeader(headerLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        if (opened)
+        {
+            ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+            for (size_t i = 0; i < calls.size(); ++i)
+            {
+                ImGui::PushID(static_cast<int>(i));
+
+                // Target selection (drag & drop only)
+                std::string targetLabel = GetDisplayNameForMUID(calls[i].GetTargetMUID());
+                ImGui::Text("Target");
+                ImGui::SameLine();
+                ImGui::PushID("TargetBtn");
+                if (readOnly) ImGui::BeginDisabled(true);
+                ImGui::Button(targetLabel.c_str(), ImVec2(-1, 0));
+                if (readOnly) ImGui::EndDisabled();
+
+                if (!readOnly)
+                {
+                    Utility::MUID dropped = GetMuid("gameobject_muid");
+                    if (dropped.IsValid())
+                    {
+                        calls[i].SetTargetMUID(dropped.ToString());
+                        calls[i].SetMessageName("");
+                    }
+                }
+
+                if (ImGui::BeginPopupContextItem("EventTargetContext"))
+                {
+                    if (!readOnly && ImGui::MenuItem(u8"참조 해제"))
+                    {
+                        calls[i].SetTargetMUID("");
+                        calls[i].SetMessageName("");
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopID();
+
+                ObjPtr<GameObject> targetGo = GetTargetGameObjectFromMUID(calls[i].GetTargetMUID());
+                std::vector<EventMessageOption> options;
+                CollectEventMessageOptions(targetGo, floatEvent, options);
+
+                std::string previewLabel = GetMessagePreviewLabel(calls[i]);
+                if (!targetGo.IsValid())
+                    previewLabel = "Drop GameObject";
+                else if (calls[i].GetMessageName().empty())
+                    previewLabel = "Select Message";
+
+                ImGui::Text("Message");
+                ImGui::SameLine();
+                ImGui::PushID("MessageCombo");
+                ImGui::SetNextItemWidth(-80);
+                if (readOnly) ImGui::BeginDisabled(true);
+                if (ImGui::BeginCombo("##message", previewLabel.c_str()))
+                {
+                    if (ImGui::Selectable("None", calls[i].GetMessageName().empty()))
+                    {
+                        if (!readOnly)
+                            calls[i].SetMessageName("");
+                    }
+
+                    for (const auto& option : options)
+                    {
+                        bool selected = (calls[i].GetMessageName() == option.messageName) &&
+                            (calls[i].GetTargetMUID() == option.targetMUID.ToString());
+                        if (ImGui::Selectable(option.label.c_str(), selected))
+                        {
+                            if (!readOnly)
+                            {
+                                calls[i].SetMessageName(option.messageName);
+                                calls[i].SetTargetMUID(option.targetMUID.ToString());
+                            }
+                        }
+                        if (selected)
+                            ImGui::SetItemDefaultFocus();
+                    }
+
+                    ImGui::EndCombo();
+                }
+                if (readOnly) ImGui::EndDisabled();
+                ImGui::PopID();
+
+                ImGui::SameLine();
+                if (!readOnly && ImGui::Button(u8"삭제"))
+                {
+                    calls.erase(calls.begin() + static_cast<std::ptrdiff_t>(i));
+                    --i;
+                }
+
+                ImGui::PopID();
+            }
+            if (!readOnly && ImGui::Button(u8"+ 리스너 추가"))
+            {
+                calls.emplace_back("", "");
+            }
+            ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+        }
+        ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+    };
+
+    if (propType == rttr::type::get<SerializableEvent>())
+    {
+        SerializableEvent ev = var.get_value<SerializableEvent>();
+        std::vector<PersistentCall> calls = ev.GetCalls();
+        drawCalls(calls, false);
+        ev.SetCalls(std::move(calls));
+        prop.set_value(inst, ev);
+        return true;
+    }
+    if (propType == rttr::type::get<SerializableEventT<float>>())
+    {
+        SerializableEventT<float> ev = var.get_value<SerializableEventT<float>>();
+        std::vector<PersistentCall> calls = ev.GetCalls();
+        drawCalls(calls, true);
+        ev.SetCalls(std::move(calls));
+        prop.set_value(inst, ev);
+        return true;
+    }
+
+    return false;
 }
 
 static void DrawSequentialProperty_UnityLike(const std::string& name,
@@ -271,7 +951,8 @@ static void DrawSequentialProperty_UnityLike(const std::string& name,
             std::string label = "Element " + std::to_string(idx);
 
             rttr::variant edited = elem;
-            bool changed = DrawElementPOD(label.c_str(), edited, elemType, readOnly);
+            bool changed = false;
+            (void)DrawSimplePropertyValue(label.c_str(), edited, elemType, readOnly, &changed, nullptr, rttr::instance());
 
             if (changed && !readOnly)
             {
@@ -328,7 +1009,7 @@ void MMMEngine::Editor::InspectorWindow::ClearCache()
     // 필요하다면 rttr::type::get_invalid() 등을 활용해 더 확실히 비움
 }
 
-void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
+void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst, ObjPtr<Object> objPtr)
 {
     static ObjPtr<GameObject> s_lastCachedObject = nullptr;
     static std::unordered_map<std::string, std::string> cache;
@@ -354,6 +1035,29 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
         ImGui::PushID(inst.try_convert<void*>());
     }
 
+    bool lockRefResolution = false;
+    bool lockRectSize = false;
+    Canvas* rectCanvas = nullptr;
+    DirectX::SimpleMath::Vector2 rectCanvasSize = { 0.0f, 0.0f };
+    std::string tname = t.get_name().to_string();
+    if (t == rttr::type::get<RectTransform>())
+    {
+        auto rectPtr = ObjectManager::Get().GetPtr<RectTransform>(objPtr.GetPtrID(), objPtr.GetPtrGeneration());
+        lockRectSize = IsScreenSpaceCanvasRoot(rectPtr->GetGameObject(), rectCanvas);
+        if (lockRectSize && rectCanvas)
+        {
+            rectCanvasSize = rectCanvas->GetCanvasSize();
+        }
+    }
+    else if (t == rttr::type::get<Canvas>())
+    {
+        auto canvasPtr = ObjectManager::Get().GetPtr<Canvas>(objPtr.GetPtrID(), objPtr.GetPtrGeneration());
+        lockRefResolution = canvasPtr->GetScaleMode() == CanvasScaleMode::ConstantPixelSize ? true : false;
+    }
+
+    const std::unordered_map<std::string, bool> chainVisibility = BuildInspectorChainVisibility(inst, t);
+
+    int propIndex = 0;
     for (auto& prop : t.get_properties())
     {
         rttr::variant md = prop.get_metadata("INSPECTOR");
@@ -362,152 +1066,53 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
 
         rttr::variant var = prop.get_value(inst);
         if (!var.is_valid())
-            continue; // 읽기 불가(접근정책/등록문제 등)
-
+            continue;
 
         const std::string name = prop.get_name().to_string();
-        const bool readOnly = prop.is_readonly();
+        auto chainIt = chainVisibility.find(name);
+        if (chainIt != chainVisibility.end() && !chainIt->second)
+            continue;
+        bool readOnly = prop.is_readonly();
         rttr::type propType = prop.get_type();
 
-        if (var.is_type<Vector3>())
+        ImGui::PushID(propIndex++);
+
+        if (lockRectSize && (name == "Width" || name == "Height" || name == "SizeDelta"))
+            readOnly = true;
+
+        if (lockRefResolution && name == "ReferenceResolution")
+            readOnly = true;
+
+        if (lockRectSize && name == "Width")
+            var = rectCanvasSize.x;
+        else if (lockRectSize && name == "Height")
+            var = rectCanvasSize.y;
+
+        if (DrawSerializableEventProperty(name, var, propType, prop, inst, readOnly))
         {
-            Vector3 v = var.get_value<Vector3>();
-            float data[3] = { v.x, v.y, v.z };
-            auto SnapToZero = [](float& v, float eps = 1e-4f)
-                {
-                    if (fabsf(v) < eps) v = 0.0f; // +0로 만들어짐
-                };
-            SnapToZero(data[0]);
-            SnapToZero(data[1]);
-            SnapToZero(data[2]);
-
-            if (readOnly) ImGui::BeginDisabled(true);
-            bool changed = ImGui::DragFloat3(name.c_str(), data, 0.1f);
-            if (readOnly) ImGui::EndDisabled();
-
-            if (changed && !readOnly)
+            ImGui::PopID();
+            continue;
+        }
+        if (var.is_sequential_container())
+        {
+            DrawSequentialProperty_UnityLike(name, var, prop, inst, readOnly);
+            ImGui::PopID();
+            continue;
+        }
+        bool simpleChanged = false;
+        if (DrawSimplePropertyValue(name.c_str(), var, propType, readOnly, &simpleChanged, &prop, inst))
+        {
+            if (simpleChanged && !readOnly)
             {
-                prop.set_value(inst, Vector3(data[0], data[1], data[2]));
+                prop.set_value(inst, var);
                 if (t == rttr::type::get<Transform>() && name == "Position")
                     ApplyRigidBodyFromTransformIfPlaying(g_selectedGameObject);
             }
-        }
-        else if (propType.is_enumeration())
-        {
-            rttr::enumeration enumType = propType.get_enumeration();
-            std::string currentName = enumType.value_to_name(var).to_string();
-
-            if (readOnly) ImGui::BeginDisabled(true);
-
-            if (ImGui::BeginCombo(name.c_str(), currentName.c_str()))
-            {
-                auto enumNames = enumType.get_names();
-                for (const auto& enumName : enumNames)
-                {
-                    std::string enumNameStr = enumName.to_string();
-                    bool isSelected = (enumNameStr == currentName);
-
-                    if (ImGui::Selectable(enumNameStr.c_str(), isSelected))
-                    {
-                        if (!readOnly)
-                        {
-                            rttr::variant newValue = enumType.name_to_value(enumName);
-                            if (newValue.is_valid())
-                            {
-                                prop.set_value(inst, newValue);
-                            }
-                        }
-                    }
-
-                    if (isSelected)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
-            }
-
-            if (readOnly) ImGui::EndDisabled();
+            ImGui::PopID();
+            continue;
         }
 
-        else if (var.is_sequential_container())
-        {
-            // 읽기 전용 여부
-            DrawSequentialProperty_UnityLike(name, var, prop, inst, readOnly);
-        }
-        else if (var.is_type<float>())
-        {
-            float f = var.get_value<float>();
-
-            if (readOnly) ImGui::BeginDisabled(true);
-            auto md_min = prop.get_metadata("MIN");
-            auto md_max = prop.get_metadata("MAX");
-            float min = 0.0f;
-            float max = 0.0f;
-            if (md_min.is_valid() && md_min.can_convert<float>())
-            {
-				min = md_min.get_value<float>();
-            }
-            if (md_max.is_valid() && md_max.can_convert<float>())
-            {
-                max = md_max.get_value<float>();
-            }
-
-            bool changed = ImGui::DragFloat(name.c_str(), &f, 0.01f, min, max);
-            if (readOnly) ImGui::EndDisabled();
-
-            if (changed && !readOnly)
-                prop.set_value(inst, f);
-        }
-        else if (var.is_type<bool>())
-        {
-            bool b = var.get_value<bool>();
-
-            if (readOnly) ImGui::BeginDisabled(true);
-            bool changed = ImGui::Checkbox(name.c_str(), &b);
-            if (readOnly) ImGui::EndDisabled();
-
-            if (changed && !readOnly)
-                prop.set_value(inst, b);
-        }
-        else if (var.is_type<int>())
-        {
-            int ntger = var.get_value<int>();
-
-            if (readOnly) ImGui::BeginDisabled(true);
-            bool changed = ImGui::DragInt(name.c_str(), &ntger);
-            if (readOnly) ImGui::EndDisabled();
-
-            if (changed && !readOnly)
-                prop.set_value(inst, ntger);
-        }
-        else if (var.is_type<Color>())
-        {
-            Color c = var.get_value<Color>();
-            float rgba[4] = { c.x, c.y, c.z, c.w };
-
-            if (readOnly) ImGui::BeginDisabled(true);
-
-            // ColorEdit4는 0~1 범위 기대 (HDR 원하면 ColorEditFlags_HDR)
-            bool changed = ImGui::ColorEdit4(name.c_str(), rgba,
-                ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar);
-
-            if (readOnly) ImGui::EndDisabled();
-
-            if (changed && !readOnly)
-                prop.set_value(inst, Color(rgba[0], rgba[1], rgba[2], rgba[3]));
-        }
-        else if (var.is_type<Vector4>())
-        {
-            Vector4 v = var.get_value<Vector4>();
-            float data[4] = { v.x, v.y, v.z, v.w };
-
-            if (readOnly) ImGui::BeginDisabled(true);
-            bool changed = ImGui::DragFloat4(name.c_str(), data, 0.1f);
-            if (readOnly) ImGui::EndDisabled();
-
-            if (changed && !readOnly)
-                prop.set_value(inst, Vector4(data[0], data[1], data[2], data[3]));
-        }
-        else if (propType.get_name().to_string().find("ObjPtr") != std::string::npos)
+        if (propType.get_name().to_string().find("ObjPtr") != std::string::npos)
         {
             MMMEngine::Object* obj = nullptr;
             std::string refName = "nullptr";
@@ -771,7 +1376,6 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
                 prop.set_value(inst, editing);
             }
         }
-
         else if (var.is_type<Quaternion>())
         {
             auto SnapToZero = [](float& v, float eps = 1e-4f) {
@@ -844,6 +1448,7 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst)
                     ApplyRigidBodyFromTransformIfPlaying(g_selectedGameObject);
             }
         }
+        ImGui::PopID();
     }
     ImGui::PopID();
 }
@@ -905,7 +1510,7 @@ void MMMEngine::Editor::InspectorWindow::Render()
 
         bool isActive = g_selectedGameObject->IsActiveSelf();
 
-        if (ImGui::Checkbox(u8"활성화", &isActive))
+        if (ImGui::Checkbox(u8"활성화" /* u8 활성화 */, &isActive))
         {
             g_selectedGameObject->SetActive(isActive);
         }
@@ -913,7 +1518,7 @@ void MMMEngine::Editor::InspectorWindow::Render()
         char buf2[256];
         strcpy_s(buf2, g_selectedGameObject->GetTag().c_str());
         ImGui::SetNextItemWidth(150);
-        if (ImGui::InputText(u8"태그", buf2, IM_ARRAYSIZE(buf2)))
+        if (ImGui::InputText(u8"태그" /* u8 태그 */, buf2, IM_ARRAYSIZE(buf2)))
         {
             g_selectedGameObject->SetTag(buf2);
         }
@@ -931,7 +1536,7 @@ void MMMEngine::Editor::InspectorWindow::Render()
         // 폭 지정
         ImGui::SetNextItemWidth(53);
 
-        if (ImGui::BeginCombo(u8"레이어", preview))
+        if (ImGui::BeginCombo(u8"레이어" /* u8 레이어 */, preview))
         {
             for (int n = 0; n <= 31; ++n)
             {
@@ -969,10 +1574,10 @@ void MMMEngine::Editor::InspectorWindow::Render()
             if (typeName != "Transform")
             {
                 if(ImGui::CollapsingHeader(duplicatePrevantName.c_str(), &visible, ImGuiTreeNodeFlags_DefaultOpen))
-                    RenderProperties(*comp);
+                    RenderProperties(*comp, comp.Cast<Object>());
             }
             else if (ImGui::CollapsingHeader(duplicatePrevantName.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-                RenderProperties(*comp);
+                RenderProperties(*comp, comp.Cast<Object>());
 
             if (!visible)
             {
@@ -1065,3 +1670,5 @@ void MMMEngine::Editor::InspectorWindow::Render()
 
 	ImGui::End();
 }
+
+
