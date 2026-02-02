@@ -1,4 +1,4 @@
-﻿#include "FilesWindow.h"
+#include "FilesWindow.h"
 #include <vector>
 #include <string>
 #include <unordered_set>
@@ -700,6 +700,8 @@ void MMMEngine::)" << scriptName << R"(::Update()
 )";
         cppFile.close();
     }
+
+    ProjectManager::Get().RefreshUserScriptsIDEFiles();
 }
 
 void MMMEngine::Editor::FilesWindow::OpenFileInEditor(const fs::path& filePath)
