@@ -18,6 +18,7 @@ using namespace DirectX;
 #include "StringHelper.h"
 #include "ProjectManager.h"
 #include "ResourceManager.h"
+#include "AnimationCurveEditor.h"
 #include <rttr/variant_sequential_view.h>
 #include <algorithm>
 #include <optional>
@@ -982,6 +983,189 @@ static std::string MakeStringKey(const rttr::instance& inst, const rttr::propert
     return tname + "::" + pname;
 }
 
+static std::string MakeCurveCacheKey(const rttr::instance& inst, const rttr::property& prop)
+{
+    rttr::type t = inst.get_derived_type();
+    rttr::property muidProp = t.get_property("MUID");
+    if (muidProp.is_valid())
+    {
+        rttr::variant muidVar = muidProp.get_value(inst);
+        if (muidVar.is_valid() && muidVar.is_type<MMMEngine::Utility::MUID>())
+        {
+            std::string muidStr = muidVar.get_value<MMMEngine::Utility::MUID>().ToStringWithoutHyphens();
+            return muidStr + "::" + t.get_name().to_string() + "::" + prop.get_name().to_string();
+        }
+    }
+
+    void* instPtr = inst.try_convert<void*>();
+    std::uintptr_t addr = reinterpret_cast<std::uintptr_t>(instPtr);
+    return std::to_string(addr) + "::" + t.get_name().to_string() + "::" + prop.get_name().to_string();
+}
+
+struct CurveEditorCache
+{
+    AnimationCurve working;
+    AnimationCurveEditorContext context;
+    AnimationCurveEditorView view;
+    bool opened = false;
+    bool initialized = false;
+    int selectedIndex = -1;
+};
+
+static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& var, rttr::type propType,
+    const rttr::property& prop, rttr::instance inst, bool readOnly)
+{
+    if (propType != rttr::type::get<AnimationCurve>())
+        return false;
+
+    AnimationCurve curve = var.get_value<AnimationCurve>();
+    static std::unordered_map<std::string, CurveEditorCache> s_curveEditors;
+    const std::string key = MakeCurveCacheKey(inst, prop);
+    CurveEditorCache& cache = s_curveEditors[key];
+
+    if (!cache.initialized)
+    {
+        cache.view.autoFit = true;
+        cache.view.clampTime = false;
+        cache.view.clampValue = false;
+        cache.initialized = true;
+    }
+
+    ImGui::Text("%s", name.c_str());
+    ImVec2 previewSize(ImGui::GetContentRegionAvail().x, 70.0f);
+    bool previewClicked = DrawAnimationCurvePreview(curve, previewSize, cache.view);
+
+    if (!readOnly && previewClicked)
+    {
+        cache.working = curve;
+        cache.context.Bind(&cache.working);
+        cache.context.ClearDirty();
+        cache.opened = true;
+        ImGui::OpenPopup(("CurveEditor##" + key).c_str());
+    }
+
+    if (cache.opened)
+    {
+        bool keepOpen = true;
+        if (ImGui::BeginPopupModal(("CurveEditor##" + key).c_str(), &keepOpen, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("%s", name.c_str());
+            ImGui::Separator();
+
+            ImGui::Checkbox(u8"자동 맞춤", &cache.view.autoFit);
+            ImGui::Checkbox(u8"시간 클램프", &cache.view.clampTime);
+            ImGui::Checkbox(u8"값 클램프", &cache.view.clampValue);
+
+            if (!cache.view.autoFit)
+            {
+                ImGui::DragFloat2(u8"시간 범위", &cache.view.min.x, 0.01f);
+                ImGui::DragFloat2(u8"값 범위", &cache.view.min.y, 0.01f);
+                if (cache.view.min.x > cache.view.max.x) std::swap(cache.view.min.x, cache.view.max.x);
+                if (cache.view.min.y > cache.view.max.y) std::swap(cache.view.min.y, cache.view.max.y);
+            }
+
+            cache.context.SetView(cache.view);
+            bool changed = DrawAnimationCurveEditor(cache.working, cache.context, ImVec2(520.0f, 260.0f));
+            if (changed && !readOnly)
+            {
+                prop.set_value(inst, cache.working);
+                var = cache.working;
+            }
+
+    std::vector<CurveKeyframe> keyframes = cache.working.GetKeyframes();
+    if (!keyframes.empty() && (cache.selectedIndex < 0 || cache.selectedIndex >= static_cast<int>(keyframes.size())))
+        cache.selectedIndex = 0;
+
+    if (!readOnly && ImGui::Button(u8"+ 키 추가"))
+    {
+        const float time = (cache.view.min.x + cache.view.max.x) * 0.5f;
+        const float value = (cache.view.min.y + cache.view.max.y) * 0.5f;
+        keyframes.emplace_back(time, value, 0.0f, 0.0f, 1);
+        cache.selectedIndex = static_cast<int>(keyframes.size()) - 1;
+        cache.working.SetKeyframes(keyframes);
+        cache.context.Bind(&cache.working);
+        cache.context.SyncFromCurve();
+        prop.set_value(inst, cache.working);
+        var = cache.working;
+    }
+
+    if (ImGui::BeginListBox(u8"키 목록", ImVec2(-1.0f, 120.0f)))
+    {
+        for (int i = 0; i < static_cast<int>(keyframes.size()); ++i)
+        {
+            const auto& kf = keyframes[i];
+            std::string label = "t=" + std::to_string(kf.time) + ", v=" + std::to_string(kf.value);
+            bool selected = (i == cache.selectedIndex);
+            if (ImGui::Selectable(label.c_str(), selected))
+                cache.selectedIndex = i;
+            if (selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndListBox();
+    }
+
+    if (cache.selectedIndex >= 0 && cache.selectedIndex < static_cast<int>(keyframes.size()))
+    {
+        CurveKeyframe kf = keyframes[cache.selectedIndex];
+        bool edited = false;
+
+        if (ImGui::DragFloat(u8"시간", &kf.time, 0.01f))
+            edited = true;
+        if (ImGui::DragFloat(u8"값", &kf.value, 0.01f))
+            edited = true;
+        if (ImGui::DragFloat(u8"인 탄젠트", &kf.inTangent, 0.01f))
+            edited = true;
+        if (ImGui::DragFloat(u8"아웃 탄젠트", &kf.outTangent, 0.01f))
+            edited = true;
+
+        const char* modeLabels[] = { "Broken", "Unified" };
+        int mode = (kf.tangentMode == 1) ? 1 : 0;
+        if (ImGui::Combo(u8"탄젠트 모드", &mode, modeLabels, IM_ARRAYSIZE(modeLabels)))
+        {
+            kf.tangentMode = (mode == 1) ? 1 : 0;
+            edited = true;
+        }
+
+        if (edited && !readOnly)
+        {
+            keyframes[cache.selectedIndex] = kf;
+            cache.working.SetKeyframes(keyframes);
+            cache.context.Bind(&cache.working);
+            cache.context.SyncFromCurve();
+            prop.set_value(inst, cache.working);
+            var = cache.working;
+        }
+
+        if (!readOnly && ImGui::Button(u8"삭제"))
+        {
+            if (keyframes.size() > 1)
+            {
+                keyframes.erase(keyframes.begin() + cache.selectedIndex);
+                cache.selectedIndex = std::min(cache.selectedIndex, static_cast<int>(keyframes.size()) - 1);
+                cache.working.SetKeyframes(keyframes);
+                cache.context.Bind(&cache.working);
+                cache.context.SyncFromCurve();
+                prop.set_value(inst, cache.working);
+                var = cache.working;
+            }
+        }
+    }
+
+            if (ImGui::Button(u8"닫기"))
+            {
+                keepOpen = false;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        cache.opened = keepOpen;
+    }
+
+    return true;
+}
+
 void AddComponentFromDropFilePath(std::string filePath)
 {
     if (!filePath.empty())
@@ -1089,6 +1273,11 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst, O
             var = rectCanvasSize.y;
 
         if (DrawSerializableEventProperty(name, var, propType, prop, inst, readOnly))
+        {
+            ImGui::PopID();
+            continue;
+        }
+        if (DrawAnimationCurveProperty(name, var, propType, prop, inst, readOnly))
         {
             ImGui::PopID();
             continue;
