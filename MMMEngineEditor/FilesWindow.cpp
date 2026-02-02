@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_set>
 #include <cstring>
+#include <algorithm>
 
 #include "EditorRegistry.h"
 #include "ProjectManager.h"
@@ -426,12 +427,31 @@ void MMMEngine::Editor::FilesWindow::DrawGridItem(const fs::path& path, bool isD
     else
     {
         std::string ext = path.extension().string();
-        if (ext == ".cpp" || ext == ".h" || ext == ".hpp" || ext == ".c")
+        std::string extLower = ext;
+        std::transform(extLower.begin(), extLower.end(), extLower.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        if (extLower == ".staticmesh")
+        {
+            iconColor = IM_COL32(80, 200, 120, 255); // Green for StaticMesh
+            iconGlyph = "\xef\x85\x9b"; // File icon
+        }
+        else if (extLower == ".spritefont")
+        {
+            iconColor = IM_COL32(240, 160, 70, 255); // Orange for SpriteFont
+            iconGlyph = "\xef\x85\x9b"; // File icon
+        }
+        else if (extLower == ".material")
+        {
+            iconColor = IM_COL32(90, 200, 210, 255); // Cyan for Material
+            iconGlyph = "\xef\x85\x9b"; // File icon
+        }
+        else if (extLower == ".cpp" || extLower == ".h" || extLower == ".hpp" || extLower == ".c")
         {
             iconColor = IM_COL32(100, 150, 255, 255); // Blue for code
             iconGlyph = "\xef\x87\x89"; // File-code icon
         }
-        else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp")
+        else if (extLower == ".png" || extLower == ".jpg" || extLower == ".jpeg" || extLower == ".bmp")
         {
             iconColor = IM_COL32(200, 100, 255, 255); // Purple for images
             iconGlyph = "\xef\x87\x85"; // File-image icon
