@@ -92,9 +92,10 @@ Microsoft::WRL::ComPtr<ID3D11Buffer> MMMEngine::SkeletalMesh::CreateIndexBuffer(
 
 bool MMMEngine::SkeletalMesh::LoadFromFilePath(const std::wstring& filePath)
 {
-	std::filesystem::path fPath(filePath);
-	if (!std::filesystem::exists(fPath))
-		throw std::runtime_error("SkeletalMesh::File does not exist!!");
+	if (!std::filesystem::exists(std::filesystem::path(filePath))) {
+		std::cout << "SkeletalMesh::File does not exist!!" << std::endl;
+		return false;
+	}
 
 	// 역직렬화
 	ResourceSerializer::Get().DeSerialize_SkeletalMesh(this, filePath);

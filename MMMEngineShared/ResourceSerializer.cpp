@@ -453,6 +453,27 @@ std::filesystem::path MMMEngine::ResourceSerializer::Serialize_SkeletalMesh(cons
 	boneOffsetJson.push_back(SerializeBoneOffset(_in->offsetBuffer.BoneMat));
 	snapshot["BoneOffset"] = boneOffsetJson;
 
+	// NodeTree 직렬화
+	snapshot["nodeTree"]["rootIndex"] = _in->mNodeTree.rootIndex;
+	snapshot["nodeTree"]["nodes"] = json::array();
+	for (const auto& node : _in->mNodeTree.nodes)
+	{
+		json n;
+		n["name"] = node.name;
+		n["parentIndex"] = node.parentIndex;
+		n["children"] = node.children;
+
+		// bindLocal 행렬을 배열로 저장
+		n["bindLocal"] = {
+			node.bindLocal._11, node.bindLocal._12, node.bindLocal._13, node.bindLocal._14,
+			node.bindLocal._21, node.bindLocal._22, node.bindLocal._23, node.bindLocal._24,
+			node.bindLocal._31, node.bindLocal._32, node.bindLocal._33, node.bindLocal._34,
+			node.bindLocal._41, node.bindLocal._42, node.bindLocal._43, node.bindLocal._44
+		};
+
+		snapshot["nodeTree"]["nodes"].push_back(n);
+	}
+
 	// Json 출력
 	std::vector<uint8_t> v = json::to_msgpack(snapshot);
 
@@ -663,6 +684,30 @@ void MMMEngine::ResourceSerializer::DeSerialize_SkeletalMesh(SkeletalMesh* _out,
 			}
 		}
 	}
+
+	// NodeTree 역직렬화
+	_out->mNodeTree.rootIndex = snapshot["nodeTree"]["rootIndex"].get<int>();
+	_out->mNodeTree.nodes.clear();
+	_out->mNodeTree.nodeIndexByName.clear();
+
+	for (auto& n : snapshot["nodeTree"]["nodes"])
+	{
+		NodeData node;
+		node.name = n["name"].get<std::string>();
+		node.parentIndex = n["parentIndex"].get<int>();
+		node.children = n["children"].get<std::vector<int>>();
+
+		auto matArr = n["bindLocal"];
+		node.bindLocal = DirectX::SimpleMath::Matrix(
+			matArr[0], matArr[1], matArr[2], matArr[3],
+			matArr[4], matArr[5], matArr[6], matArr[7],
+			matArr[8], matArr[9], matArr[10], matArr[11],
+			matArr[12], matArr[13], matArr[14], matArr[15]
+		);
+
+		_out->mNodeTree.nodes.push_back(node);
+		_out->mNodeTree.nodeIndexByName[node.name] = static_cast<int>(_out->mNodeTree.nodes.size() - 1);
+	}
 }
 
 std::filesystem::path MMMEngine::ResourceSerializer::Serialize_Animation(const AnimationClip* _in, std::wstring _path, std::wstring _name, int _idx)
@@ -671,27 +716,6 @@ std::filesystem::path MMMEngine::ResourceSerializer::Serialize_Animation(const A
 	j["name"] = _in->mName;
 	j["durationSec"] = _in->durationSec;
 	j["ticksPerSecond"] = _in->ticksPerSecond;
-
-	// NodeTree 직렬화
-	j["nodeTree"]["rootIndex"] = _in->mNodeTree.rootIndex;
-	j["nodeTree"]["nodes"] = json::array();
-	for (const auto& node : _in->mNodeTree.nodes)
-	{
-		json n;
-		n["name"] = node.name;
-		n["parentIndex"] = node.parentIndex;
-		n["children"] = node.children;
-
-		// bindLocal 행렬을 배열로 저장
-		n["bindLocal"] = {
-			node.bindLocal._11, node.bindLocal._12, node.bindLocal._13, node.bindLocal._14,
-			node.bindLocal._21, node.bindLocal._22, node.bindLocal._23, node.bindLocal._24,
-			node.bindLocal._31, node.bindLocal._32, node.bindLocal._33, node.bindLocal._34,
-			node.bindLocal._41, node.bindLocal._42, node.bindLocal._43, node.bindLocal._44
-		};
-
-		j["nodeTree"]["nodes"].push_back(n);
-	}
 
 	// AnimTrack 직렬화
 	j["tracks"] = json::array();
@@ -716,10 +740,14 @@ std::filesystem::path MMMEngine::ResourceSerializer::Serialize_Animation(const A
 	}
 
 	// 파일 경로 생성
-	std::filesystem::path outPath = _path + L"/" + _name + L"_" + std::to_wstring(_idx) + L".animclip";
+	fs::path rootPath(ResourceManager::Get().GetCurrentRootPath());
+	fs::path outPath(_path);
+	outPath = outPath / std::wstring(_name + L"_" + std::to_wstring(_idx) + L".animclip");
+
+	fs::path finalPath = rootPath / outPath;
 
 	// JSON 파일 저장
-	std::ofstream ofs(outPath);
+	std::ofstream ofs(finalPath);
 	ofs << j.dump(4);
 	ofs.close();
 
@@ -742,30 +770,6 @@ void MMMEngine::ResourceSerializer::DeSerialize_Animation(AnimationClip* _out, s
 	_out->mName = j["name"].get<std::string>();
 	_out->durationSec = j["durationSec"].get<float>();
 	_out->ticksPerSecond = j["ticksPerSecond"].get<float>();
-
-	// NodeTree 역직렬화
-	_out->mNodeTree.rootIndex = j["nodeTree"]["rootIndex"].get<int>();
-	_out->mNodeTree.nodes.clear();
-	_out->mNodeTree.nodeIndexByName.clear();
-
-	for (auto& n : j["nodeTree"]["nodes"])
-	{
-		NodeData node;
-		node.name = n["name"].get<std::string>();
-		node.parentIndex = n["parentIndex"].get<int>();
-		node.children = n["children"].get<std::vector<int>>();
-
-		auto matArr = n["bindLocal"];
-		node.bindLocal = DirectX::SimpleMath::Matrix(
-			matArr[0], matArr[1], matArr[2], matArr[3],
-			matArr[4], matArr[5], matArr[6], matArr[7],
-			matArr[8], matArr[9], matArr[10], matArr[11],
-			matArr[12], matArr[13], matArr[14], matArr[15]
-		);
-
-		_out->mNodeTree.nodes.push_back(node);
-		_out->mNodeTree.nodeIndexByName[node.name] = static_cast<int>(_out->mNodeTree.nodes.size() - 1);
-	}
 
 	// AnimTrack 역직렬화
 	_out->mTracks.clear();

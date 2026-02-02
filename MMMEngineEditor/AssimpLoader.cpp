@@ -42,6 +42,7 @@ const aiScene* MMMEngine::AssimpLoader::ImportScene(const std::wstring path, Mod
 	// (Assimp::Importer는 새로 ReadFile하면 내부에서 교체되기도 하지만 명시적으로 해도 됨)
 	m_importer.FreeScene();
 
+	m_importer.SetPropertyFloat(AI_CONFIG_GLOBAL_SCALE_FACTOR_KEY, 0.5f);
 	const aiScene* scene = m_importer.ReadFile(Utility::StringHelper::WStringToString(path), opt.assimpFlags);
 
 	return scene;
@@ -192,7 +193,7 @@ bool MMMEngine::AssimpLoader::ConvertMaterial(const TextureSemantic _sementic, c
 	std::wstring property;
 
 	static const std::unordered_map<TextureSemantic, std::wstring> semanticMap = {
-	{TextureSemantic::BaseColor, L"_albedo"},
+	{TextureSemantic::Albedo,    L"_albedo"},
 	{TextureSemantic::Normal,    L"_normal"},
 	{TextureSemantic::Metallic,  L"_metallic"},
 	{TextureSemantic::Roughness, L"_roughness"},
@@ -463,9 +464,9 @@ bool MMMEngine::AssimpLoader::ExtractMaterials(const aiScene* scene, const std::
 
 		std::string raw;
 
-		// BaseColor
+		// Albedo
 		if (GetTexturePath(mat, aiTextureType_BASE_COLOR, raw) || GetTexturePath(mat, aiTextureType_DIFFUSE, raw))
-			put(TextureSemantic::BaseColor, raw, true);
+			put(TextureSemantic::Albedo, raw, true);
 
 		// Normal (fallback: HEIGHT로 들어오는 경우)
 		raw.clear();
@@ -706,6 +707,13 @@ bool MMMEngine::AssimpLoader::ImportModel(const std::wstring& path, ModelType ty
 	if (!ExtractNodeTree(scene, out.nodeTree)) return false;
 	std::vector<int> meshToNode;
 	if (!ExtractMeshNodeLinks(scene, out.nodeTree, meshToNode)) return false;
+
+	if (type == ModelType::Animation)
+	{
+		if (!ExtractAnimationClips(scene, out.nodeTree, out.clips)) return false;
+		return true;
+	}
+
 	if (!ExtractSubMeshes(scene, meshToNode, out.subMeshes)) return false;
 	std::string modelDir;
 	std::string texDir;
@@ -723,10 +731,6 @@ bool MMMEngine::AssimpLoader::ImportModel(const std::wstring& path, ModelType ty
 	if (type == ModelType::Skinned)
 	{
 		if (!ExtractSkinning(scene, out.nodeTree, out.subMeshes, out.skin)) return false;
-	}
-	if (type == ModelType::Animation)
-	{
-		if (!ExtractAnimationClips(scene, out.nodeTree, out.clips)) return false;
 	}
 	return true;
 }
@@ -765,16 +769,18 @@ void MMMEngine::AssimpLoader::RegisterModel(const std::wstring path, ModelType t
 		skeletalMesh = ConvertSkeletalMesh(&model);
 		//TODO::Skeletalmesh 직렬화
 		ResourceSerializer::Get().Serialize_SkeletalMesh(skeletalMesh.get(), m_exportPath, filename);
+		skeletalMesh->mNodeTree = std::move(model.nodeTree);
 		break;
 	case MMMEngine::ModelType::Animation:
+	{
 		int idx = 0;
 		for (auto& clip : model.clips) {
 			animationClip = ConvertAnimationClip(&clip);
-			animationClip->mNodeTree = model.nodeTree;
 			ResourceSerializer::Get().Serialize_Animation(animationClip.get(), m_exportPath, filename, idx);
 			idx++;
 		}
 		break;
+	}
 	default:
 		return;
 		break;

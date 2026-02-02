@@ -8,6 +8,8 @@
 #include "ShaderInfo.h"
 #include "PShader.h"
 #include "Material.h"
+#include "Animator.h"
+#include "TimeManager.h"
 
 #include "SkeletalMesh.h"
 #include "rttr/registration.h"
@@ -70,6 +72,15 @@ namespace MMMEngine {
 		return receiveShadows;
 	}
 
+	bool SkinRenderer::SetAnimatior(Animator* _animator)
+	{
+		if (mAnimator != nullptr)
+			return false;
+
+		mAnimator = _animator;
+		return true;
+	}
+
 	void SkinRenderer::Initialize()
 	{
 		renderIndex = RenderManager::Get().AddRenderer(this);
@@ -80,16 +91,14 @@ namespace MMMEngine {
 		RenderManager::Get().RemoveRenderer(renderIndex);
 	}
 
-	void SkinRenderer::Init()
-	{
-
-	}
-
 	void SkinRenderer::Render()
 	{
 		// 유효성 확인
 		if (!mesh || !GetTransform())
 			return;
+
+		if (mAnimator != nullptr)
+			mAnimator->Update(TimeManager::Get().GetDeltaTime());
 
 		for (auto& [matIdx, meshIndices] : mesh->meshGroupData) {
 			if (mesh->materials.empty())
@@ -114,10 +123,7 @@ namespace MMMEngine {
 				command.castShadow = castShadows;
 				command.receiveShadow = receiveShadows;
 				command.offsetBuffer = &mesh->offsetBuffer;
-
-				// TODO:: 임시!! 애니메이션 계산후 바꿔쳐야함!! (기본값)
-				static Mesh_BoneBuffer dummy;
-				command.animBuffer = &dummy;
+				command.animBuffer = &mAnimBuffer;
 
 				// TODO::TransCulant일시 CamDistance 보내줘야함!!
 				command.camDistance = 0.0f;

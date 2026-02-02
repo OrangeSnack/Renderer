@@ -17,8 +17,7 @@ RTTR_REGISTRATION
 
 	registration::class_<StaticMesh>("StaticMesh")
 		.constructor<>()(policy::ctor::as_std_shared_ptr)
-		.property("meshData", &StaticMesh::meshData)
-		.property("meshGroupData", &StaticMesh::meshGroupData);
+		.property("materials", &StaticMesh::materials);
 
 	type::register_converter_func(
 		[](std::shared_ptr<Resource> from, bool& ok) -> std::shared_ptr<StaticMesh>
@@ -94,8 +93,10 @@ Microsoft::WRL::ComPtr<ID3D11Buffer> MMMEngine::StaticMesh::CreateIndexBuffer(co
 bool MMMEngine::StaticMesh::LoadFromFilePath(const std::wstring& filePath)
 {
 	std::filesystem::path fPath(filePath);
-	if (!std::filesystem::exists(fPath))
-		throw std::runtime_error("StaticMesh::File does not exist!!");
+	if (!std::filesystem::exists(fPath)) {
+		std::cout << "StaticMesh::File does not exist!!" << std::endl;
+		return false;
+	}
 
 	// 역직렬화
 	ResourceSerializer::Get().DeSerialize_StaticMesh(this, filePath);

@@ -41,14 +41,13 @@ RTTR_REGISTRATION
 		}
 	);
 
-	//type::register_converter_func(
-	//	[](std::shared_ptr<Material> from, bool& ok) -> std::shared_ptr<Resource>
-	//	{
-	//		ok = true; // nullptr도 허용
-	//		return std::static_pointer_cast<Resource>(from);
-	//	}
-	//);
-
+	type::register_converter_func(
+		[](std::shared_ptr<Material> from, bool& ok) -> std::shared_ptr<Resource>
+		{
+			ok = true; // nullptr도 허용
+			return std::static_pointer_cast<Resource>(from);
+		}
+	);
 }
 
 
@@ -126,6 +125,13 @@ void MMMEngine::Material::LoadTexture(const std::wstring& _propertyName, const s
 
 bool MMMEngine::Material::LoadFromFilePath(const std::wstring& _filePath)
 {
+	std::filesystem::path fPath{ _filePath };
+
+	if (!std::filesystem::exists(fPath)) {
+		std::cout << "Material::Files does not exist!!" << std::endl;
+		return false;
+	}
+
 	MaterialSerializer::Get().DeSerialize(this, _filePath);
 
 	// 타입에 따라 프로퍼티 생성, 삭제

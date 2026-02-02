@@ -33,8 +33,11 @@ namespace MMMEngine {
 		Mesh_BoneBuffer offsetBuffer;
 		// 본 그룹 <Name, BoneIdx>
 		std::unordered_map<std::string, UINT> boneIdxData;
-		// 노드 정보 <BoneIdx, BufferIdx>
+		// 노드 정보 <BoneIdx, NodeIdx>
 		std::unordered_map<UINT, UINT> nodeIdxData;
+
+		// 노드 트리
+		NodeTreeAsset mNodeTree;
 
 		bool LoadFromFilePath(const std::wstring& filePath) override;
 	};

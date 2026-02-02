@@ -164,21 +164,8 @@ namespace MMMEngine {
 		// 캐싱 컨테이너 초기화
 		m_objWorldMatMap.clear();
 		m_renderCommands.clear();
+
 		m_rObjIdx = 0;
-	}
-
-	void RenderManager::InitRenderers()
-	{
-		int size = static_cast<int>(m_renInitQueue.size());
-		for (int i = 0; i < size; ++i) {
-			auto renderer = m_renInitQueue.front();
-			m_renInitQueue.pop();
-
-			if (!renderer->IsActiveAndEnabled())
-				m_renInitQueue.push(renderer);
-			else
-				renderer->Init();
-		}
 	}
 
 	void RenderManager::UpdateRenderers()
@@ -473,9 +460,6 @@ namespace MMMEngine {
 
 
 		//// 변수 초기화
-		//while (!m_initQueue.empty())
-		//	m_initQueue.pop();
-
 		m_worldMatrix = Matrix::Identity;
 		m_viewMatrix = Matrix::Identity;
 		m_projMatrix = Matrix::Identity;
@@ -653,11 +637,6 @@ namespace MMMEngine {
 		return index;
 	}
 
-	void RenderManager::ClearAllCommands()
-	{
-		m_renderCommands.clear();
-	}
-
 	void RenderManager::BeginFrame()
 	{
 		// Clear
@@ -668,7 +647,6 @@ namespace MMMEngine {
 		ShaderInfo::Get().ClearWorldPropertyDatas();
 
 		// 렌더러 컨트롤
-		InitRenderers();
 		UpdateRenderers();
 		UpdateLights();
 
@@ -1148,7 +1126,6 @@ namespace MMMEngine {
 		uint32_t id = m_nextRendererId++;
 		m_renderers.push_back(_renderer);
 		m_rendererIdMap[id] = _renderer;
-		m_renInitQueue.push(_renderer);
 		return id;
 	}
 

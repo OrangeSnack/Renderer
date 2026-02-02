@@ -16,8 +16,9 @@ namespace MMMEngine {
 		bool receiveShadows = true;
 
 		virtual void Render() {}
-		virtual void Init() {}
 		virtual ~Renderer() {}
+		virtual void Initialize() override {};
+		virtual void UnInitialize() override {};
 
 	public:
 		bool GetEnabled() { return isEnabled; }

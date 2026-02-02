@@ -48,7 +48,7 @@ namespace MMMEngine {
 		};
 
 		enum class TextureSemantic {
-			BaseColor, Normal, Metallic, Roughness, AO, Emissive, Opacity
+			Albedo, Normal, Metallic, Roughness, AO, Emissive, Opacity
 		};
 		struct TextureRef {
 			std::string path; // resolve된 경로(또는 embedded 표기)

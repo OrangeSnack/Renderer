@@ -137,11 +137,8 @@ static bool DrawElementPOD(const char* label, rttr::variant& elem, rttr::type el
 	//			if (res)
 	//			{
 	//				std::filesystem::path fullPath = res->GetFilePath();
- //                   fullPath = fullPath.filename();
-	//				if (!fullPath.empty())
-	//				{
- //                       displayPath = fullPath.string();
-	//				}
+    //              fullPath = fullPath.filename();
+    //              displayPath = fullPath.string();
 	//			}
 
 	//			ImGui::Text("%s:", label);

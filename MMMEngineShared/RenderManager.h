@@ -45,7 +45,6 @@ namespace MMMEngine
 		std::unordered_map<int, DirectX::SimpleMath::Matrix> m_objWorldMatMap;
 		std::vector<Renderer*> m_renderers;
 		std::unordered_map<uint32_t, Renderer*> m_rendererIdMap;
-		std::queue<Renderer*> m_renInitQueue;
 		unsigned int m_rObjIdx = 0;
 		uint32_t m_nextRendererId = 1;
 
@@ -59,9 +58,7 @@ namespace MMMEngine
 
 		void ApplyMatToContext(ID3D11DeviceContext4* _context, Material* _material);
 		void ExcuteCommands();
-		void InitCache();
 
-		void InitRenderers();
 		void UpdateRenderers();
 		void UpdateLights();
 
@@ -159,8 +156,6 @@ namespace MMMEngine
 		void AddCommand(RenderType _type, RenderCommand&& _command);	// 렌더커맨드 추가
 		int AddMatrix(const DirectX::SimpleMath::Matrix& _worldMatrix);		// 월드매트릭스 추가
 
-		void ClearAllCommands();
-
 		void BeginFrame();
 		void Render();
 		void RenderOnlyRenderer();
@@ -175,6 +170,7 @@ namespace MMMEngine
 
 		int AddLight(Light* _obj);
 		void RemoveLight(int _idx);
+		void InitCache();
 
 		UINT GetSceneWidth() { return m_sceneWidth; }
 		UINT GetSceneHeight() { return m_sceneHeight; }

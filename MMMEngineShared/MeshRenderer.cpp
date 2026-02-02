@@ -64,25 +64,24 @@ bool MMMEngine::MeshRenderer::GetReceiveShadow()
 {
 	if (!mesh)
 		return false;
-
+	
 	return receiveShadows;
 }
 
-//std::vector<MMMEngine::ResPtr<MMMEngine::Material>> MMMEngine::MeshRenderer::GetMaterial()
-//{
-//	if (!mesh)
-//		return {};
-//
-//	return mesh->materials;
-//}
-//
-//void MMMEngine::MeshRenderer::SetMaterial(std::vector<ResPtr<Material>> _materials)
-//{
-//	if (!mesh)
-//		return;
-//	
-//	mesh->materials = _materials;
-//}
+std::vector<MMMEngine::ResPtr<MMMEngine::Material>>& MMMEngine::MeshRenderer::GetMaterial()
+{
+	return mesh->materials;
+}
+
+void MMMEngine::MeshRenderer::SetMaterial(std::vector<ResPtr<Material>>& _materials)
+{
+	if (!mesh)
+		return;
+	if (mesh->materials.size() != _materials.size())
+		return;
+	
+	mesh->materials = _materials;
+}
 
 void MMMEngine::MeshRenderer::Initialize()
 {
@@ -92,11 +91,6 @@ void MMMEngine::MeshRenderer::Initialize()
 void MMMEngine::MeshRenderer::UnInitialize()
 {
 	RenderManager::Get().RemoveRenderer(renderIndex);
-}
-
-void MMMEngine::MeshRenderer::Init()
-{
-	
 }
 
 void MMMEngine::MeshRenderer::Render()
