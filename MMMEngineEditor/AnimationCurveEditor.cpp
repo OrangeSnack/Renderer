@@ -827,16 +827,35 @@ namespace MMMEngine::Editor
 				static int s_lastEditIndex = -1;
 				static bool s_editTimeInput = false;
 				static bool s_editValueInput = false;
+				static bool s_editInTanInput = false;
+				static bool s_editOutTanInput = false;
 				static float s_editTime = 0.0f;
 				static float s_editValue = 0.0f;
+				static float s_editInTan = 0.0f;
+				static float s_editOutTan = 0.0f;
+				static int s_editTangentMode = 1;
 
 				if (s_lastEditIndex != s_editKeyIndex)
 				{
 					s_lastEditIndex = s_editKeyIndex;
 					s_editTimeInput = false;
 					s_editValueInput = false;
+					s_editInTanInput = false;
+					s_editOutTanInput = false;
 					s_editTime = keyframes[s_editKeyIndex].time;
 					s_editValue = keyframes[s_editKeyIndex].value;
+					s_editInTan = keyframes[s_editKeyIndex].inTangent;
+					s_editOutTan = keyframes[s_editKeyIndex].outTangent;
+					s_editTangentMode = keyframes[s_editKeyIndex].tangentMode;
+				}
+				else
+				{
+					const CurveKeyframe& current = keyframes[s_editKeyIndex];
+					if (!s_editTimeInput) s_editTime = current.time;
+					if (!s_editValueInput) s_editValue = current.value;
+					if (!s_editInTanInput) s_editInTan = current.inTangent;
+					if (!s_editOutTanInput) s_editOutTan = current.outTangent;
+					s_editTangentMode = current.tangentMode;
 				}
 
 				bool changed = false;
@@ -873,12 +892,70 @@ namespace MMMEngine::Editor
 						s_editValueInput = true;
 				}
 
+				const bool tangentLocked = (s_editTangentMode == 1);
+				if (tangentLocked)
+				{
+					ImGui::SetNextItemWidth(120.0f);
+					if (s_editInTanInput)
+					{
+						if (ImGui::InputFloat(u8"탄젠트", &s_editInTan, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+							changed = true;
+						if (ImGui::IsItemDeactivatedAfterEdit())
+							s_editInTanInput = false;
+					}
+					else
+					{
+						if (ImGui::DragFloat(u8"탄젠트", &s_editInTan, 0.01f))
+							changed = true;
+						if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+							s_editInTanInput = true;
+					}
+					s_editOutTan = s_editInTan;
+				}
+				else
+				{
+					ImGui::SetNextItemWidth(120.0f);
+					if (s_editInTanInput)
+					{
+						if (ImGui::InputFloat(u8"인 탄젠트", &s_editInTan, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+							changed = true;
+						if (ImGui::IsItemDeactivatedAfterEdit())
+							s_editInTanInput = false;
+					}
+					else
+					{
+						if (ImGui::DragFloat(u8"인 탄젠트", &s_editInTan, 0.01f))
+							changed = true;
+						if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+							s_editInTanInput = true;
+					}
+
+					ImGui::SetNextItemWidth(120.0f);
+					if (s_editOutTanInput)
+					{
+						if (ImGui::InputFloat(u8"아웃 탄젠트", &s_editOutTan, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+							changed = true;
+						if (ImGui::IsItemDeactivatedAfterEdit())
+							s_editOutTanInput = false;
+					}
+					else
+					{
+						if (ImGui::DragFloat(u8"아웃 탄젠트", &s_editOutTan, 0.01f))
+							changed = true;
+						if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+							s_editOutTanInput = true;
+					}
+				}
+
 				if (changed)
 				{
 					view.autoFit = false;
 					CurveKeyframe kf = keyframes[s_editKeyIndex];
 					kf.time = s_editTime;
 					kf.value = s_editValue;
+					kf.inTangent = s_editInTan;
+					kf.outTangent = s_editOutTan;
+					kf.tangentMode = s_editTangentMode;
 					keyframes[s_editKeyIndex] = kf;
 					curve.SetKeyframes(keyframes);
 					int newIndex = FindKeyIndex(curve.GetKeyframes(), kf);
