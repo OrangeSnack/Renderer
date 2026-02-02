@@ -172,6 +172,9 @@ MMMEngine::ResPtr<MMMEngine::SkeletalMesh> MMMEngine::AssimpLoader::ConvertSkele
 		}
 	}
 
+	// 트리 전달
+	skeletalMesh->mNodeTree = std::move(_model->nodeTree);
+
 	return skeletalMesh;
 }
 
@@ -769,7 +772,6 @@ void MMMEngine::AssimpLoader::RegisterModel(const std::wstring path, ModelType t
 		skeletalMesh = ConvertSkeletalMesh(&model);
 		//TODO::Skeletalmesh 직렬화
 		ResourceSerializer::Get().Serialize_SkeletalMesh(skeletalMesh.get(), m_exportPath, filename);
-		skeletalMesh->mNodeTree = std::move(model.nodeTree);
 		break;
 	case MMMEngine::ModelType::Animation:
 	{

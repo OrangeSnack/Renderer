@@ -1321,8 +1321,8 @@ namespace MMMEngine {
 		m_pDeviceContext->UpdateSubresource1(m_pCambuffer.Get(), 0, nullptr, &m_camMat, 0, 0, D3D11_COPY_DISCARD);
 
 		m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		m_pDeviceContext->IASetInputLayout(layout);
-		m_pDeviceContext->VSSetShader(vs, nullptr, 0);
+		//m_pDeviceContext->IASetInputLayout(layout);
+		//m_pDeviceContext->VSSetShader(vs, nullptr, 0);
 		m_pDeviceContext->PSSetShader(ps, nullptr, 0);
 		m_pDeviceContext->VSSetConstantBuffers(0, 1, m_pCambuffer.GetAddressOf());
 		m_pDeviceContext->VSSetConstantBuffers(1, 1, m_pTransbuffer.GetAddressOf());
@@ -1352,6 +1352,10 @@ namespace MMMEngine {
 				UINT offset = 0;
 				m_pDeviceContext->IASetVertexBuffers(0, 1, &cmd.vertexBuffer, &stride, &offset);
 				m_pDeviceContext->IASetIndexBuffer(cmd.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+				auto& matVs = cmd.material->GetVShader();
+				m_pDeviceContext->VSSetShader(matVs->m_pVShader.Get(), nullptr, 0);
+				m_pDeviceContext->IASetInputLayout(matVs->m_pInputLayout.Get());
 
 				Render_TransformBuffer transformBuffer;
 				transformBuffer.mWorld = XMMatrixTranspose(m_objWorldMatMap[cmd.worldMatIndex]);
