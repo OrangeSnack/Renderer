@@ -44,6 +44,7 @@ namespace MMMEngine::Editor
         void EnsureUserScriptsFolders(const std::filesystem::path& projectRootDir) const;
         bool GenerateUserScriptsVcxproj(const std::filesystem::path& projectRootDir) const;
         bool GenerateUserScriptsFilters(const std::filesystem::path& projectRootDir) const; // 선택(있으면 VS에서 보기 좋음)
+        bool GenerateUserScriptsSolution(const std::filesystem::path& projectRootDir) const;
         bool GenerateVSCodeSettings(const std::filesystem::path& projectRootDir) const;
         void GenerateDefaultScriptIfEmpty(const std::filesystem::path& projectRootDir) const;
 

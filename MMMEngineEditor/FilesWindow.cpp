@@ -714,9 +714,24 @@ void MMMEngine::Editor::FilesWindow::OpenFileInEditor(const fs::path& filePath)
         // 프로젝트 경로 가져오기
         const auto& project = ProjectManager::Get().GetActiveProject();
         fs::path projectRoot = fs::path(project.rootPath);
+        ProjectManager::Get().RefreshUserScriptsIDEFiles();
         fs::path vcxprojPath = projectRoot / "Source" / "UserScripts" / "UserScripts.vcxproj";
+        fs::path slnPath = projectRoot / "Source" / "UserScripts" / "UserScripts.sln";
 
-        if (fs::exists(vcxprojPath))
+        if (fs::exists(slnPath))
+        {
+#ifdef _WIN32
+            // Visual Studio에서 프로젝트와 파일을 함께 열기
+            std::string cmd = "start devenv \"" + slnPath.string() + "\" \"" + filePath.string() + "\"";
+            int result = system(cmd.c_str());
+
+            if (result == 0)
+            {
+                return; // 성공적으로 열렸으면 종료
+            }
+#endif
+        }
+        else if (fs::exists(vcxprojPath))
         {
 #ifdef _WIN32
             // Visual Studio에서 프로젝트와 파일을 함께 열기
