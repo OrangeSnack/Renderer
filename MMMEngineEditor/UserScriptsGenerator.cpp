@@ -74,6 +74,7 @@ namespace MMMEngine::Editor
             std::string name;
             std::string type;
             bool inspectorHidden = false;
+            std::string inspectorChain;
         };
 
         struct ScriptInfo
@@ -326,7 +327,22 @@ namespace MMMEngine::Editor
                 }
             }
 
-            // 5) USCRIPT_PROPERTY_HIDDEN() type name; -> RTTR 등록하되 인스펙터에서 숨김
+            // 5) USCRIPT_PROPERTY_CHAIN("...") type name; -> INSPECTOR_CHAIN 메타데이터 등록
+            {
+                std::regex re(R"re(USCRIPT_PROPERTY_CHAIN\s*\(\s*"([^"]*)"\s*\)\s+([^;=]+)\s+(\w+)\s*[;=])re");
+                std::sregex_iterator it(classBody.begin(), classBody.end(), re);
+                std::sregex_iterator end;
+                for (; it != end; ++it)
+                {
+                    PropertyInfo pi;
+                    pi.inspectorChain = (*it)[1].str();
+                    pi.type = NormalizeType((*it)[2].str());
+                    pi.name = (*it)[3].str();
+                    info.properties.push_back(std::move(pi));
+                }
+            }
+
+            // 6) USCRIPT_PROPERTY_HIDDEN() type name; -> RTTR 등록하되 인스펙터에서 숨김
             {
                 std::regex re(R"re(USCRIPT_PROPERTY_HIDDEN\s*\(\s*\)\s+([^;=]+)\s+(\w+)\s*[;=])re");
                 std::sregex_iterator it(classBody.begin(), classBody.end(), re);
@@ -434,6 +450,8 @@ namespace MMMEngine::Editor
                     os << "\n\t\t.property(\"" << p.name << "\", &" << s->className << "::" << p.name << ")";
                     if (p.inspectorHidden)
                         os << "(rttr::metadata(\"INSPECTOR\", \"HIDDEN\"))";
+                if (!p.inspectorChain.empty())
+                    os << "(rttr::metadata(\"INSPECTOR_CHAIN\", \"" << p.inspectorChain << "\"))";
                 }
                 os << ";\n\n";
 
