@@ -131,6 +131,7 @@
     </ClCompile>
     <ClCompile Include="Animator.cpp">
       <Filter>소스 파일\Core\Render API\Component</Filter>
+    </ClCompile>
     <ClCompile Include="Canvas.cpp">
       <Filter>소스 파일\Core\Render API\UI</Filter>
     </ClCompile>
@@ -430,6 +431,7 @@
     </ClInclude>
     <ClInclude Include="Animator.h">
       <Filter>헤더 파일\Core\Render API\Component</Filter>
+    </ClInclude>
     <ClInclude Include="Canvas.h">
       <Filter>헤더 파일\Core\Render API\UI</Filter>
     </ClInclude>
