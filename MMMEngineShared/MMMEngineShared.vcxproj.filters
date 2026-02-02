@@ -1,29 +1,64 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="AnimationClip.cpp" />
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Behaviour.cpp" />
+    <ClCompile Include="BehaviourManager.cpp" />
+    <ClCompile Include="BoxColliderComponent.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CapsuleColliderComponent.cpp" />
+    <ClCompile Include="ColliderComponent.cpp" />
+    <ClCompile Include="CollisionMatrix.cpp" />
     <ClCompile Include="Component.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="GlobalRegistry.cpp" />
     <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="Material.cpp" />
+    <ClCompile Include="MaterialSerializer.cpp" />
+    <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="MissingScriptBehaviour.cpp" />
     <ClCompile Include="MUID.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="PhysicsEventCallback.cpp" />
+    <ClCompile Include="PhysicsFilter.cpp" />
+    <ClCompile Include="PhysicsSettings.cpp" />
+    <ClCompile Include="PhysScene.cpp" />
+    <ClCompile Include="PhysX.cpp" />
+    <ClCompile Include="PhysxHelper.cpp" />
+    <ClCompile Include="PhysxManager.cpp" />
+    <ClCompile Include="Prefab.cpp" />
+    <ClCompile Include="PShader.cpp" />
+    <ClCompile Include="RenderCommand.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="RendererTools.cpp" />
     <ClCompile Include="RenderManager.cpp" />
+    <ClCompile Include="RenderShared.cpp" />
+    <ClCompile Include="RenderStateGuard.cpp" />
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="ResourceSerializer.cpp" />
+    <ClCompile Include="RigidBodyComponent.cpp" />
     <ClCompile Include="rttr_directxmath_registry.cpp" />
     <ClCompile Include="rttr_simplemath_registry.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="ScriptBehaviour.cpp" />
+    <ClCompile Include="ShaderInfo.cpp" />
+    <ClCompile Include="SkeletalMesh.cpp" />
+    <ClCompile Include="SkyRenderer.cpp" />
+    <ClCompile Include="SphereColliderComponent.cpp" />
+    <ClCompile Include="StaticMesh.cpp" />
+    <ClCompile Include="VShader.cpp" />
     <ClCompile Include="ScriptLoader.cpp" />
     <ClCompile Include="StringHelper.cpp" />
-    <ClCompile Include="TimeManager.cpp" />
+    <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="UserScriptMessageSignatures.cpp" />
+    <ClCompile Include="TimeManager.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="CapsuleColliderComponent.cpp">
       <Filter>소스 파일\Core\Physcis API</Filter>
@@ -96,11 +131,49 @@
     </ClCompile>
     <ClCompile Include="Animator.cpp">
       <Filter>소스 파일\Core\Render API\Component</Filter>
+    <ClCompile Include="Canvas.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphic.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UIEventManager.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="RectTransform.cpp">
+      <Filter>소스 파일\Core\Render API\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Font.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Gage.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="HandleGage.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Image.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Text.cpp">
+      <Filter>소스 파일\Core\Render API\UI\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="SerializableEvent.cpp">
+      <Filter>소스 파일\Utility</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AnimationClip.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="Behaviour.h" />
+    <ClInclude Include="BoxColliderComponent.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="CapsuleColliderComponent.h" />
+    <ClInclude Include="ColliderComponent.h" />
+    <ClInclude Include="CollisionMatrix.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="Delegates.hpp" />
     <ClInclude Include="DisplayMode.h" />
@@ -108,6 +181,10 @@
     <ClInclude Include="ExportSingleton.hpp" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="GlobalRegistry.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="MaterialSerializer.h" />
+    <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="MissingScriptBehaviour.h" />
     <ClInclude Include="MMMApplication.h" />
     <ClInclude Include="MMMResources.h" />
@@ -118,12 +195,31 @@
     <ClInclude Include="InputKeyCode.h" />
     <ClInclude Include="MMMInput.h" />
     <ClInclude Include="InputManager.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="PhysicsEventCallback.h" />
+    <ClInclude Include="PhysicsFilter.h" />
+    <ClInclude Include="PhysicsSettings.h" />
+    <ClInclude Include="PhysScene.h" />
+    <ClInclude Include="PhysX.h" />
+    <ClInclude Include="PhysxHelper.h" />
+    <ClInclude Include="PhysxManager.h" />
+    <ClInclude Include="Prefab.h" />
+    <ClInclude Include="PShader.h" />
+    <ClInclude Include="RenderCommand.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="RendererTools.h" />
     <ClInclude Include="RenderManager.h" />
+    <ClInclude Include="RenderShared.h" />
+    <ClInclude Include="RenderStateGuard.h" />
     <ClInclude Include="Resolution.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="MMMTime.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectManager.h" />
+    <ClInclude Include="ObjectSerializer.h" />
+    <ClInclude Include="ResourceSerializer.h" />
+    <ClInclude Include="RigidBodyComponent.h" />
+    <ClInclude Include="SafeRelease.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneRef.h" />
@@ -131,8 +227,17 @@
     <ClInclude Include="ScriptBehaviour.h" />
     <ClInclude Include="ScriptLoader.h" />
     <ClInclude Include="SerializableEvent.h" />
+    <ClInclude Include="ShaderInfo.h" />
+    <ClInclude Include="SkeletalMesh.h" />
+    <ClInclude Include="SkyRenderer.h" />
+    <ClInclude Include="SphereColliderComponent.h" />
+    <ClInclude Include="StaticMesh.h" />
+    <ClInclude Include="UserScriptMessageSignatures.h" />
+    <ClInclude Include="UserScriptsCommon.h" />
+    <ClInclude Include="VShader.h" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="StringHelper.h" />
+    <ClInclude Include="Texture2D.h" />
     <ClInclude Include="TimeManager.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="ResourceManager.h" />
@@ -322,6 +427,38 @@
     </ClInclude>
     <ClInclude Include="Animator.h">
       <Filter>헤더 파일\Core\Render API\Component</Filter>
+    <ClInclude Include="Canvas.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphic.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UIEventManager.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="RectTransform.h">
+      <Filter>헤더 파일\Core\Render API\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Button.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Text.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="HandleGage.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Gage.h">
+      <Filter>헤더 파일\Core\Render API\UI\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="SerializableEvent.h">
+      <Filter>헤더 파일\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -329,6 +466,9 @@
       <Filter>헤더 파일\Core\Object API</Filter>
     </ClInclude>
     <ClInclude Include="ObjectManager.h">
+      <Filter>헤더 파일\Core\Object API</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectSerializer.h">
       <Filter>헤더 파일\Core\Object API</Filter>
     </ClInclude>
     <ClInclude Include="Delegates.hpp">
@@ -365,6 +505,9 @@
       <Filter>헤더 파일\Core\Resource API</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
+      <Filter>헤더 파일\Core\Resource API</Filter>
+    </ClInclude>
+    <ClInclude Include="Prefab.h">
       <Filter>헤더 파일\Core\Resource API</Filter>
     </ClInclude>
     <ClInclude Include="MMMTime.h">
@@ -486,6 +629,9 @@
     <ClCompile Include="ObjectManager.cpp">
       <Filter>소스 파일\Core\Object API</Filter>
     </ClCompile>
+    <ClCompile Include="ObjectSerializer.cpp">
+      <Filter>소스 파일\Core\Object API</Filter>
+    </ClCompile>
     <ClCompile Include="Transform.cpp">
       <Filter>소스 파일\Core</Filter>
     </ClCompile>
@@ -508,6 +654,9 @@
       <Filter>소스 파일\Core\Behaviour API</Filter>
     </ClCompile>
     <ClCompile Include="ResourceManager.cpp">
+      <Filter>소스 파일\Core\Resource API</Filter>
+    </ClCompile>
+    <ClCompile Include="Prefab.cpp">
       <Filter>소스 파일\Core\Resource API</Filter>
     </ClCompile>
     <ClCompile Include="GlobalRegistry.cpp">
@@ -598,5 +747,19 @@
     <Filter Include="소스 파일\Core\Physcis API">
       <UniqueIdentifier>{e66850de-f491-4f75-9843-c4ad5567a533}</UniqueIdentifier>
     </Filter>
+    <Filter Include="헤더 파일\Core\Render API\UI">
+      <UniqueIdentifier>{ff296328-4b9f-4378-89fc-7be63fac9a1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Core\Render API\UI\Component">
+      <UniqueIdentifier>{62c29bfc-b5ec-466b-88ba-70f729c2884a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Core\Render API\UI">
+      <UniqueIdentifier>{5533b0f4-5c95-4749-b67a-23eca08b16a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Core\Render API\UI\Component">
+      <UniqueIdentifier>{fb82b831-5a8a-4323-a003-6e612f46404d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
+
+

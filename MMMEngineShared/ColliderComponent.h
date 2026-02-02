@@ -36,6 +36,10 @@ namespace MMMEngine
 		void Initialize() override;
 		void UnInitialize() override;
 
+		//actor에서 셰이더 떼는용도 ( 삭제용도가 아닌 rigid를 옮길때 사용 )
+		void DetachShapeFromActor();
+		void AttachShapeFromActor(physx::PxRigidActor* Actor);
+
 		physx::PxShape* GetPxShape() const { return m_Shape; }
 		ShapeMode GetShapeMode() const { return m_Mode; }
 
@@ -65,7 +69,7 @@ namespace MMMEngine
 
 		//overlayer 설정
 		void SetOverrideLayer(bool enable);
-		bool IsOverrideLayer() const { return m_OverrideLayer; }
+		bool GetOverrideLayer() const { return m_OverrideLayer; }
 
 		void SetLayer(uint32_t layer);
 		uint32_t GetLayer() const { return m_LayerOverride; }
@@ -98,6 +102,15 @@ namespace MMMEngine
 		//디버그 함수
 		virtual void PrintFilter() {};
 
+		void SetChildValue(ObjPtr<Transform> T);
+		bool GetChildValue();
+
+		void NoticeCompoundCollider(ObjPtr<Transform> preParent);
+
+		void SetLocalShape();
+
+		void SetRigidOffsetPose(const physx::PxTransform& pose);
+
 	protected:
 		// 파생 클래스가 shape 생성 후 반드시 호출
 		void SetShape(physx::PxShape* shape, bool owned = true);
@@ -111,7 +124,7 @@ namespace MMMEngine
 
 
 		virtual void ApplyLocalPose();
-		void SetRigidOffsetPose(const physx::PxTransform& pose);
+		
 
 		void ApplyShapeModeFlags();
 		void ApplyMaterial();
@@ -152,7 +165,9 @@ namespace MMMEngine
 
 		bool m_geometryDirty = true;
 
-		bool m_filterDirty = true;		
+		bool m_filterDirty = true;
+
+		bool Child_value = false;
 
 	//콜리더 shape return 가상함수
 	public:

@@ -319,6 +319,7 @@ void MMMEngine::Transform::SetParent(ObjPtr<Transform> parent, bool worldPositio
 	const auto worldRotationBefore = GetWorldRotation();
 	const auto worldPositionBefore = GetWorldPosition();
 
+
 	onUpdateTransformTree.Invoke(this, parent);   // 참조 연결 / 해제
 
 	// 기존 부모에서 제거
