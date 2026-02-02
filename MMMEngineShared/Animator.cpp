@@ -147,6 +147,9 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 	if (!mesh)
 		return;
 
+	if (mSkinComp->mAnimBuffer == nullptr)
+		mSkinComp->mAnimBuffer = &mAnimBuffer;
+
 	auto& boneMat = mAnimBuffer.BoneMat;
 
 	// 재생 중인 clip이 없으면 그냥 identity/bind 유지
@@ -363,7 +366,7 @@ void MMMEngine::Animator::Initialize()
 
 	auto clip = ResourceManager::Get().Load<AnimationClip>(L"Assets/SkinningTest_0.animclip");
 	AddAnimClip(clip);
-	PlayClip(clip->mName);
+	PlayClip(clip->mName, true);
 }
 
 void MMMEngine::Animator::UnInitialize()
@@ -444,7 +447,7 @@ void MMMEngine::Animator::StopClip()
 	mCurrentPlayingMap.clear();
 }
 
-void MMMEngine::Animator::PlayClip(std::string _name, int _rootIdx /*= -1*/)
+void MMMEngine::Animator::PlayClip(std::string _name, bool _isLoop /*= false*/, int _rootIdx /*= 0*/)
 {
 	// 이름으로 AnimInfo가 존재하는지 확인
 	auto it = mAnimClipIdx.find(_name);
@@ -470,13 +473,14 @@ void MMMEngine::Animator::PlayClip(std::string _name, int _rootIdx /*= -1*/)
 	info.elipsedTime = 0.0f;
 	info.nodeIdx = _rootIdx;
 	info.bufferWeight = 1.0f;
+	info.isLoop = _isLoop;
 
 	mCurrentPlayingMap[_name] = info;
 
 	mIsPlaying = true;
 }
 
-void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, int _rootIdx /*= -1*/)
+void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, bool _isLoop /*= false*/, int _rootIdx /*= 0*/)
 {
 	// weight clamp
 	if (_blendWeight < 0.0f) _blendWeight = 0.0f;

@@ -9,7 +9,7 @@ namespace MMMEngine {
 	struct AnimInfo {
 		int clipIdx = -1;			// 클립 인덱스
 		float elipsedTime = 0.0f;	// 애니메이션 진행시간
-		int nodeIdx = -1;			// 애니메이션 루트본 인덱스 (애니메이션 일부사용용)
+		int nodeIdx = 0;			// 애니메이션 루트본 인덱스 (애니메이션 일부사용용)
 		float bufferWeight = 0.0f;	// 애니메이션 버퍼 weight (애니메이션 블랜딩용)
 
 		bool isLoop = false;		// 루프 플래그
@@ -56,8 +56,8 @@ namespace MMMEngine {
 		std::vector<ResPtr<AnimationClip>>& GetAnimClips() { return mAnimClips; }
 		void SetAnimClips(std::vector<ResPtr<AnimationClip>>& _clips) { mAnimClips = _clips; }
 	
-		void PlayClip(std::string _name, int _rootIdx = -1);
-		void PlayBlendClip(std::string _name, float _blendWeight, int _rootIdx = -1);
+		void PlayClip(std::string _name, bool _isLoop = false, int _rootIdx = 0);
+		void PlayBlendClip(std::string _name, float _blendWeight, bool _isLoop = false, int _rootIdx = 0);
 		void StopClip();
 		void PauseClip();
 		void ResumeClip();
