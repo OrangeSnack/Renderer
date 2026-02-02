@@ -1,57 +1,23 @@
-#pragma once
-#include <vector>
-#include <string>
+﻿#pragma once
 
 #include "imgui.h"
-#include "ImGuizmo/ImCurveEdit.h"
+#include "imgui_internal.h"
 #include "AnimationCurve.h"
 
 namespace MMMEngine::Editor
 {
+	/// 그래프 뷰포트: X = 시간, Y = 값
 	struct AnimationCurveEditorView
 	{
 		ImVec2 min = ImVec2(0.0f, 0.0f);
 		ImVec2 max = ImVec2(1.0f, 1.0f);
 		bool autoFit = true;
-		bool clampTime = false;
-		bool clampValue = false;
+		bool lockAspect = false;
 	};
 
-	class AnimationCurveEditorContext final : public ImCurveEdit::Delegate
-	{
-	public:
-		void Bind(AnimationCurve* curve);
-		bool IsBound() const;
-		void SetView(const AnimationCurveEditorView& view);
-		AnimationCurveEditorView& GetView();
+	/// 인스펙터용 미리보기. 클릭 시 true 반환.
+	bool DrawAnimationCurvePreview(AnimationCurve& curve, const ImVec2& size, const AnimationCurveEditorView& view, bool* outChanged = nullptr);
 
-		void SyncFromCurve();
-		void ApplyToCurve();
-
-		bool IsDirty() const;
-		void ClearDirty();
-
-		size_t GetCurveCount() override;
-		ImCurveEdit::CurveType GetCurveType(size_t curveIndex) const override;
-		ImVec2& GetMin() override;
-		ImVec2& GetMax() override;
-		size_t GetPointCount(size_t curveIndex) override;
-		uint32_t GetCurveColor(size_t curveIndex) override;
-		ImVec2* GetPoints(size_t curveIndex) override;
-		int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) override;
-		void AddPoint(size_t curveIndex, ImVec2 value) override;
-		void BeginEdit(int index) override;
-		void EndEdit() override;
-
-	private:
-		AnimationCurve* mCurve = nullptr;
-		AnimationCurveEditorView mView;
-		std::vector<CurveKeyframe> mKeyframes;
-		std::vector<ImVec2> mPoints;
-		bool mDirty = false;
-		bool mIsEditing = false;
-	};
-
-	bool DrawAnimationCurvePreview(const AnimationCurve& curve, const ImVec2& size, const AnimationCurveEditorView& view);
-	bool DrawAnimationCurveEditor(AnimationCurve& curve, AnimationCurveEditorContext& context, const ImVec2& size);
+	/// 커브 편집기 창 내부: 시간(X) vs 값(Y) 2D 그래프만 그림. view는 표시 범위(수정됨).
+	void DrawAnimationCurveGraph(AnimationCurve& curve, const ImVec2& size, AnimationCurveEditorView& view);
 }

@@ -1,5 +1,6 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimationCurve.h"
+#include "rttr/registration"
 
 #include <algorithm>
 

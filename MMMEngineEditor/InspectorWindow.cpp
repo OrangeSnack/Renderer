@@ -1005,11 +1005,9 @@ static std::string MakeCurveCacheKey(const rttr::instance& inst, const rttr::pro
 struct CurveEditorCache
 {
     AnimationCurve working;
-    AnimationCurveEditorContext context;
     AnimationCurveEditorView view;
     bool opened = false;
     bool initialized = false;
-    int selectedIndex = -1;
 };
 
 static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& var, rttr::type propType,
@@ -1026,22 +1024,25 @@ static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& v
     if (!cache.initialized)
     {
         cache.view.autoFit = true;
-        cache.view.clampTime = false;
-        cache.view.clampValue = false;
+        cache.view.lockAspect = true;
         cache.initialized = true;
     }
 
     ImGui::Text("%s", name.c_str());
     ImVec2 previewSize(ImGui::GetContentRegionAvail().x, 70.0f);
-    bool previewClicked = DrawAnimationCurvePreview(curve, previewSize, cache.view);
+    bool previewChanged = false;
+    bool previewClicked = DrawAnimationCurvePreview(curve, previewSize, cache.view, &previewChanged);
 
     if (!readOnly && previewClicked)
     {
         cache.working = curve;
-        cache.context.Bind(&cache.working);
-        cache.context.ClearDirty();
         cache.opened = true;
         ImGui::OpenPopup(("CurveEditor##" + key).c_str());
+    }
+    if (previewChanged && !readOnly)
+    {
+        prop.set_value(inst, curve);
+        var = curve;
     }
 
     if (cache.opened)
@@ -1052,112 +1053,24 @@ static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& v
             ImGui::Text("%s", name.c_str());
             ImGui::Separator();
 
-            ImGui::Checkbox(u8"자동 맞춤", &cache.view.autoFit);
-            ImGui::Checkbox(u8"시간 클램프", &cache.view.clampTime);
-            ImGui::Checkbox(u8"값 클램프", &cache.view.clampValue);
+            ImGui::Checkbox(u8"비율 고정", &cache.view.lockAspect);
 
-            if (!cache.view.autoFit)
-            {
-                ImGui::DragFloat2(u8"시간 범위", &cache.view.min.x, 0.01f);
-                ImGui::DragFloat2(u8"값 범위", &cache.view.min.y, 0.01f);
-                if (cache.view.min.x > cache.view.max.x) std::swap(cache.view.min.x, cache.view.max.x);
-                if (cache.view.min.y > cache.view.max.y) std::swap(cache.view.min.y, cache.view.max.y);
-            }
+            DrawAnimationCurveGraph(cache.working, ImVec2(520.0f, 260.0f), cache.view);
 
-            cache.context.SetView(cache.view);
-            bool changed = DrawAnimationCurveEditor(cache.working, cache.context, ImVec2(520.0f, 260.0f));
-            if (changed && !readOnly)
+            // 편집 중에도 즉시 반영 (플레이/스냅샷에 반영되도록)
+            if (!readOnly)
             {
                 prop.set_value(inst, cache.working);
                 var = cache.working;
-            }
-
-    std::vector<CurveKeyframe> keyframes = cache.working.GetKeyframes();
-    if (!keyframes.empty() && (cache.selectedIndex < 0 || cache.selectedIndex >= static_cast<int>(keyframes.size())))
-        cache.selectedIndex = 0;
-
-    if (!readOnly && ImGui::Button(u8"+ 키 추가"))
-    {
-        const float time = (cache.view.min.x + cache.view.max.x) * 0.5f;
-        const float value = (cache.view.min.y + cache.view.max.y) * 0.5f;
-        keyframes.emplace_back(time, value, 0.0f, 0.0f, 1);
-        cache.selectedIndex = static_cast<int>(keyframes.size()) - 1;
-        cache.working.SetKeyframes(keyframes);
-        cache.context.Bind(&cache.working);
-        cache.context.SyncFromCurve();
-        prop.set_value(inst, cache.working);
-        var = cache.working;
-    }
-
-    if (ImGui::BeginListBox(u8"키 목록", ImVec2(-1.0f, 120.0f)))
-    {
-        for (int i = 0; i < static_cast<int>(keyframes.size()); ++i)
-        {
-            const auto& kf = keyframes[i];
-            std::string label = "t=" + std::to_string(kf.time) + ", v=" + std::to_string(kf.value);
-            bool selected = (i == cache.selectedIndex);
-            if (ImGui::Selectable(label.c_str(), selected))
-                cache.selectedIndex = i;
-            if (selected)
-                ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndListBox();
-    }
-
-    if (cache.selectedIndex >= 0 && cache.selectedIndex < static_cast<int>(keyframes.size()))
-    {
-        CurveKeyframe kf = keyframes[cache.selectedIndex];
-        bool edited = false;
-
-        if (ImGui::DragFloat(u8"시간", &kf.time, 0.01f))
-            edited = true;
-        if (ImGui::DragFloat(u8"값", &kf.value, 0.01f))
-            edited = true;
-        if (ImGui::DragFloat(u8"인 탄젠트", &kf.inTangent, 0.01f))
-            edited = true;
-        if (ImGui::DragFloat(u8"아웃 탄젠트", &kf.outTangent, 0.01f))
-            edited = true;
-
-        const char* modeLabels[] = { "Broken", "Unified" };
-        int mode = (kf.tangentMode == 1) ? 1 : 0;
-        if (ImGui::Combo(u8"탄젠트 모드", &mode, modeLabels, IM_ARRAYSIZE(modeLabels)))
-        {
-            kf.tangentMode = (mode == 1) ? 1 : 0;
-            edited = true;
-        }
-
-        if (edited && !readOnly)
-        {
-            keyframes[cache.selectedIndex] = kf;
-            cache.working.SetKeyframes(keyframes);
-            cache.context.Bind(&cache.working);
-            cache.context.SyncFromCurve();
-            prop.set_value(inst, cache.working);
-            var = cache.working;
-        }
-
-        if (!readOnly && ImGui::Button(u8"삭제"))
-        {
-            if (keyframes.size() > 1)
-            {
-                keyframes.erase(keyframes.begin() + cache.selectedIndex);
-                cache.selectedIndex = std::min(cache.selectedIndex, static_cast<int>(keyframes.size()) - 1);
-                cache.working.SetKeyframes(keyframes);
-                cache.context.Bind(&cache.working);
-                cache.context.SyncFromCurve();
-                prop.set_value(inst, cache.working);
-                var = cache.working;
-            }
-        }
-    }
-
-            if (ImGui::Button(u8"닫기"))
-            {
-                keepOpen = false;
-                ImGui::CloseCurrentPopup();
             }
 
             ImGui::EndPopup();
+        }
+
+        if (!keepOpen)
+        {
+            prop.set_value(inst, cache.working);
+            var = cache.working;
         }
 
         cache.opened = keepOpen;
@@ -1355,48 +1268,83 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst, O
             }
             ImGui::PopID();
 
-            //MUID dragged_muid = GetMuid("gameobject_muid");
             Utility::MUID result = Utility::MUID::Empty();
+            bool useObjectPayload = false;
 
             if (ImGui::BeginDragDropTarget())
             {
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("gameobject_muid"))
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("object_muid"))
                 {
                     if (payload->IsDelivery() && payload->Data && payload->DataSize == sizeof(Utility::MUID))
                     {
                         std::memcpy(&result, payload->Data, sizeof(Utility::MUID));
+                        useObjectPayload = true;
+                    }
+                }
+                if (!useObjectPayload)
+                {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("gameobject_muid"))
+                    {
+                        if (payload->IsDelivery() && payload->Data && payload->DataSize == sizeof(Utility::MUID))
+                        {
+                            std::memcpy(&result, payload->Data, sizeof(Utility::MUID));
+                        }
                     }
                 }
                 ImGui::EndDragDropTarget();
             }
 
             MUID dragged_muid = result;
-            if(dragged_muid.IsValid())
+            if (dragged_muid.IsValid())
             {
-                auto sceneRef = SceneManager::Get().GetCurrentScene();
-                auto dragged = SceneManager::Get().FindWithMUID(sceneRef, dragged_muid);
-
-                auto innertype = StringHelper::ExtractInnerTypeName(propType.get_name().to_string());
-
-                if (innertype == "GameObject")
+                if (useObjectPayload)
                 {
-                    const ObjPtrBase& baseRef = dragged;
-                    auto func = propType.get_method("Inject");
-                    if (func.is_valid())
+                    auto tryInject = [&](const ObjPtrBase& baseRef) -> bool
                     {
+                        auto func = propType.get_method("Inject");
+                        if (!func.is_valid())
+                            return false;
                         auto fvar = func.invoke(var, baseRef);
                         if (fvar.is_valid() && fvar.is_type<bool>() && fvar.get_value<bool>())
                         {
                             prop.set_value(inst, var);
-                            break;
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    ObjPtr<Object> droppedObj = ObjectManager::Get().GetObjectByMUID(dragged_muid);
+                    if (droppedObj.IsValid())
+                    {
+                        if (!tryInject(droppedObj))
+                        {
+                            if (auto comp = droppedObj.Cast<Component>(); comp.IsValid())
+                            {
+                                auto owner = comp->GetGameObject();
+                                if (owner.IsValid())
+                                    tryInject(owner);
+                            }
+                            else if (auto go = droppedObj.Cast<GameObject>(); go.IsValid())
+                            {
+                                for (auto& _comp : go->GetAllComponents())
+                                {
+                                    if (tryInject(_comp))
+                                        break;
+                                }
+                            }
                         }
                     }
                 }
                 else
                 {
-                    for (auto& _comp : dragged->GetAllComponents())
+                    auto sceneRef = SceneManager::Get().GetCurrentScene();
+                    auto dragged = SceneManager::Get().FindWithMUID(sceneRef, dragged_muid);
+
+                    auto innertype = StringHelper::ExtractInnerTypeName(propType.get_name().to_string());
+
+                    if (innertype == "GameObject")
                     {
-                        const ObjPtrBase& baseRef = _comp;
+                        const ObjPtrBase& baseRef = dragged;
                         auto func = propType.get_method("Inject");
                         if (func.is_valid())
                         {
@@ -1405,6 +1353,23 @@ void MMMEngine::Editor::InspectorWindow::RenderProperties(rttr::instance inst, O
                             {
                                 prop.set_value(inst, var);
                                 break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (auto& _comp : dragged->GetAllComponents())
+                        {
+                            const ObjPtrBase& baseRef = _comp;
+                            auto func = propType.get_method("Inject");
+                            if (func.is_valid())
+                            {
+                                auto fvar = func.invoke(var, baseRef);
+                                if (fvar.is_valid() && fvar.is_type<bool>() && fvar.get_value<bool>())
+                                {
+                                    prop.set_value(inst, var);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -1762,11 +1727,19 @@ void MMMEngine::Editor::InspectorWindow::Render()
             std::string duplicatePrevantName = typeName + "##" + std::to_string(compCount++);
             if (typeName != "Transform")
             {
-                if(ImGui::CollapsingHeader(duplicatePrevantName.c_str(), &visible, ImGuiTreeNodeFlags_DefaultOpen))
+                bool headerOpen = ImGui::CollapsingHeader(duplicatePrevantName.c_str(), &visible, ImGuiTreeNodeFlags_DefaultOpen);
+                if (visible)
+                    GiveMuid("object_muid", comp->GetMUID(), typeName);
+                if (headerOpen)
                     RenderProperties(*comp, comp.Cast<Object>());
             }
-            else if (ImGui::CollapsingHeader(duplicatePrevantName.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-                RenderProperties(*comp, comp.Cast<Object>());
+            else
+            {
+                bool headerOpen = ImGui::CollapsingHeader(duplicatePrevantName.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                GiveMuid("object_muid", comp->GetMUID(), typeName);
+                if (headerOpen)
+                    RenderProperties(*comp, comp.Cast<Object>());
+            }
 
             if (!visible)
             {

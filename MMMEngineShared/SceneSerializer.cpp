@@ -9,6 +9,7 @@
 #include "MissingScriptBehaviour.h"
 #include "SerializableEvent.h"
 #include "ObjectManager.h"
+#include "AnimationCurve.h"
 
 #include <fstream>
 #include <filesystem>
@@ -68,6 +69,24 @@ json SerializeVariant(const rttr::variant& var)
         if (t == type::get<float>()) return var.to_float();
         if (t == type::get<double>()) return var.to_double();
     }
+
+    if (t == type::get<MMMEngine::AnimationCurve>())
+    {
+        json arr = json::array();
+        const auto& keys = var.get_value<MMMEngine::AnimationCurve>().GetKeyframes();
+        for (const auto& kf : keys)
+        {
+            json k;
+            k["t"] = kf.time;
+            k["v"] = kf.value;
+            k["in"] = kf.inTangent;
+            k["out"] = kf.outTangent;
+            k["mode"] = kf.tangentMode;
+            arr.push_back(std::move(k));
+        }
+        return arr;
+    }
+
 
     if (t == type::get<MMMEngine::Utility::MUID>()) {
         return var.get_value<MMMEngine::Utility::MUID>().ToString();
@@ -350,6 +369,31 @@ void DeserializeVariant(rttr::variant& target, const json& j, type target_type)
         target = j.get<std::string>();
         return;
     }
+
+    if (target_type == type::get<MMMEngine::AnimationCurve>())
+    {
+        MMMEngine::AnimationCurve curve;
+        if (j.is_array())
+        {
+            std::vector<MMMEngine::CurveKeyframe> keys;
+            for (const auto& item : j)
+            {
+                if (!item.is_object())
+                    continue;
+                MMMEngine::CurveKeyframe kf;
+                if (item.contains("t")) kf.time = item["t"].get<float>();
+                if (item.contains("v")) kf.value = item["v"].get<float>();
+                if (item.contains("in")) kf.inTangent = item["in"].get<float>();
+                if (item.contains("out")) kf.outTangent = item["out"].get<float>();
+                if (item.contains("mode")) kf.tangentMode = item["mode"].get<int>();
+                keys.push_back(kf);
+            }
+            curve.SetKeyframes(keys);
+        }
+        target = curve;
+        return;
+    }
+
 
     // SerializableEvent / SerializableEventT<float> <- 배열 { TargetMUID, MessageName }
     if (target_type == type::get<MMMEngine::SerializableEvent>())

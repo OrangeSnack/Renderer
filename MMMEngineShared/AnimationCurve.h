@@ -1,5 +1,7 @@
-#pragma once
+﻿#pragma once
 #include <vector>
+#include "rttr/type"
+#include "rttr/registration_friend.h"
 
 #include "Export.h"
 
