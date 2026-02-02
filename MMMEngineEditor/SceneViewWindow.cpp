@@ -360,6 +360,7 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 	if (m_viewGizmoTransition.active && m_pCam)
 	{
+		m_pCam->SkipUpdateRotateState(true);
 		m_viewGizmoTransition.elapsed += Time::GetUnscaledDeltaTime();
 		float t = m_viewGizmoTransition.duration <= 1e-5f
 			? 1.0f
@@ -371,9 +372,12 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 
 		if (m_viewGizmoTransition.elapsed >= m_viewGizmoTransition.duration)
 		{
-			m_pCam->SetPosition(m_viewGizmoTransition.targetPos);
+			//m_pCam->SkipUpdateRotateState(false);
+			///*m_pCam->SetPosition(m_viewGizmoTransition.targetPos);
 			m_pCam->SetRotation(m_viewGizmoTransition.targetRot);
-			m_pCam->SyncInputState();
+			//
+			//m_pCam->SyncInputState();*/
+			m_pCam->BeginLookControl();
 			m_viewGizmoTransition.active = false;
 		}
 	}
