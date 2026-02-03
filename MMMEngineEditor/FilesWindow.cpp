@@ -13,11 +13,6 @@
 
 using namespace MMMEngine::EditorRegistry;
 
-// 또는 unordered_set으로 (검색 성능 향상)
-static inline std::unordered_set<std::string> fileExclusionsSet = {
-    ".obj", ".csproj", ".vcxproj", ".filters", ".user", ".dll", ".exp", ".lib", ".settings"
-};
-
 void MMMEngine::Editor::FilesWindow::Render()
 {
     if (!g_editor_window_files)
@@ -435,6 +430,11 @@ void MMMEngine::Editor::FilesWindow::DrawGridItem(const fs::path& path, bool isD
         {
             iconColor = IM_COL32(80, 200, 120, 255); // Green for StaticMesh
             iconGlyph = "\xef\x86\xb2"; // Cube icon
+        }
+        else if (extLower == ".skinmesh")
+        {
+            iconColor = IM_COL32(80, 200, 120, 255); // Green for StaticMesh
+            iconGlyph = "\xef\x86\x83"; // Cube icon
         }
         else if (extLower == ".spritefont")
         {
