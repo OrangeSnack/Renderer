@@ -107,6 +107,20 @@ namespace MMMEngine::Editor
 
 			view.min = ImVec2(minTime - padT, minValue - padV);
 			view.max = ImVec2(maxTime + padT, maxValue + padV);
+
+			// X/Y 스케일 적용 (비율 고정 꺼진 경우 그리드 보이는 간격 조절. 스케일 줄이면 간격 줄어듦)
+			float centerX = (view.min.x + view.max.x) * 0.5f;
+			float centerY = (view.min.y + view.max.y) * 0.5f;
+			float baseRangeX = view.max.x - view.min.x;
+			float baseRangeY = view.max.y - view.min.y;
+			float scaleX = std::max(0.1f, view.scaleX);
+			float scaleY = std::max(0.1f, view.scaleY);
+			float rangeX = baseRangeX / scaleX;
+			float rangeY = baseRangeY / scaleY;
+			view.min.x = centerX - rangeX * 0.5f;
+			view.max.x = centerX + rangeX * 0.5f;
+			view.min.y = centerY - rangeY * 0.5f;
+			view.max.y = centerY + rangeY * 0.5f;
 			return view;
 		}
 
@@ -472,6 +486,27 @@ namespace MMMEngine::Editor
 		bool hoveredRect = rect.Contains(mouse);
 		float w = rect.Max.x - rect.Min.x;
 		float h = rect.Max.y - rect.Min.y;
+
+		// 비율 고정이 아닐 때: 창 크기가 바뀌면 설정한 데이터 비율(스케일) 유지 — 범위를 픽셀 비율에 맞춰 조정
+		if (!view.lockAspect && view.lastGraphWidth > 0.0f && view.lastGraphHeight > 0.0f && w > 0.0f && h > 0.0f)
+		{
+			float rangeX = view.max.x - view.min.x;
+			float rangeY = view.max.y - view.min.y;
+			if (rangeX > 0.0f && rangeY > 0.0f)
+			{
+				float centerX = (view.min.x + view.max.x) * 0.5f;
+				float centerY = (view.min.y + view.max.y) * 0.5f;
+				float newRangeX = rangeX * (w / view.lastGraphWidth);
+				float newRangeY = rangeY * (h / view.lastGraphHeight);
+				view.min.x = centerX - newRangeX * 0.5f;
+				view.max.x = centerX + newRangeX * 0.5f;
+				view.min.y = centerY - newRangeY * 0.5f;
+				view.max.y = centerY + newRangeY * 0.5f;
+			}
+		}
+		view.lastGraphWidth = w;
+		view.lastGraphHeight = h;
+
 		float timePerPx = 0.0f;
 		float valuePerPx = 0.0f;
 		auto RecalcPerPx = [&]()

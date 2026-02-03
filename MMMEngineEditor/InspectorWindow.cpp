@@ -27,6 +27,7 @@ using namespace DirectX;
 #include <cctype>
 #include <cstdint>
 #include <limits>
+#include <cfloat>
 
 using namespace MMMEngine;
 using namespace MMMEngine::Editor;
@@ -1067,6 +1068,7 @@ struct CurveEditorCache
     AnimationCurveEditorView view;
     bool opened = false;
     bool initialized = false;
+    ImVec2 editorSize = ImVec2(560.0f, 360.0f); // 커브 에디터 창 크기 (크기 조절 시 유지)
 };
 
 static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& var, rttr::type propType,
@@ -1107,14 +1109,33 @@ static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& v
     if (cache.opened)
     {
         bool keepOpen = true;
-        if (ImGui::BeginPopupModal(("CurveEditor##" + key).c_str(), &keepOpen, ImGuiWindowFlags_AlwaysAutoResize))
+        ImGui::SetNextWindowSize(cache.editorSize);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(400.0f, 300.0f), ImVec2(FLT_MAX, FLT_MAX));
+        if (ImGui::BeginPopupModal(("CurveEditor##" + key).c_str(), &keepOpen, 0))
         {
             ImGui::Text("%s", name.c_str());
             ImGui::Separator();
 
             ImGui::Checkbox(u8"비율 고정", &cache.view.lockAspect);
+            ImGui::SameLine();
+            const bool scaleEditable = !cache.view.lockAspect;
+            if (!scaleEditable)
+                ImGui::BeginDisabled();
+            ImGui::SetNextItemWidth(70.0f);
+            if (ImGui::DragFloat(u8"X 스케일", &cache.view.scaleX, 0.05f, 0.1f, 10.0f, "%.2f"))
+                cache.view.autoFit = true; // 스케일 변경 시 한 번 다시 맞춤 적용
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(70.0f);
+            if (ImGui::DragFloat(u8"Y 스케일", &cache.view.scaleY, 0.05f, 0.1f, 10.0f, "%.2f"))
+                cache.view.autoFit = true;
+            if (!scaleEditable)
+                ImGui::EndDisabled();
 
-            DrawAnimationCurveGraph(cache.working, ImVec2(520.0f, 260.0f), cache.view);
+            ImVec2 graphSize = ImGui::GetContentRegionAvail();
+            graphSize.y = std::max(graphSize.y, 150.0f);
+            DrawAnimationCurveGraph(cache.working, graphSize, cache.view);
+
+            cache.editorSize = ImGui::GetWindowSize();
 
             // 편집 중에도 즉시 반영 (플레이/스냅샷에 반영되도록)
             if (!readOnly)
