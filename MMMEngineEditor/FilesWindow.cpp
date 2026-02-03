@@ -436,6 +436,11 @@ void MMMEngine::Editor::FilesWindow::DrawGridItem(const fs::path& path, bool isD
             iconColor = IM_COL32(80, 200, 120, 255); // Green for StaticMesh
             iconGlyph = "\xef\x86\xb2"; // Cube icon
         }
+        else if (extLower == ".skinmesh")
+        {
+            iconColor = IM_COL32(80, 200, 120, 255); // Green for StaticMesh
+            iconGlyph = "\xef\x86\x83"; // Cube icon
+        }
         else if (extLower == ".spritefont")
         {
             iconColor = IM_COL32(240, 160, 70, 255); // Orange for SpriteFont
