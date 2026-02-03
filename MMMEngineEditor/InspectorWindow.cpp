@@ -287,6 +287,32 @@ namespace
         return true;
     }
 
+    static bool IsAnimationCurveType(const rttr::type& t)
+    {
+        if (!t.is_valid())
+            return false;
+        if (t == rttr::type::get<AnimationCurve>())
+            return true;
+
+        const std::string name = t.get_name().to_string();
+        if (name == "AnimationCurve" || name == "MMMEngine::AnimationCurve")
+            return true;
+        if (name.find("AnimationCurve") != std::string::npos)
+            return true;
+
+        const rttr::type raw = t.get_raw_type();
+        if (raw.is_valid() && raw != t)
+        {
+            const std::string rawName = raw.get_name().to_string();
+            if (rawName == "AnimationCurve" || rawName == "MMMEngine::AnimationCurve")
+                return true;
+            if (rawName.find("AnimationCurve") != std::string::npos)
+                return true;
+        }
+
+        return false;
+    }
+
     static std::unordered_map<std::string, bool> BuildInspectorChainVisibility(rttr::instance inst, const rttr::type& t)
     {
         std::unordered_map<std::string, bool> visibility;
@@ -709,6 +735,8 @@ struct EventMessageOption
     MMMEngine::Utility::MUID targetMUID;
 };
 
+enum class EventArgType { Void, Float, Bool, Int, String };
+
 static bool IsScreenSpaceCanvasRoot(const ObjPtr<GameObject>& go, Canvas*& outCanvas)
 {
     outCanvas = nullptr;
@@ -723,7 +751,7 @@ static bool IsScreenSpaceCanvasRoot(const ObjPtr<GameObject>& go, Canvas*& outCa
     return true;
 }
 
-static void CollectEventMessageOptions(const ObjPtr<GameObject>& go, bool floatEvent,
+static void CollectEventMessageOptions(const ObjPtr<GameObject>& go, EventArgType argType,
     std::vector<EventMessageOption>& outOptions)
 {
     outOptions.clear();
@@ -737,10 +765,14 @@ static void CollectEventMessageOptions(const ObjPtr<GameObject>& go, bool floatE
             continue;
 
         std::vector<std::string> messageNames;
-        if (floatEvent)
-            behaviour->GetFloatMessageNames(messageNames);
-        else
-            behaviour->GetVoidMessageNames(messageNames);
+        switch (argType)
+        {
+        case EventArgType::Void:   behaviour->GetVoidMessageNames(messageNames); break;
+        case EventArgType::Float:  behaviour->GetFloatMessageNames(messageNames); break;
+        case EventArgType::Bool:   behaviour->GetBoolMessageNames(messageNames); break;
+        case EventArgType::Int:    behaviour->GetIntMessageNames(messageNames); break;
+        case EventArgType::String: behaviour->GetStringMessageNames(messageNames); break;
+        }
 
         if (messageNames.empty())
             continue;
@@ -767,7 +799,7 @@ static void CollectEventMessageOptions(const ObjPtr<GameObject>& go, bool floatE
 static bool DrawSerializableEventProperty(const std::string& name, rttr::variant& var, rttr::type propType,
     const rttr::property& prop, rttr::instance inst, bool readOnly)
 {
-    auto drawCalls = [&](std::vector<PersistentCall>& calls, bool floatEvent)
+    auto drawCalls = [&](std::vector<PersistentCall>& calls, EventArgType argType)
     {
         ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
         std::string headerLabel = name + "  [" + std::to_string(calls.size()) + "]###" + name;
@@ -811,7 +843,7 @@ static bool DrawSerializableEventProperty(const std::string& name, rttr::variant
 
                 ObjPtr<GameObject> targetGo = GetTargetGameObjectFromMUID(calls[i].GetTargetMUID());
                 std::vector<EventMessageOption> options;
-                CollectEventMessageOptions(targetGo, floatEvent, options);
+                CollectEventMessageOptions(targetGo, argType, options);
 
                 std::string previewLabel = GetMessagePreviewLabel(calls[i]);
                 if (!targetGo.IsValid())
@@ -875,7 +907,7 @@ static bool DrawSerializableEventProperty(const std::string& name, rttr::variant
     {
         SerializableEvent ev = var.get_value<SerializableEvent>();
         std::vector<PersistentCall> calls = ev.GetCalls();
-        drawCalls(calls, false);
+        drawCalls(calls, EventArgType::Void);
         ev.SetCalls(std::move(calls));
         prop.set_value(inst, ev);
         return true;
@@ -884,7 +916,34 @@ static bool DrawSerializableEventProperty(const std::string& name, rttr::variant
     {
         SerializableEventT<float> ev = var.get_value<SerializableEventT<float>>();
         std::vector<PersistentCall> calls = ev.GetCalls();
-        drawCalls(calls, true);
+        drawCalls(calls, EventArgType::Float);
+        ev.SetCalls(std::move(calls));
+        prop.set_value(inst, ev);
+        return true;
+    }
+    if (propType == rttr::type::get<SerializableEventT<bool>>())
+    {
+        SerializableEventT<bool> ev = var.get_value<SerializableEventT<bool>>();
+        std::vector<PersistentCall> calls = ev.GetCalls();
+        drawCalls(calls, EventArgType::Bool);
+        ev.SetCalls(std::move(calls));
+        prop.set_value(inst, ev);
+        return true;
+    }
+    if (propType == rttr::type::get<SerializableEventT<int>>())
+    {
+        SerializableEventT<int> ev = var.get_value<SerializableEventT<int>>();
+        std::vector<PersistentCall> calls = ev.GetCalls();
+        drawCalls(calls, EventArgType::Int);
+        ev.SetCalls(std::move(calls));
+        prop.set_value(inst, ev);
+        return true;
+    }
+    if (propType == rttr::type::get<SerializableEventT<std::string>>())
+    {
+        SerializableEventT<std::string> ev = var.get_value<SerializableEventT<std::string>>();
+        std::vector<PersistentCall> calls = ev.GetCalls();
+        drawCalls(calls, EventArgType::String);
         ev.SetCalls(std::move(calls));
         prop.set_value(inst, ev);
         return true;
@@ -1013,7 +1072,7 @@ struct CurveEditorCache
 static bool DrawAnimationCurveProperty(const std::string& name, rttr::variant& var, rttr::type propType,
     const rttr::property& prop, rttr::instance inst, bool readOnly)
 {
-    if (propType != rttr::type::get<AnimationCurve>())
+    if (!IsAnimationCurveType(propType))
         return false;
 
     AnimationCurve curve = var.get_value<AnimationCurve>();

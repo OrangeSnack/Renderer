@@ -4,6 +4,22 @@
 
 #include <algorithm>
 
+RTTR_REGISTRATION
+{
+	using namespace rttr;
+	using namespace MMMEngine;
+	registration::class_<CurveKeyframe>("CurveKeyframe")
+		.constructor<>()(rttr::policy::ctor::as_object)
+		.property("time", &CurveKeyframe::time)
+		.property("value", &CurveKeyframe::value)
+		.property("inTangent", &CurveKeyframe::inTangent)
+		.property("outTangent", &CurveKeyframe::outTangent)
+		.property("tangentMode", &CurveKeyframe::tangentMode);
+	registration::class_<AnimationCurve>("AnimationCurve")
+		.constructor<>()(rttr::policy::ctor::as_object)
+		.property("keyframes", &AnimationCurve::GetKeyframes, &AnimationCurve::SetKeyframes);
+}
+
 namespace MMMEngine
 {
 	CurveKeyframe::CurveKeyframe() = default;

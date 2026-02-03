@@ -1,4 +1,4 @@
-﻿#include "ObjectSerializer.h"
+#include "ObjectSerializer.h"
 #include "GameObject.h"
 #include "Component.h"
 #include "MissingScriptBehaviour.h"
@@ -474,6 +474,42 @@ namespace MMMEngine
                 return;
             }
 
+            if (target_type.is_wrapper())
+            {
+                auto args = target_type.get_template_arguments();
+                if (args.begin() != args.end())
+                {
+                    rttr::type innerType = *args.begin();
+                    if (innerType.is_derived_from(rttr::type::get<Resource>()) ||
+                        innerType == rttr::type::get<Resource>())
+                    {
+                        std::string pathStr = j.get<std::string>();
+                        std::wstring filePath = Utility::StringHelper::StringToWString(pathStr);
+
+                        rttr::variant loadedResource = ResourceManager::Get().Load(innerType, filePath);
+                        if (loadedResource.convert(target.get_type()))
+                            target = loadedResource;
+                        return;
+                    }
+                }
+
+                rttr::type wrapped = target_type.get_wrapped_type();
+                if (wrapped.is_valid())
+                {
+                    rttr::type raw_wrapped = wrapped.get_raw_type();
+                    if (!raw_wrapped.is_valid())
+                        raw_wrapped = wrapped;
+
+                    rttr::variant unwrapped = target.extract_wrapped_value();
+                    if (!unwrapped.is_valid() || unwrapped.get_type() != raw_wrapped)
+                        unwrapped = raw_wrapped.create();
+
+                    DeserializeVariantPrefab(unwrapped, j, raw_wrapped, ctx);
+                    target = unwrapped;
+                    return;
+                }
+            }
+
             if (target_type.is_enumeration())
             {
                 if (j.contains("EnumType") && j.contains("EnumValue"))
@@ -515,29 +551,6 @@ namespace MMMEngine
                 return;
             }
 
-            if (target_type == type::get<MMMEngine::AnimationCurve>())
-            {
-                MMMEngine::AnimationCurve curve;
-                if (j.is_array())
-                {
-                    std::vector<MMMEngine::CurveKeyframe> keys;
-                    for (const auto& item : j)
-                    {
-                        if (!item.is_object())
-                            continue;
-                        MMMEngine::CurveKeyframe kf;
-                        if (item.contains("t")) kf.time = item["t"].get<float>();
-                        if (item.contains("v")) kf.value = item["v"].get<float>();
-                        if (item.contains("in")) kf.inTangent = item["in"].get<float>();
-                        if (item.contains("out")) kf.outTangent = item["out"].get<float>();
-                        if (item.contains("mode")) kf.tangentMode = item["mode"].get<int>();
-                        keys.push_back(kf);
-                    }
-                    curve.SetKeyframes(keys);
-                }
-                target = curve;
-                return;
-            }
 
 
             if (target_type == type::get<MMMEngine::SerializableEvent>())
@@ -576,16 +589,74 @@ namespace MMMEngine
                 target = ev;
                 return;
             }
+            if (target_type == type::get<MMMEngine::SerializableEventT<bool>>())
+            {
+                std::vector<MMMEngine::PersistentCall> calls;
+                if (j.is_array())
+                {
+                    for (const auto& item : j)
+                    {
+                        std::string oldMuid = item.contains("TargetMUID") ? item["TargetMUID"].get<std::string>() : "";
+                        std::string messageName = item.contains("MessageName") ? item["MessageName"].get<std::string>() : "";
+                        std::string newMuid = RemapMuid(ctx, oldMuid);
+                        calls.emplace_back(std::move(newMuid), std::move(messageName));
+                    }
+                }
+                MMMEngine::SerializableEventT<bool> ev;
+                ev.SetCalls(std::move(calls));
+                target = ev;
+                return;
+            }
+            if (target_type == type::get<MMMEngine::SerializableEventT<int>>())
+            {
+                std::vector<MMMEngine::PersistentCall> calls;
+                if (j.is_array())
+                {
+                    for (const auto& item : j)
+                    {
+                        std::string oldMuid = item.contains("TargetMUID") ? item["TargetMUID"].get<std::string>() : "";
+                        std::string messageName = item.contains("MessageName") ? item["MessageName"].get<std::string>() : "";
+                        std::string newMuid = RemapMuid(ctx, oldMuid);
+                        calls.emplace_back(std::move(newMuid), std::move(messageName));
+                    }
+                }
+                MMMEngine::SerializableEventT<int> ev;
+                ev.SetCalls(std::move(calls));
+                target = ev;
+                return;
+            }
+            if (target_type == type::get<MMMEngine::SerializableEventT<std::string>>())
+            {
+                std::vector<MMMEngine::PersistentCall> calls;
+                if (j.is_array())
+                {
+                    for (const auto& item : j)
+                    {
+                        std::string oldMuid = item.contains("TargetMUID") ? item["TargetMUID"].get<std::string>() : "";
+                        std::string messageName = item.contains("MessageName") ? item["MessageName"].get<std::string>() : "";
+                        std::string newMuid = RemapMuid(ctx, oldMuid);
+                        calls.emplace_back(std::move(newMuid), std::move(messageName));
+                    }
+                }
+                MMMEngine::SerializableEventT<std::string> ev;
+                ev.SetCalls(std::move(calls));
+                target = ev;
+                return;
+            }
 
             if (target_type.is_sequential_container())
             {
-                if (!target.is_valid() || target.get_type() != target_type)
-                    target = target_type.create();
+                rttr::type container_type = target_type.get_raw_type();
+                if (!container_type.is_valid())
+                    container_type = target_type;
+
+                if (!target.is_valid() || target.get_type() != container_type)
+                    target = container_type.create();
 
                 auto view = target.create_sequential_view();
                 view.clear();
 
-                auto args = target_type.get_wrapped_type().get_template_arguments();
+                auto args = container_type.get_template_arguments();
                 auto it = args.begin();
                 if (it == args.end())
                     return;
@@ -602,13 +673,17 @@ namespace MMMEngine
 
             if (target_type.is_associative_container())
             {
-                if (!target.is_valid() || target.get_type() != target_type)
-                    target = target_type.create();
+                rttr::type container_type = target_type.get_raw_type();
+                if (!container_type.is_valid())
+                    container_type = target_type;
+
+                if (!target.is_valid() || target.get_type() != container_type)
+                    target = container_type.create();
 
                 auto view = target.create_associative_view();
                 view.clear();
 
-                auto args = target_type.get_wrapped_type().get_template_arguments();
+                auto args = container_type.get_template_arguments();
                 auto it = args.begin();
                 if (it == args.end())
                     return;
@@ -633,23 +708,24 @@ namespace MMMEngine
                 return;
             }
 
-            if (target_type.is_wrapper())
+            if (j.is_array())
             {
-                auto args = target_type.get_template_arguments();
-                if (args.begin() != args.end())
+                rttr::property keyframesProp = target_type.get_property("keyframes");
+                if (keyframesProp.is_valid() && keyframesProp.get_type().is_sequential_container())
                 {
-                    rttr::type innerType = *args.begin();
-                    if (innerType.is_derived_from(rttr::type::get<Resource>()) ||
-                        innerType == rttr::type::get<Resource>())
-                    {
-                        std::string pathStr = j.get<std::string>();
-                        std::wstring filePath = Utility::StringHelper::StringToWString(pathStr);
+                    rttr::type raw_type = target_type.get_raw_type();
+                    if (!raw_type.is_valid())
+                        raw_type = target_type;
 
-                        rttr::variant loadedResource = ResourceManager::Get().Load(innerType, filePath);
-                        if (loadedResource.convert(target.get_type()))
-                            target = loadedResource;
+                    if (!target.is_valid() || target.get_type() != raw_type)
+                        target = raw_type.create();
+                    if (!target.is_valid())
                         return;
-                    }
+
+                    rttr::variant keyframes = keyframesProp.get_value(target);
+                    DeserializeVariantPrefab(keyframes, j, keyframesProp.get_type(), ctx);
+                    keyframesProp.set_value(target, keyframes);
+                    return;
                 }
             }
 
@@ -829,7 +905,53 @@ namespace MMMEngine
         // ---- Prefab serialize helpers ----
         json SerializeVariant(const rttr::variant& var)
         {
+            if (!var.is_valid())
+                return nullptr;
+
             rttr::type t = var.get_type();
+
+            if (t.is_wrapper())
+            {
+                auto args = t.get_template_arguments();
+                if (args.begin() != args.end())
+                {
+                    rttr::type innerType = *args.begin();
+                    rttr::type resourceBase = rttr::type::get<MMMEngine::Resource>();
+
+                    if (innerType.is_derived_from(resourceBase) || innerType == resourceBase)
+                    {
+                        auto resPtr = var.get_value<std::shared_ptr<MMMEngine::Resource>>();
+                        if (resPtr && !resPtr->GetFilePath().empty())
+                        {
+                            return MMMEngine::Utility::StringHelper::WStringToString(
+                                resPtr->GetFilePath()
+                            );
+                        }
+                        return nullptr;
+                    }
+                }
+
+                rttr::type wrappedType = t.get_wrapped_type();
+                if (wrappedType.is_valid())
+                {
+                    std::string wrappedName = wrappedType.get_name().to_string();
+                    if (wrappedName.find("ObjPtr") != std::string::npos)
+                    {
+                        rttr::variant unwrapped = var.extract_wrapped_value();
+                        if (unwrapped.is_valid())
+                        {
+                            MMMEngine::Object* obj = nullptr;
+                            if (unwrapped.convert(obj) && obj != nullptr)
+                                return obj->GetMUID().ToString();
+                        }
+                        return nullptr;
+                    }
+                }
+
+                rttr::variant unwrapped = var.extract_wrapped_value();
+                if (unwrapped.is_valid() && unwrapped.get_type() != t)
+                    return SerializeVariant(unwrapped);
+            }
 
             if (t.is_enumeration())
             {
@@ -853,22 +975,6 @@ namespace MMMEngine
                 if (t == type::get<double>()) return var.to_double();
             }
 
-            if (t == type::get<MMMEngine::AnimationCurve>())
-            {
-                json arr = json::array();
-                const auto& keys = var.get_value<MMMEngine::AnimationCurve>().GetKeyframes();
-                for (const auto& kf : keys)
-                {
-                    json k;
-                    k["t"] = kf.time;
-                    k["v"] = kf.value;
-                    k["in"] = kf.inTangent;
-                    k["out"] = kf.outTangent;
-                    k["mode"] = kf.tangentMode;
-                    arr.push_back(std::move(k));
-                }
-                return arr;
-            }
 
 
             if (t == type::get<MMMEngine::Utility::MUID>())
@@ -890,28 +996,6 @@ namespace MMMEngine
                     arr.push_back(SerializeVariant(item));
                 }
                 return arr;
-            }
-
-            if (t.is_wrapper())
-            {
-                auto args = t.get_template_arguments();
-                if (args.begin() != args.end())
-                {
-                    rttr::type innerType = *args.begin();
-                    rttr::type resourceBase = rttr::type::get<MMMEngine::Resource>();
-
-                    if (innerType.is_derived_from(resourceBase) || innerType == resourceBase)
-                    {
-                        auto resPtr = var.get_value<std::shared_ptr<MMMEngine::Resource>>();
-                        if (resPtr && !resPtr->GetFilePath().empty())
-                        {
-                            return MMMEngine::Utility::StringHelper::WStringToString(
-                                resPtr->GetFilePath()
-                            );
-                        }
-                        return nullptr;
-                    }
-                }
             }
 
             if (var.get_type().get_name().to_string().find("ObjPtr") != std::string::npos)
@@ -938,6 +1022,36 @@ namespace MMMEngine
             {
                 json arr = json::array();
                 const auto& ev = var.get_value<MMMEngine::SerializableEventT<float>>();
+                for (const auto& call : ev.GetCalls())
+                {
+                    arr.push_back({ {"TargetMUID", call.targetMUID}, {"MessageName", call.messageName} });
+                }
+                return arr;
+            }
+            if (t == type::get<MMMEngine::SerializableEventT<bool>>())
+            {
+                json arr = json::array();
+                const auto& ev = var.get_value<MMMEngine::SerializableEventT<bool>>();
+                for (const auto& call : ev.GetCalls())
+                {
+                    arr.push_back({ {"TargetMUID", call.targetMUID}, {"MessageName", call.messageName} });
+                }
+                return arr;
+            }
+            if (t == type::get<MMMEngine::SerializableEventT<int>>())
+            {
+                json arr = json::array();
+                const auto& ev = var.get_value<MMMEngine::SerializableEventT<int>>();
+                for (const auto& call : ev.GetCalls())
+                {
+                    arr.push_back({ {"TargetMUID", call.targetMUID}, {"MessageName", call.messageName} });
+                }
+                return arr;
+            }
+            if (t == type::get<MMMEngine::SerializableEventT<std::string>>())
+            {
+                json arr = json::array();
+                const auto& ev = var.get_value<MMMEngine::SerializableEventT<std::string>>();
                 for (const auto& call : ev.GetCalls())
                 {
                     arr.push_back({ {"TargetMUID", call.targetMUID}, {"MessageName", call.messageName} });
@@ -1241,6 +1355,9 @@ namespace MMMEngine
 
         SerializableEvent::SetResolver([](const Utility::MUID& muid) { return ObjectManager::Get().GetObjectByMUID(muid); });
         SerializableEventT<float>::SetResolver([](const Utility::MUID& muid) { return ObjectManager::Get().GetObjectByMUID(muid); });
+        SerializableEventT<bool>::SetResolver([](const Utility::MUID& muid) { return ObjectManager::Get().GetObjectByMUID(muid); });
+        SerializableEventT<int>::SetResolver([](const Utility::MUID& muid) { return ObjectManager::Get().GetObjectByMUID(muid); });
+        SerializableEventT<std::string>::SetResolver([](const Utility::MUID& muid) { return ObjectManager::Get().GetObjectByMUID(muid); });
 
         if (!rootMuid.empty())
         {

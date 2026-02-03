@@ -21,6 +21,8 @@ namespace MMMEngine
 
 	class MMMENGINE_API AnimationCurve
 	{
+		RTTR_ENABLE()
+		RTTR_REGISTRATION_FRIEND
 	public:
 		AnimationCurve();
 
