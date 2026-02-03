@@ -96,6 +96,9 @@ MMMEngine::ResPtr<MMMEngine::StaticMesh> MMMEngine::AssimpLoader::ConvertStaticM
 		matList.push_back(material);
 	}
 	
+	// 메테리얼 등록
+	staticMesh->materials.swap(matList);
+
 	// SubMeshAsset → MeshData
 	for (size_t i = 0; i < _model->subMeshes.size(); ++i)
 	{
@@ -108,9 +111,6 @@ MMMEngine::ResPtr<MMMEngine::StaticMesh> MMMEngine::AssimpLoader::ConvertStaticM
 		// Material 매핑
 		if (sub.materialIndex >= 0 && sub.materialIndex < _model->materials.size())
 		{
-			// 메테리얼 등록
-			staticMesh->materials.push_back(matList[sub.materialIndex]);
-
 			// 메테리얼:메시그룹 등록
 			staticMesh->meshGroupData[sub.materialIndex].push_back((UINT)i);
 		}
