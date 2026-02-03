@@ -510,3 +510,60 @@ void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, b
 
 	mIsPlaying = true;
 }
+
+void MMMEngine::Animator::PlayClip(std::string _name, int _rootIdx /*= -1*/)
+{
+	// 이름으로 AnimInfo가 존재하는지 확인
+	auto it = mCurrentPlayingMap.find(_name);
+	if (it == mCurrentPlayingMap.end())
+		return;
+
+	AnimInfo& info = it->second;
+
+	// clipIdx 유효성 체크
+	if (info.clipIdx < 0 || info.clipIdx >= (int)mAnimClips.size())
+		return;
+
+	// 기존 재생들 전부 끄고 이거만 재생(단일 재생 정책)
+	for (auto& [name, anim] : mCurrentPlayingMap)
+	{
+		anim.elipsedTime = 0.0f;
+		anim.bufferWeight = 0.0f;
+	}
+
+	// 현재 클립 설정
+	info.elipsedTime = 0.0f;
+	info.nodeIdx = _rootIdx;
+	info.bufferWeight = 1.0f;
+
+	mIsPlaying = true;
+}
+
+void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, int _rootIdx /*= -1*/)
+{
+	// weight clamp
+	if (_blendWeight < 0.0f) _blendWeight = 0.0f;
+	if (_blendWeight > 1.0f) _blendWeight = 1.0f;
+
+	auto it = mCurrentPlayingMap.find(_name);
+	if (it == mCurrentPlayingMap.end())
+		return;
+
+	AnimInfo& info = it->second;
+
+	if (info.clipIdx < 0 || info.clipIdx >= (int)mAnimClips.size())
+		return;
+
+	// 블렌드로 재생: 시간은 유지하거나 새로 시작 정책을 선택 가능
+	// 여기서는 "처음 블렌드 시작이면 0초부터 시작" 정책
+	if (info.bufferWeight <= 0.0f && _blendWeight > 0.0f)
+		info.elipsedTime = 0.0f;
+
+	info.nodeIdx = _rootIdx;
+	info.bufferWeight = _blendWeight;
+
+	// Weight 정규화
+	NormalizeWeight();
+
+	mIsPlaying = true;
+}

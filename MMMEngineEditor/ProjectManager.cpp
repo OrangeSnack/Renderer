@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <cstdlib>
 #include <cassert>
+#include <vector>
+#include <string>
+#include <algorithm>
 #include <json/json.hpp>
 
 // MUID로 vcxproj ProjectGuid 만들기
@@ -86,6 +89,51 @@ namespace MMMEngine::Editor
         // MUID에 이런 함수명이 없으면 ToString()/ToUpperString()에 맞춰 수정하면 됨
         // (너가 "muid는 이거쓰면됨"이라 했으니 여기만 네 MUID API에 맞게 1줄 수정하면 끝)
         return "{" + id.ToUpperString() + "}";
+    }
+
+    static void CollectUserScriptFiles(
+        const fs::path& projectRootDir,
+        std::vector<std::string>& outCpp,
+        std::vector<std::string>& outHeaders)
+    {
+        outCpp.clear();
+        outHeaders.clear();
+
+        const fs::path scriptsDir = projectRootDir / "Source" / "UserScripts" / "Scripts";
+        if (!fs::exists(scriptsDir) || !fs::is_directory(scriptsDir))
+            return;
+
+        auto toLower = [](std::string s) {
+            for (char& c : s)
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            return s;
+        };
+
+        std::error_code ec;
+        for (const auto& e : fs::recursive_directory_iterator(scriptsDir, fs::directory_options::skip_permission_denied, ec))
+        {
+            if (ec) break;
+            if (!e.is_regular_file())
+                continue;
+
+            std::string ext = toLower(e.path().extension().string());
+            bool isCpp = (ext == ".cpp" || ext == ".c" || ext == ".cc" || ext == ".cxx");
+            bool isHeader = (ext == ".h" || ext == ".hpp");
+            if (!isCpp && !isHeader)
+                continue;
+
+            fs::path rel = fs::relative(e.path(), projectRootDir / "Source" / "UserScripts");
+            std::string relStr = rel.generic_string();
+            std::replace(relStr.begin(), relStr.end(), '/', '\\');
+
+            if (isCpp)
+                outCpp.push_back(relStr);
+            else
+                outHeaders.push_back(relStr);
+        }
+
+        std::sort(outCpp.begin(), outCpp.end());
+        std::sort(outHeaders.begin(), outHeaders.end());
     }
 
     // ------------------------------------------------------------
@@ -212,6 +260,25 @@ namespace MMMEngine::Editor
         }
 
         m_project = proj;
+
+        const fs::path projectRootDir = fs::path(m_project->rootPath);
+        EnsureUserScriptsFolders(projectRootDir);
+
+        const fs::path vcxprojPath = projectRootDir / "Source" / "UserScripts" / "UserScripts.vcxproj";
+        const fs::path slnPath = projectRootDir / "Source" / "UserScripts" / "UserScripts.sln";
+        if (!fs::exists(vcxprojPath))
+        {
+            GenerateUserScriptsProject(projectRootDir);
+        }
+        else
+        {
+            if (!fs::exists(slnPath))
+            {
+                GenerateUserScriptsSolution(projectRootDir);
+            }
+            GenerateVSCodeSettings(projectRootDir);
+        }
+
         return true;
     }
 
@@ -477,11 +544,19 @@ void MMMEngine::ExampleBehaviour::Update()
     </Link>
   </ItemDefinitionGroup>
 
-  <!--유저 스크립트 자동 포함(재생성 없이 새 파일 인식)-->
   <ItemGroup>
-    <ClCompile Include="Scripts\**\*.cpp" />
-    <ClInclude Include="Scripts\**\*.h" />
-  </ItemGroup>
+)xml";
+
+        std::vector<std::string> cppFiles;
+        std::vector<std::string> headerFiles;
+        CollectUserScriptFiles(projectRootDir, cppFiles, headerFiles);
+        for (const auto& file : cppFiles)
+            out << "    <ClCompile Include=\"" << file << "\" />\n";
+        for (const auto& file : headerFiles)
+            out << "    <ClInclude Include=\"" << file << "\" />\n";
+
+        out <<
+            R"xml(  </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
@@ -509,15 +584,108 @@ void MMMEngine::ExampleBehaviour::Update()
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Scripts\**\*.cpp">
-      <Filter>Scripts</Filter>
-    </ClCompile>
-    <ClInclude Include="Scripts\**\*.h">
-      <Filter>Scripts</Filter>
-    </ClInclude>
-  </ItemGroup>
+)";
+
+        std::vector<std::string> cppFiles;
+        std::vector<std::string> headerFiles;
+        CollectUserScriptFiles(projectRootDir, cppFiles, headerFiles);
+        for (const auto& file : cppFiles)
+            out << "    <ClCompile Include=\"" << file << "\"><Filter>Scripts</Filter></ClCompile>\n";
+        for (const auto& file : headerFiles)
+            out << "    <ClInclude Include=\"" << file << "\"><Filter>Scripts</Filter></ClInclude>\n";
+
+        out <<
+            R"(  </ItemGroup>
 </Project>
 )";
+        return true;
+    }
+
+    bool ProjectManager::GenerateUserScriptsSolution(const fs::path& projectRootDir) const
+    {
+        const fs::path projDir = projectRootDir / "Source" / "UserScripts";
+        const fs::path slnPath = projDir / "UserScripts.sln";
+
+        const std::string projGuid = MakeDeterministicProjectGuid(projectRootDir);
+        const char* vcxprojTypeGuid = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";
+
+        std::ofstream out(slnPath, std::ios::binary);
+        if (!out) return false;
+
+        out <<
+            "Microsoft Visual Studio Solution File, Format Version 12.00\n"
+            "# Visual Studio Version 17\n"
+            "VisualStudioVersion = 17.0.31903.59\n"
+            "MinimumVisualStudioVersion = 10.0.40219.1\n"
+            "Project(\"" << vcxprojTypeGuid << "\") = \"UserScripts\", \"UserScripts.vcxproj\", \"" << projGuid << "\"\n"
+            "EndProject\n"
+            "Global\n"
+            "\tGlobalSection(SolutionConfigurationPlatforms) = preSolution\n"
+            "\t\tDebug|x64 = Debug|x64\n"
+            "\t\tRelease|x64 = Release|x64\n"
+            "\tEndGlobalSection\n"
+            "\tGlobalSection(ProjectConfigurationPlatforms) = postSolution\n"
+            "\t\t" << projGuid << ".Debug|x64.ActiveCfg = Debug|x64\n"
+            "\t\t" << projGuid << ".Debug|x64.Build.0 = Debug|x64\n"
+            "\t\t" << projGuid << ".Release|x64.ActiveCfg = Release|x64\n"
+            "\t\t" << projGuid << ".Release|x64.Build.0 = Release|x64\n"
+            "\tEndGlobalSection\n"
+            "EndGlobal\n";
+
+        return true;
+    }
+
+    bool ProjectManager::GenerateVSCodeSettings(const fs::path& projectRootDir) const
+    {
+        const fs::path vscodeDir = projectRootDir / ".vscode";
+        const fs::path propsPath = vscodeDir / "c_cpp_properties.json";
+
+        std::error_code ec;
+        fs::create_directories(vscodeDir, ec);
+        if (ec) return false;
+
+        json debugConfig;
+        debugConfig["name"] = "Win64-Debug";
+        debugConfig["includePath"] = json::array({
+            "${workspaceFolder}/Source/UserScripts",
+            "${workspaceFolder}/Source/UserScripts/Scripts",
+            "${workspaceFolder}/Source",
+            "${workspaceFolder}",
+            "${env:MMMENGINE_DIR}/MMMEngineShared",
+            "${env:MMMENGINE_DIR}/MMMEngineShared/dxtk",
+            "${env:MMMENGINE_DIR}/MMMEngineShared/dxtk/inc",
+            "${env:MMMENGINE_DIR}/MMMEngineShared/physx"
+        });
+        debugConfig["defines"] = json::array({
+            "WIN32",
+            "_WINDOWS",
+            "_DEBUG",
+            "RTTR_DLL",
+            "USERSCRIPTS_EXPORT"
+        });
+        debugConfig["compilerPath"] = "cl.exe";
+        debugConfig["cStandard"] = "c17";
+        debugConfig["cppStandard"] = "c++17";
+        debugConfig["intelliSenseMode"] = "windows-msvc-x64";
+
+        json releaseConfig = debugConfig;
+        releaseConfig["name"] = "Win64-Release";
+        releaseConfig["defines"] = json::array({
+            "WIN32",
+            "_WINDOWS",
+            "NDEBUG",
+            "RTTR_DLL",
+            "USERSCRIPTS_EXPORT"
+        });
+
+        json root;
+        root["configurations"] = json::array({ debugConfig, releaseConfig });
+        root["version"] = 4;
+
+        std::ofstream out(propsPath, std::ios::binary);
+        if (!out) return false;
+
+        out << root.dump(4);
         return true;
     }
 
@@ -530,7 +698,9 @@ void MMMEngine::ExampleBehaviour::Update()
 
         // filters는 실패해도 치명적이지 않음
         GenerateUserScriptsFilters(projectRootDir);
+        GenerateUserScriptsSolution(projectRootDir);
 
+        GenerateVSCodeSettings(projectRootDir);
         GenerateDefaultScriptIfEmpty(projectRootDir);
         return true;
     }
@@ -585,5 +755,19 @@ void MMMEngine::ExampleBehaviour::Update()
             return false;
 
         return OpenProject(lastProj);
+    }
+
+    void ProjectManager::RefreshUserScriptsIDEFiles()
+    {
+        if (!HasActiveProject())
+            return;
+
+        const fs::path projectRootDir = fs::path(GetActiveProject().rootPath);
+        EnsureUserScriptsFolders(projectRootDir);
+
+        GenerateUserScriptsVcxproj(projectRootDir);
+        GenerateUserScriptsFilters(projectRootDir);
+        GenerateUserScriptsSolution(projectRootDir);
+        GenerateVSCodeSettings(projectRootDir);
     }
 }
