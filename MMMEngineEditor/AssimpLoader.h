@@ -129,13 +129,7 @@ namespace MMMEngine {
 				aiProcess_GenNormals |
 				aiProcess_CalcTangentSpace |
 				aiProcess_FlipUVs | 
-				aiProcess_PreTransformVertices |
-				aiProcess_JoinIdenticalVertices |
-				aiProcess_ImproveCacheLocality |
-				aiProcess_RemoveRedundantMaterials |
-				aiProcess_OptimizeMeshes |
-				aiProcess_OptimizeGraph |
-				aiProcess_RemoveComponent
+				aiProcess_PreTransformVertices
 			};
 		}
 		inline ImportOptions AnimatedModelOptions() {
@@ -145,13 +139,7 @@ namespace MMMEngine {
 				aiProcess_Triangulate |
 				aiProcess_GenNormals |
 				aiProcess_CalcTangentSpace |
-				aiProcess_FlipUVs |
-				aiProcess_JoinIdenticalVertices |
-				aiProcess_ImproveCacheLocality |
-				aiProcess_RemoveRedundantMaterials |
-				aiProcess_OptimizeMeshes |
-				aiProcess_OptimizeGraph |
-				aiProcess_RemoveComponent
+				aiProcess_FlipUVs
 			};
 		}
 		//std::unordered_map<std::string, ModelAsset>sModelCache;

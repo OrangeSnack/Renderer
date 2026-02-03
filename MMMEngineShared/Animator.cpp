@@ -293,11 +293,17 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 	}
 
 	// local/global matrix 생성
-	std::vector<DirectX::SimpleMath::Matrix> local(nodeCount);
-	std::vector<DirectX::SimpleMath::Matrix> global(nodeCount);
+	std::vector<DirectX::SimpleMath::Matrix> local(nodeCount, DirectX::SimpleMath::Matrix::Identity);
+	std::vector<DirectX::SimpleMath::Matrix> global(nodeCount, DirectX::SimpleMath::Matrix::Identity);
 
 	for (int n = 0; n < nodeCount; ++n)
 	{
+		if (accW[n] <= 0.0f)
+		{
+			local[n] = tree.nodes[n].bindLocal;
+			continue;
+		}
+
 		local[n] =
 			DirectX::SimpleMath::Matrix::CreateScale(outScale[n]) *
 			DirectX::SimpleMath::Matrix::CreateFromQuaternion(outRot[n]) *
@@ -326,7 +332,7 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 		EvalGlobal(n);
 
 	// Bone Palette 256 채우기
-	Mesh_BoneBuffer* palette = new Mesh_BoneBuffer();
+	mAnimBuffer.BoneMat.fill(DirectX::SimpleMath::Matrix::Identity);
 
 	// nodeIdxData: <BoneIdx, NodeIdx>
 	for (const auto& [boneIdxU, nodeIdxU] : mesh->nodeIdxData)
@@ -337,12 +343,8 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 		if (nodeIdx < 0 || nodeIdx >= nodeCount) continue;
 
 		// global
-		palette->BoneMat[boneIdxU] = global[nodeIdx];
+		mAnimBuffer.BoneMat[boneIdxU] = global[nodeIdx];
 	}
-
-	// SkinRenderer AnimBuffer 업데이트
-	boneMat.swap(palette->BoneMat);
-	delete(palette);
 }
 
 void MMMEngine::Animator::NormalizeWeight()
@@ -369,15 +371,17 @@ void MMMEngine::Animator::Initialize()
 	if (!mIsReal)
 		Destroy(SelfPtr(this));
 
-	/*auto clip = ResourceManager::Get().Load<AnimationClip>(L"Assets/SkinningTest_0.animclip");
+	auto clip = ResourceManager::Get().Load<AnimationClip>(L"Assets/SkinningTest_0.animclip");
 	AddAnimClip(clip);
-	PlayClip(clip->mName, true);*/
+	PlayClip(clip->mName, true);
 }
 
 void MMMEngine::Animator::UnInitialize()
 {
 	if (mIsReal)
 		mSkinComp->RemoveAnimator();
+	mSkinComp->mAnimBuffer = nullptr;
+
 	mSkinComp.Reset();
 	mCurrentPlayingMap.clear();
 }
@@ -453,7 +457,7 @@ void MMMEngine::Animator::StopClip()
 	mCurrentPlayingMap.clear();
 }
 
-void MMMEngine::Animator::PlayClip(std::string _name, bool _isLoop /*= false*/, int _rootIdx /*= 0*/)
+void MMMEngine::Animator::PlayClip(std::string _name, bool _isLoop /*= false*/, int _rootIdx /*= -1*/)
 {
 	// 이름으로 AnimInfo가 존재하는지 확인
 	auto it = mAnimClipIdx.find(_name);
@@ -486,7 +490,7 @@ void MMMEngine::Animator::PlayClip(std::string _name, bool _isLoop /*= false*/, 
 	mIsPlaying = true;
 }
 
-void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, bool _isLoop /*= false*/, int _rootIdx /*= 0*/)
+void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, bool _isLoop /*= false*/, int _rootIdx /*= -1*/)
 {
 	// weight clamp
 	if (_blendWeight < 0.0f) _blendWeight = 0.0f;
