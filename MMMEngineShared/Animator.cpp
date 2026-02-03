@@ -147,9 +147,6 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 	if (!mesh)
 		return;
 
-	if (mSkinComp->mAnimBuffer == nullptr)
-		mSkinComp->mAnimBuffer = &mAnimBuffer;
-
 	auto& boneMat = mAnimBuffer.BoneMat;
 
 	// 재생 중인 clip이 없으면 그냥 identity/bind 유지
@@ -158,12 +155,18 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 	{
 		if (info.bufferWeight > 0.0f && info.clipIdx >= 0 && info.clipIdx < (int)mAnimClips.size())
 		{
+			if (mSkinComp->mAnimBuffer == nullptr)
+				mSkinComp->mAnimBuffer = &mAnimBuffer;
 			anyPlaying = true;
 			break;
 		}
 	}
-	if (!anyPlaying)
+	if (!anyPlaying) {
+		mSkinComp->mAnimBuffer = nullptr;
 		return;
+	}
+	
+
 
 	// 노드트리 불러오기
 	NodeTreeAsset& tree = mSkinComp->mesh->mNodeTree;
@@ -376,6 +379,7 @@ void MMMEngine::Animator::UnInitialize()
 	if (mIsReal)
 		mSkinComp->RemoveAnimator();
 	mSkinComp.Reset();
+	mCurrentPlayingMap.clear();
 }
 
 void MMMEngine::Animator::Update(float _deltaTime)
