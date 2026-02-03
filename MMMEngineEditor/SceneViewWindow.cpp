@@ -1573,7 +1573,9 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 					box.Extents = desc.halfExtents;
 					BoundingOrientedBox obb;
 					obb.CreateFromBoundingBox(obb, box);
-					obb.Transform(obb, go->GetTransform()->GetWorldMatrix());
+					auto finalQuat = desc.localRotation * go->GetTransform()->GetWorldRotation();
+					auto finalMat = Matrix::CreateFromQuaternion(finalQuat);
+					obb.Transform(obb, finalMat);
 					DX::Draw(m_batch.get(), obb, Colors::LightGreen);
 					break;
 				}
