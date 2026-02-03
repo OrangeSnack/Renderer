@@ -299,6 +299,8 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 			DirectX::SimpleMath::Matrix::CreateScale(outScale[n]) *
 			DirectX::SimpleMath::Matrix::CreateFromQuaternion(outRot[n]) *
 			DirectX::SimpleMath::Matrix::CreateTranslation(outPos[n]);
+
+		local[n] = XMMatrixTranspose(local[n]);
 	}
 
 	// global: DFS 방식으로
