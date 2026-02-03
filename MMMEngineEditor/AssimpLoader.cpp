@@ -43,6 +43,8 @@ const aiScene* MMMEngine::AssimpLoader::ImportScene(const std::wstring path, Mod
 	m_importer.FreeScene();
 
 	m_importer.SetPropertyFloat(AI_CONFIG_GLOBAL_SCALE_FACTOR_KEY, 0.5f);
+	m_importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, 0);
+
 	const aiScene* scene = m_importer.ReadFile(Utility::StringHelper::WStringToString(path), opt.assimpFlags);
 
 	return scene;
