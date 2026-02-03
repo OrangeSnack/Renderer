@@ -173,7 +173,7 @@
       <Filter>소스 파일\Core\Render API\Component</Filter>
     </ClCompile>
     <ClCompile Include="MeshColliderComponent.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\Core\Physcis API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -477,7 +477,7 @@
       <Filter>헤더 파일\Core\Render API\Component</Filter>
     </ClInclude>
     <ClInclude Include="MeshColliderComponent.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\Core\Physics API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

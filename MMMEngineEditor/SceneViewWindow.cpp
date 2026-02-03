@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <physx/PxPhysicsAPI.h>
 
 using namespace MMMEngine::Editor;
 using namespace MMMEngine;
@@ -1584,35 +1585,84 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 
 							auto rt = make_rt_noscale(go->GetTransform()->GetLocalPosition(), go->GetTransform()->GetLocalRotation());
 
-							const auto& meshes = meshCol->GetMesh()->meshData;
-
-							// indexCount는 3의 배수여야 함(삼각형 리스트)
-							for (size_t i = 0; i < meshes.vertices.size(); ++i)
+							if (auto convexMesh = meshCol->GetConvexMesh(); convexMesh)
 							{
-								auto& submesh = meshes.vertices[i];
-								auto& submeshIndices = meshes.indices[i];
+								auto verts = convexMesh->getVertices();
+								auto ib = convexMesh->getIndexBuffer();
+								physx::PxU32 polyCount = convexMesh->getNbPolygons();
 
-								const auto vertexCount = submesh.size();
-								const size_t triCount = submeshIndices.size() / 3;
-								for (size_t t = 0; t < triCount; ++t)
+								for (physx::PxU32 p = 0; p < polyCount; ++p)
 								{
-									uint32_t ia = submeshIndices[t * 3 + 0];
-									uint32_t ib = submeshIndices[t * 3 + 1];
-									uint32_t ic = submeshIndices[t * 3 + 2];
+									physx::PxHullPolygon poly;
+									if (!convexMesh->getPolygonData(p, poly)) continue;
 
-									if (ia >= submesh.size() || ib >= vertexCount || ic >= vertexCount)
-										continue; // 안전장치
+									const physx::PxU32 n = poly.mNbVerts;
+									const physx::PxU32 base = poly.mIndexBase;
 
+									if (n < 3) continue;
 
-									XMVECTOR A = XMVector3TransformCoord(XMLoadFloat3(&submesh[ia].Pos), rt);
-									XMVECTOR B = XMVector3TransformCoord(XMLoadFloat3(&submesh[ib].Pos), rt);
-									XMVECTOR C = XMVector3TransformCoord(XMLoadFloat3(&submesh[ic].Pos), rt);
+									physx::PxU32 i0 = ib[base + 0];
 
-									DX::DrawTriangle(m_batch.get(), A, B, C, Colors::LightGreen);
+									for (physx::PxU32 i = 1; i + 1 < n; ++i)
+									{
+										physx::PxU32 i1 = ib[base + i];
+										physx::PxU32 i2 = ib[base + i + 1];
+
+										if (i0 >= convexMesh->getNbVertices() ||
+											i1 >= convexMesh->getNbVertices() ||
+											i2 >= convexMesh->getNbVertices())
+											continue;
+
+										// verts[i0], verts[i1], verts[i2] 변환해서 DrawTriangle
+										physx::PxVec3 v0 = verts[i0];
+										physx::PxVec3 v1 = verts[i1];
+										physx::PxVec3 v2 = verts[i2];
+
+										XMVECTOR A = XMVector3TransformCoord(
+											XMVectorSet(v0.x, v0.y, v0.z, 1.0f), rt);
+
+										XMVECTOR B = XMVector3TransformCoord(
+											XMVectorSet(v1.x, v1.y, v1.z, 1.0f), rt);
+
+										XMVECTOR C = XMVector3TransformCoord(
+											XMVectorSet(v2.x, v2.y, v2.z, 1.0f), rt);
+
+										DX::DrawTriangle(m_batch.get(), A, B, C, Colors::LightGreen);
+									}
 								}
 							}
+							else
+							{
+								const auto& meshes = meshCol->GetMesh()->meshData;
 
+								// indexCount는 3의 배수여야 함(삼각형 리스트)
+								for (size_t i = 0; i < meshes.vertices.size(); ++i)
+								{
+									auto& submesh = meshes.vertices[i];
+									auto& submeshIndices = meshes.indices[i];
+
+									const auto vertexCount = submesh.size();
+									const size_t triCount = submeshIndices.size() / 3;
+									for (size_t t = 0; t < triCount; ++t)
+									{
+										uint32_t ia = submeshIndices[t * 3 + 0];
+										uint32_t ib = submeshIndices[t * 3 + 1];
+										uint32_t ic = submeshIndices[t * 3 + 2];
+
+										if (ia >= submesh.size() || ib >= vertexCount || ic >= vertexCount)
+											continue; // 안전장치
+
+
+										XMVECTOR A = XMVector3TransformCoord(XMLoadFloat3(&submesh[ia].Pos), rt);
+										XMVECTOR B = XMVector3TransformCoord(XMLoadFloat3(&submesh[ib].Pos), rt);
+										XMVECTOR C = XMVector3TransformCoord(XMLoadFloat3(&submesh[ic].Pos), rt);
+
+										DX::DrawTriangle(m_batch.get(), A, B, C, Colors::LightGreen);
+									}
+								}
+							}
 						}
+						break;
 					}
 					case ColliderComponent::DebugColliderType::Box:
 					{
