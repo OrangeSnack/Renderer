@@ -141,6 +141,9 @@ MMMEngine::ResPtr<MMMEngine::SkeletalMesh> MMMEngine::AssimpLoader::ConvertSkele
 		matList.push_back(material);
 	}
 
+	// 메테리얼 등록
+	skeletalMesh->materials.swap(matList);
+
 	// SubMeshAsset → MeshData
 	for (size_t i = 0; i < _model->subMeshes.size(); ++i)
 	{
@@ -153,9 +156,6 @@ MMMEngine::ResPtr<MMMEngine::SkeletalMesh> MMMEngine::AssimpLoader::ConvertSkele
 		// Material 매핑
 		if (sub.materialIndex >= 0 && sub.materialIndex < _model->materials.size())
 		{
-			// 메테리얼 등록
-			skeletalMesh->materials.push_back(matList[sub.materialIndex]);
-
 			// 메테리얼:메시그룹 등록
 			skeletalMesh->meshGroupData[sub.materialIndex].push_back((UINT)i);
 		}
