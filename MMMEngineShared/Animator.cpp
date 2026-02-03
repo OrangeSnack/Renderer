@@ -366,9 +366,9 @@ void MMMEngine::Animator::Initialize()
 	if (!mIsReal)
 		Destroy(SelfPtr(this));
 
-	auto clip = ResourceManager::Get().Load<AnimationClip>(L"Assets/SkinningTest_0.animclip");
+	/*auto clip = ResourceManager::Get().Load<AnimationClip>(L"Assets/SkinningTest_0.animclip");
 	AddAnimClip(clip);
-	PlayClip(clip->mName, true);
+	PlayClip(clip->mName, true);*/
 }
 
 void MMMEngine::Animator::UnInitialize()
