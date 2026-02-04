@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Export.h"
 #include "MMMTime.h"
 #include <algorithm>
@@ -7,7 +7,7 @@
 
 namespace MMMEngine
 {
-	class MMMENGINE_API MathF
+	class MMMENGINE_API MMMMathF
 	{
 	public:
 		static constexpr float Infinity = std::numeric_limits<float>::infinity();
@@ -155,7 +155,7 @@ namespace MMMEngine
 		}
 
 	private:
-		MathF() = delete;
+		MMMathF() = delete;
 
 		static float Fade(float t)
 		{
