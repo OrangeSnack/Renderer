@@ -560,35 +560,28 @@ namespace MMMEngine::Editor
         }
 
         /// 짝이 되는 .cpp에 RTTR 등록이 이미 있으면 true (gen.cpp에서 스킵용)
-        static bool HasOwnRttrRegistration(const fs::path& scriptsDir, const fs::path& headerPath, const std::string& className)
-        {
-            fs::path cppPath = scriptsDir / headerPath;
-            cppPath.replace_extension(".cpp");
-            if (!fs::exists(cppPath) || !fs::is_regular_file(cppPath))
-                return false;
-            std::string cppText = ReadFileAsUtf8(cppPath);
-            if (cppText.find("RTTR_PLUGIN_REGISTRATION") == std::string::npos
-                && cppText.find("RTTR_REGISTRATION") == std::string::npos)
-                return false;
-            if (cppText.find("class_<" + className + ">") == std::string::npos)
-                return false;
-            return true;
-        }
+        //static bool HasOwnRttrRegistration(const fs::path& scriptsDir, const fs::path& headerPath, const std::string& className)
+        //{
+        //    fs::path cppPath = scriptsDir / headerPath;
+        //    cppPath.replace_extension(".cpp");
+        //    if (!fs::exists(cppPath) || !fs::is_regular_file(cppPath))
+        //        return false;
+        //    std::string cppText = ReadFileAsUtf8(cppPath);
+        //    if (cppText.find("RTTR_PLUGIN_REGISTRATION") == std::string::npos
+        //        && cppText.find("RTTR_REGISTRATION") == std::string::npos)
+        //        return false;
+        //    if (cppText.find("class_<" + className + ">") == std::string::npos)
+        //        return false;
+        //    return true;
+        //}
 
         // gen.cpp 생성 (이미 RTTR 등록된 .cpp가 있는 클래스는 제외)
         static bool WriteGenCpp(const fs::path& scriptsDir, const std::vector<ScriptInfo>& scripts)
         {
-            std::vector<const ScriptInfo*> toGen;
-            for (const auto& s : scripts)
-            {
-                if (HasOwnRttrRegistration(scriptsDir, s.headerPath, s.className))
-                    continue;
-                toGen.push_back(&s);
-            }
-
             fs::path genPath = scriptsDir / "UserScripts.gen.cpp";
             std::ostringstream os;
             os << "// Auto-generated. Do not edit.\n";
+            os << "#pragma optimize(\"\", off)\n";
             os << "#include \"Export.h\"\n";
             os << "#include \"ScriptBehaviour.h\"\n";
             os << "#include \"UserScriptsCommon.h\"\n";
@@ -596,22 +589,22 @@ namespace MMMEngine::Editor
             os << "#include \"rttr/registration\"\n";
             os << "#include \"rttr/detail/policies/ctor_policies.h\"\n\n";
 
-            for (const auto* s : toGen)
+            for (const auto& s : scripts)
             {
                 // gen.cpp 가 Scripts/ 안에 있으므로, 같은 폴더 기준 상대 경로만 사용 (Scripts/ 접두어 없음)
-                std::string incPath = s->headerPath.generic_string();
+                std::string incPath = s.headerPath.generic_string();
                 std::replace(incPath.begin(), incPath.end(), '\\', '/');
                 os << "#include \"" << incPath << "\"\n";
             }
             os << "\nusing namespace rttr;\nusing namespace MMMEngine;\n\nRTTR_PLUGIN_REGISTRATION\n{\n";
 
-            for (const auto* s : toGen)
+            for (const auto& s : scripts)
             {
-                os << "\tregistration::class_<" << s->className << ">(\"" << s->className << "\")\n";
-                os << "\t\t(rttr::metadata(\"wrapper_type_name\", \"ObjPtr<" << s->className << ">\"))";
-                for (const auto& p : s->properties)
+                os << "\tregistration::class_<" << s.className << ">(\"" << s.className << "\")\n";
+                os << "\t\t(rttr::metadata(\"wrapper_type_name\", \"ObjPtr<" << s.className << ">\"))";
+                for (const auto& p : s.properties)
                 {
-                    os << "\n\t\t.property(\"" << p.name << "\", &" << s->className << "::" << p.name << ")";
+                    os << "\n\t\t.property(\"" << p.name << "\", &" << s.className << "::" << p.name << ")";
                     if (p.inspectorHidden)
                         os << "(rttr::metadata(\"INSPECTOR\", \"HIDDEN\"))";
                 if (!p.inspectorChain.empty())
@@ -621,9 +614,9 @@ namespace MMMEngine::Editor
                 }
                 os << ";\n\n";
 
-                os << "\tregistration::class_<ObjPtr<" << s->className << ">>(\"ObjPtr<" << s->className << ">\")\n";
-                os << "\t\t.constructor(&Object::NewObject<" << s->className << ">)\n";
-                os << "\t\t.method(\"Inject\", &ObjPtr<" << s->className << ">::Inject);\n\n";
+                os << "\tregistration::class_<ObjPtr<" << s.className << ">>(\"ObjPtr<" << s.className << ">\")\n";
+                os << "\t\t.constructor(&Object::NewObject<" << s.className << ">)\n";
+                os << "\t\t.method(\"Inject\", &ObjPtr<" << s.className << ">::Inject);\n\n";
             }
             os << "}\n";
             std::string newText = os.str();
