@@ -99,9 +99,15 @@ std::filesystem::path MMMEngine::MaterialSerializer::Serialize(Material* _materi
 	fs::path savePath(ResourceManager::Get().GetCurrentRootPath());
 
 	fs::path p(_path);
-	p = p / (_name + L"_Material" + std::to_wstring(_index) + L".material");
+	if (_index < 0)
+		p = p / (_name);
+	else
+		p = p / (_name + L"_Material" + std::to_wstring(_index) + L".material");
 
-	savePath = savePath / p;
+	if (p.is_relative())
+		savePath = savePath / p;
+	else
+		savePath = p;
 
 	if (savePath.has_parent_path() && !fs::exists(savePath.parent_path())) {
 		fs::create_directories(savePath.parent_path());
@@ -123,7 +129,11 @@ void MMMEngine::MaterialSerializer::DeSerialize(Material* _material, std::wstrin
 {
 	// 경로 만들기
 	fs::path loadPath(ResourceManager::Get().GetCurrentRootPath());
-	loadPath = loadPath / _path;
+	fs::path fPath(_path);
+	if (fPath.is_relative())
+		loadPath = loadPath / fPath;
+	else
+		loadPath = fPath;
 
 	// 파일 읽기
 	//std::ifstream inFile(loadPath.wstring(), std::ios::binary);

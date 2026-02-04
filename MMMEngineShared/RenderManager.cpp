@@ -922,6 +922,7 @@ namespace MMMEngine {
 		DirectX::SimpleMath::Vector3 target = camPos;
 		
 		DirectX::SimpleMath::Vector3 lightPos = camPos;
+		m_lightPos = lightPos;
 		auto offset = (-lightDir * 500.0f);
 		lightPos += offset;
 

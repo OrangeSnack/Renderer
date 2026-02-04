@@ -134,10 +134,21 @@ bool MMMEngine::Material::LoadFromFilePath(const std::wstring& _filePath)
 	}
 
 	MaterialSerializer::Get().DeSerialize(this, _filePath);
+	int prevPropSize = m_properties.size();
 
 	// 타입에 따라 프로퍼티 생성, 삭제
 	auto type = ShaderInfo::Get().GetShaderType(m_pPShader->GetFilePath());
 	ShaderInfo::Get().ConvertMaterialType(type, this);
+
+	int currPropSize = m_properties.size();
+
+	// 프로퍼티 변경 감지시 자동으로 재직렬화
+	if (currPropSize > prevPropSize) {
+		std::wstring fileName = fPath.filename().wstring();
+		std::wstring parentPath = fPath.parent_path().wstring();
+
+		MaterialSerializer::Get().Serialize(this, parentPath, fileName, -1);
+	}
 
 	return true;
 }

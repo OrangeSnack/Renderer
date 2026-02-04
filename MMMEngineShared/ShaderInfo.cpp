@@ -63,12 +63,21 @@ void MMMEngine::ShaderInfo::CreatePShaderReflection(std::wstring&& _filePath)
 
 			std::wstring propName(varDesc.Name, varDesc.Name + strlen(varDesc.Name));
 
-			// 타입 정보 기록
-			auto it = m_propertyInfoMap[_type].find(propName);
-			if (it != m_propertyInfoMap[_type].end()) {
-				it->second.varType = typeDesc.Type;	// D3D_SHADER_VARIABLE_TYPE
-				it->second.rows = typeDesc.Rows;
-				it->second.columns = typeDesc.Columns;
+			// 글로벌 먼저 확인
+			auto gIt = m_globalPropertyInfoMap.find(propName);
+			if (gIt != m_globalPropertyInfoMap.end()) {
+				gIt->second.varType = typeDesc.Type;	// D3D_SHADER_VARIABLE_TYPE
+				gIt->second.rows = typeDesc.Rows;
+				gIt->second.columns = typeDesc.Columns;
+			}
+			else {
+				// 타입 정보 기록
+				auto it = m_propertyInfoMap[_type].find(propName);
+				if (it != m_propertyInfoMap[_type].end()) {
+					it->second.varType = typeDesc.Type;	// D3D_SHADER_VARIABLE_TYPE
+					it->second.rows = typeDesc.Rows;
+					it->second.columns = typeDesc.Columns;
+				}
 			}
 
 			// 오프셋과 크기 기록
@@ -105,6 +114,14 @@ void MMMEngine::ShaderInfo::StartUp()
 	m_typeBufferMap[ShaderType::S_PBR].push_back({ L"LightBuffer" , 1 });
 
 	// 타입별 레지스터 번호 등록
+	// 글로벌 인포맵은 메테리얼 프로퍼티로 저장안함.
+	m_globalPropertyInfoMap[L"mLightDir"] = { PropertyType::Constant, 1 };
+	//m_globalPropertyInfoMap[L"mLightPadding"] = { PropertyType::Constant, 1 };
+	m_globalPropertyInfoMap[L"mLightColor"] = { PropertyType::Constant, 1 };
+	m_globalPropertyInfoMap[L"mIntensity"] = { PropertyType::Constant, 1 };
+	m_globalPropertyInfoMap[L"mLightPos"] = { PropertyType::Constant, 1 };
+
+	// 로컬 인포맵은 메테리얼 프로퍼티에 저장. 수정가능해짐.
 	m_propertyInfoMap[ShaderType::S_PBR][L"_albedo"] = { PropertyType::Texture, 0 };
 	m_propertyInfoMap[ShaderType::S_PBR][L"_normal"] = { PropertyType::Texture, 1 };
 	m_propertyInfoMap[ShaderType::S_PBR][L"_emissive"] = { PropertyType::Texture, 2 };
@@ -118,10 +135,6 @@ void MMMEngine::ShaderInfo::StartUp()
 	m_propertyInfoMap[ShaderType::S_PBR][L"_ambientOcclusion"] = { PropertyType::Texture, 32 };
 	//m_propertyInfoMap[ShaderType::S_PBR][L"_sp0"] = { PropertyType::Sampler, 0 };
 
-	m_propertyInfoMap[ShaderType::S_PBR][L"mLightDir"] = { PropertyType::Constant, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"mLightPadding"] = { PropertyType::Constant, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"mLightColor"] = { PropertyType::Constant, 1 };
-	m_propertyInfoMap[ShaderType::S_PBR][L"mIntensity"] = { PropertyType::Constant, 1 };
 	m_propertyInfoMap[ShaderType::S_PBR][L"mBaseColor"] = { PropertyType::Constant, 3 };
 	m_propertyInfoMap[ShaderType::S_PBR][L"mMetallic"] = { PropertyType::Constant, 3 };
 	m_propertyInfoMap[ShaderType::S_PBR][L"mRoughness"] = { PropertyType::Constant, 3 };
@@ -158,6 +171,7 @@ void MMMEngine::ShaderInfo::ShutDown()
 
 	m_typeInfoMap.clear();
 	m_propertyInfoMap.clear();
+	m_globalPropertyInfoMap.clear();
 	m_CBPropertyMap.clear();
 	m_CBBufferMap.clear();
 }
@@ -222,7 +236,15 @@ void MMMEngine::ShaderInfo::UpdateProperty(ID3D11DeviceContext4* context,
 		if (gPropIt != gPropMap.end())
 		{
 			const PropertyValue& gval = gPropIt->second;
-			const PropertyInfo& pinfo = m_propertyInfoMap[shaderType][propertyName];
+
+			auto infoIt = m_globalPropertyInfoMap.find(propertyName);
+			if (infoIt == m_globalPropertyInfoMap.end()) {
+				infoIt = m_propertyInfoMap[shaderType].find(propertyName);
+				if (infoIt == m_propertyInfoMap[shaderType].end())
+					return;
+			}
+			
+			const PropertyInfo& pinfo = infoIt->second;
 
 			if (pinfo.propertyType == PropertyType::Constant)
 			{

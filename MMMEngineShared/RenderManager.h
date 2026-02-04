@@ -70,6 +70,7 @@ namespace MMMEngine
 		
 		// 라이트 저장
 		std::vector<Light*> m_lights;
+		DirectX::SimpleMath::Vector3 m_lightPos;
 
 		// 스카이박스 메테리얼 참조
 		std::weak_ptr<Material> m_pSkyboxMaterial;
@@ -203,6 +204,7 @@ namespace MMMEngine
 
 		int AddLight(Light* _obj);
 		void RemoveLight(int _idx);
+		DirectX::SimpleMath::Vector3 GetLightPos() { return m_lightPos; }
 		void InitCache();
 
 		UINT GetSceneWidth() { return m_sceneWidth; }
