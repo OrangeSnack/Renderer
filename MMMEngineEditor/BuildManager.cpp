@@ -550,47 +550,6 @@ namespace MMMEngine::Editor
         return {};
     }
 
-	// 모든 파일이 아닌 수정된 파일만 디스크에 강제 동기화하는 로직이 필요함
-    //void BuildManager::ForceSyncScriptsToDisk(const std::filesystem::path& scriptsPath)
-    //{
-    //    if (!fs::exists(scriptsPath)) return;
-
-    //    for (const auto& entry : fs::recursive_directory_iterator(scriptsPath))
-    //    {
-    //        if (entry.is_regular_file())
-    //        {
-    //            std::wstring ext = entry.path().extension().wstring();
-    //            if (ext == L".h" || ext == L".cpp")
-    //            {
-    //                // Win32 API를 사용하여 파일 핸들을 열고 Flush 명령을 내림
-    //                HANDLE hFile = CreateFileW(
-    //                    entry.path().c_str(),
-    //                    GENERIC_WRITE,
-    //                    FILE_SHARE_READ | FILE_SHARE_WRITE,
-    //                    NULL,
-    //                    OPEN_EXISTING,
-    //                    FILE_ATTRIBUTE_NORMAL,
-    //                    NULL
-    //                );
-
-    //                if (hFile != INVALID_HANDLE_VALUE)
-    //                {
-    //                    // OS가 들고 있는 쓰기 버퍼를 물리 디스크로 강제 플러시
-    //                    FlushFileBuffers(hFile);
-    //                    // 파일 수정 시간을 현재 시간으로 갱신하여 제너레이터가 감지하게 함
-    //                    FILETIME ft;
-    //                    SYSTEMTIME st;
-    //                    GetSystemTime(&st);
-    //                    SystemTimeToFileTime(&st, &ft);
-    //                    SetFileTime(hFile, NULL, NULL, &ft);
-
-    //                    CloseHandle(hFile);
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
-
     BuildOutput BuildManager::ExecuteBuild(
         const fs::path& msbuildPath,
         const fs::path& vcxprojPath,
