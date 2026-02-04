@@ -24,6 +24,11 @@ MMMEngine::PropertyValue MMMEngine::MaterialSerializer::property_from_json(const
 		auto arr = j.at("value");
 		return DirectX::SimpleMath::Vector3(arr[0], arr[1], arr[2]);
 	}
+	else if (type == "Vector4")
+	{
+		auto arr = j.at("value");
+		return DirectX::SimpleMath::Vector4(arr[0], arr[1], arr[2], arr[3]);
+	}
 	else if (type == "Matrix")
 	{
 		auto arr = j.at("value");
@@ -56,6 +61,8 @@ void MMMEngine::MaterialSerializer::to_json(json& j, const MMMEngine::PropertyVa
 			j = { {"type", "float"}, {"value", arg} };
 		else if constexpr (std::is_same_v<T, DirectX::SimpleMath::Vector3>)
 			j = { {"type", "Vector3"}, {"value", {arg.x, arg.y, arg.z}} };
+		else if constexpr (std::is_same_v<T, DirectX::SimpleMath::Vector4>)
+			j = { {"type", "Vector4"}, {"value", {arg.x, arg.y, arg.z, arg.w}} };
 		else if constexpr (std::is_same_v<T, DirectX::SimpleMath::Matrix>)
 			j = { {"type", "Matrix"}, {"value", {
 				arg._11,arg._12,arg._13,arg._14,

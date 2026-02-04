@@ -63,32 +63,40 @@ float CalculateShadowPCF(float4 LightPos)
     return shadow;
 }
 
+float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+{
+    return F0 + (max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0) - F0)
+                * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 float4 main(PS_INPUT input) : SV_TARGET
 {    
-    float3 ambient = mAoStrength * mLightColor;
-    
     float3 normalTex = _normal.Sample(_sp0, input.Tex).xyz * 2.0f - 1.0f; // 정규화
 
-
-	
-
 	 // Normal
-    float3 N = normalize(input.Norm);
-	float3 T = normalize(input.Tan);
-    float3 B = cross(N, T);
-
     float3 normalMap = _normal.Sample(_sp0, input.Tex).xyz;
     normalMap = normalize(normalMap * 2.0f - 1.0f);
-    float3x3 tbn = float3x3(T, B, N);
+    float3x3 tbn = float3x3(normalize(input.Tan), normalize(input.BiTan), normalize(input.Norm));
+    float3 N = normalize(mul(normalMap, tbn));
     
-    N = normalize(mul(normalMap, tbn));
-
-    float3 I = normalize(input.W_Pos.xyz - mCamPos.xyz);
-    float3 R = reflect(I, N);  // 큐브맵 반사를 위한 리플렉트 벡터
-    R.x = -R.x;
+    float3 V = normalize(mCamPos.xyz - input.W_Pos.xyz);
     float3 L = -mLightDir.xyz;
+    float3 R = reflect(-V, N);  // 큐브맵 반사를 위한 리플렉트 벡터
 	float RimNdotL = dot(mLightPos.xyz, N);
 	float NdotL = saturate(dot(N, L));
+
+     // 간접광 (IBL)
+    float roughness = _roughness.Sample(_sp0, input.Tex).r * mRoughness;
+    float3 irradiance = _irradiance.Sample(_sp0, N).rgb;
+    float ao = _ambientOcclusion.Sample(_sp0, input.Tex).r * mAoStrength;
+
+    float NdotV = saturate(dot(N,V));
+    float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), normalTex, 0.0f);
+    float3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);
+    float3 kD_ibl = (1.0 - F_ibl) * (1.0 - 0.0f);
+    float3 diffuseIBL = kD_ibl * irradiance * normalTex;
+
+    float4 ambient = diffuseIBL * ao;
     
     // 조명 위치와 픽셀 위치
     //float3 toLight =  - input.WorldPos;
@@ -98,7 +106,6 @@ float4 main(PS_INPUT input) : SV_TARGET
     //float attenuation = 1.0f / (distance * distance);
     
     //float lightDist = attenuation;
-    
 	float shadow = CalculateShadowPCF(input.S_Pos); // 그림자 인자 계산
 	float shadowLut = _lutMap.Sample(_samPoint, float2(shadow * 0.5f + 0.495f, 0.5f)).r;
 
@@ -112,23 +119,33 @@ float4 main(PS_INPUT input) : SV_TARGET
 	float diffShadow = min(shadowLut, diffLut); // 그림자와 조명값 중 작은 값을 사용
 	diffShadow = diffShadow > mLowLut ? diffShadow : (dot(N, -L) * mDiffGradientDistHalf + mDiffGradientDepth);
 
-    float3 diffuse = mDiffuseStr * mLightColor * diffShadow;
+    float4 diffuse = mDiffuseStr * mLightColor * diffShadow;
     
+    // Specular
+    uint width, height, numMips;
+    _specular.GetDimensions(0, width, height, numMips);
+
+    float maxMip = float(numMips - 1);
+    float lod = roughness * maxMip;
+
+    float3 prefilteredColor = _specular.SampleLevel(_sp0, R, lod).rgb;
+    float2 brdf = _brdflut.Sample(_sp0, float2(NdotV, roughness)).rg;
+    float3 specTex = prefilteredColor * (F_ibl * brdf.x + brdf.y);
+
     float3 viewDir = normalize(mCamPos.xyz - input.W_Pos.xyz);
     float3 halfDir = normalize(viewDir + L); // 스펙큘러연산을 위한 하프 벡터
     
-    float specTex = _roughness.Sample(_sp0, input.Tex).r;
-    float spec = pow(saturate(dot(halfDir, N)), 48) * sqrt(diff); // * sqrt(diff) <- 이걸 쓰면 shininess < 32 에서 아티팩트가 사라짐..!!! 
+    //float spec = pow(saturate(dot(halfDir, N)), shininess) * sqrt(diff); // * sqrt(diff) <- 이걸 쓰면 shininess < 32 에서 아티팩트가 사라짐..!!! 
     
-	spec = smoothstep(0.01, 0.02f, spec); // <- 카툰렌더링용 스펙큘러
+	specTex = smoothstep(0.01, 0.02f, specTex); // <- 카툰렌더링용 스펙큘러
 	shadowLut = shadowLut > 0.999f ? 1.0f : 0.0f; // 카툰렌더링용 그림자
 	shadowLut = diff > 0.6f ? shadowLut : 0.0f; // 디퓨즈가 낮으면 그림자 제거
-	float3 specular = mSpecularStr * specTex * spec * mLightColor * shadowLut;
+	float4 specular = specTex * mSpecularStr * mLightColor * shadowLut;
     
 	float4 emmisive = _emissive.Sample(_sp0, input.Tex);
 
     // 알파 클리핑용 디퓨즈 샘플링
-    float4 baseTex = _albedo.Sample(_sp0, input.Tex);
+    float4 baseTex = _albedo.Sample(_sp0, input.Tex) * mBaseColor;
 
     // 알파 임계값 설정 (0.1~0.5 정도 보통 사용)
     const float alphaCutoff = 0.5f;
@@ -140,7 +157,7 @@ float4 main(PS_INPUT input) : SV_TARGET
 
 	// 림 라이트
 	float _RimAmount = 0.716;
-	float rimDot = 1 - dot(viewDir, N);
+	float4 rimDot = 1 - dot(viewDir, N);
 	float rimIntensity = rimDot * RimNdotL;
 	rimIntensity = smoothstep(_RimAmount - 0.01, _RimAmount + 0.01, rimIntensity);
 
@@ -149,9 +166,9 @@ float4 main(PS_INPUT input) : SV_TARGET
 	float rimMinusIntensity = rimDot * minusRimNdotL;
 	rimMinusIntensity = smoothstep(_negativeRimAmount - 0.21, _negativeRimAmount + 0.21, rimMinusIntensity);
 
-	float3 minusRim = rimMinusIntensity * mLightColor * 0.35 * mRimLightStr;
+	float4 minusRim = rimMinusIntensity * diffuseIBL * 0.35 * mRimLightStr;
 	
-	float3 rim = rimIntensity * mLightColor * mRimLightStr;
+	float4 rim = rimIntensity * mLightColor * mRimLightStr;
     
     float3 baseRGB = (specular + diffuse + ambient + rim + minusRim).rgb * baseTex.rgb + emmisive.rgb ;
 
@@ -165,6 +182,6 @@ float4 main(PS_INPUT input) : SV_TARGET
 	//
 	//baseRGB = baseRGB * GradientAttenuation;
 
+    //return specular;
     return float4(baseRGB, baseTex.a);
-
 }

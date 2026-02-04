@@ -59,7 +59,6 @@ void MMMEngine::Light::Initialize()
 	m_properties[L"mLightDir"] = GetTransform()->GetWorldMatrix().Forward();
 	m_properties[L"mLightColor"] = GetNormalizedColor();
 	m_properties[L"mIntensity"] = m_lightIntensity;
-	m_properties[L"mLightPos"] = RenderManager::Get().GetLightPos();
 
 	for (auto& [prop, val] : m_properties) {
 		for (int i = 0; i < static_cast<int>(ShaderType::S_END); i++) {
@@ -84,7 +83,6 @@ void MMMEngine::Light::Render()
 	m_properties[L"mLightDir"] = GetTransform()->GetWorldMatrix().Forward();
 	m_properties[L"mLightColor"] = GetNormalizedColor();
 	m_properties[L"mIntensity"] = m_lightIntensity;
-	m_properties[L"mLightPos"] = RenderManager::Get().GetLightPos();
 
 	for (auto& [prop, val] : m_properties) {
 		for (int i = 0; i < static_cast<int>(ShaderType::S_END); i++) {

@@ -138,9 +138,6 @@ namespace MMMEngine {
 		// 쉐이더타입별 메테리얼 프로퍼티 정의 < ShaderType, <PropertyName, PropertyInfo>>
 		std::unordered_map<ShaderType, std::unordered_map<std::wstring, PropertyInfo>> m_propertyInfoMap;
 
-		// 글로벌 메테리얼 프로퍼티 정의 <PropertyName, PropertyInfo>
-		std::unordered_map<std::wstring, PropertyInfo> m_globalPropertyInfoMap;
-
 		// 상수버퍼 타입정의 맵 <ShaderType, <propertyName, CBPropertyInfo>
 		std::unordered_map<ShaderType, std::unordered_map<std::wstring, CBPropertyInfo>> m_CBPropertyMap;
 
