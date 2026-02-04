@@ -8,7 +8,7 @@ namespace MMMEngine
 	class MMMENGINE_API MeshColliderComponent : public ColliderComponent
 	{
 	private:
-		RTTR_ENABLE(Component)
+		RTTR_ENABLE(ColliderComponent)
 			RTTR_REGISTRATION_FRIEND
 	public:
 		enum class MeshMode { Auto, Triangle, Convex };
@@ -31,9 +31,7 @@ namespace MMMEngine
 		bool RebuildForRigidType(MMMEngine::RigidBodyComponent::Type type);
 		bool RebuildShapeOnly(MMMEngine::RigidBodyComponent::Type type);
 
-
-
-
+		physx::PxConvexMesh* GetConvexMesh() const { return m_convex; }
 
 	private:
 		ResPtr<StaticMesh> m_mesh;
