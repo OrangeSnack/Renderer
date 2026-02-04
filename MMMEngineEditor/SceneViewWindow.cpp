@@ -111,33 +111,40 @@ namespace
 		DirectX::SimpleMath::Vector2& anchorCenter,
 		DirectX::SimpleMath::Vector2& anchorSpan)
 	{
+		if (!rect.IsValid())
+		{
+			anchorCenter = DirectX::SimpleMath::Vector2::Zero;
+			anchorSpan = DirectX::SimpleMath::Vector2::Zero;
+			return;
+		}
+
+		rect->GetAnchorData(canvasSize, anchorCenter, anchorSpan);
+	}
+
+	void ComputeParentBasis(const ObjPtr<RectTransform>& rect,
+		DirectX::SimpleMath::Vector2& parentRight,
+		DirectX::SimpleMath::Vector2& parentUp)
+	{
 		using namespace DirectX::SimpleMath;
-		Vector2 parentMin = Vector2::Zero;
-		Vector2 parentSize = canvasSize;
+		parentRight = Vector2::UnitX;
+		parentUp = Vector2::UnitY;
+
+		if (!rect.IsValid())
+			return;
 
 		if (auto parent = rect->GetParent())
 		{
 			if (auto parentRect = parent.Cast<RectTransform>())
 			{
-				Vector4 parentRectCanvas = parentRect->GetRectInCanvas(canvasSize);
-				parentMin = { parentRectCanvas.x, parentRectCanvas.y };
-				parentSize = { parentRectCanvas.z, parentRectCanvas.w };
+				const auto worldMat = parentRect->GetWorldMatrix();
+				parentRight = { worldMat._11, worldMat._12 };
+				parentUp = { worldMat._21, worldMat._22 };
+				const float rightLen = std::sqrt(parentRight.x * parentRight.x + parentRight.y * parentRight.y);
+				const float upLen = std::sqrt(parentUp.x * parentUp.x + parentUp.y * parentUp.y);
+				if (rightLen > 1e-6f) parentRight /= rightLen; else parentRight = Vector2::UnitX;
+				if (upLen > 1e-6f) parentUp /= upLen; else parentUp = Vector2::UnitY;
 			}
 		}
-
-		const Vector2 anchorMin = rect->GetAnchorMin();
-		const Vector2 anchorMax = rect->GetAnchorMax();
-		const Vector2 anchorMinPos = {
-			parentMin.x + parentSize.x * anchorMin.x,
-			parentMin.y + parentSize.y * anchorMin.y
-		};
-		const Vector2 anchorMaxPos = {
-			parentMin.x + parentSize.x * anchorMax.x,
-			parentMin.y + parentSize.y * anchorMax.y
-		};
-
-		anchorCenter = (anchorMinPos + anchorMaxPos) * 0.5f;
-		anchorSpan = { anchorMaxPos.x - anchorMinPos.x, anchorMaxPos.y - anchorMinPos.y };
 	}
 
 	bool PointInRect(float px, float py, float rx, float ry, float rw, float rh)
@@ -633,7 +640,15 @@ void MMMEngine::Editor::SceneViewWindow::Render()
 					DirectX::SimpleMath::Vector2 anchorSpan;
 					ComputeAnchorData(rectTr, canvasInfo.canvasSize, anchorCenter, anchorSpan);
 
-					rectTr->SetAnchoredPosition(newPivotCanvas - anchorCenter);
+					DirectX::SimpleMath::Vector2 parentRight;
+					DirectX::SimpleMath::Vector2 parentUp;
+					ComputeParentBasis(rectTr, parentRight, parentUp);
+					const DirectX::SimpleMath::Vector2 delta = newPivotCanvas - anchorCenter;
+					const DirectX::SimpleMath::Vector2 anchoredPos = {
+						delta.x * parentRight.x + delta.y * parentRight.y,
+						delta.x * parentUp.x + delta.y * parentUp.y
+					};
+					rectTr->SetAnchoredPosition(anchoredPos);
 
 					const auto newEulerRad = r.ToEuler();
 					DirectX::SimpleMath::Vector3 newEulerDeg = {
