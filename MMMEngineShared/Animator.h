@@ -52,6 +52,7 @@ namespace MMMEngine {
 
 		void AddAnimClip(ResPtr<AnimationClip> _clip);
 		ResPtr<AnimationClip> GetAnimClip(std::string name) { return mAnimClips[mCurrentPlayingMap[name].clipIdx]; }
+		ResPtr<AnimationClip> GetAnimClip(int _animIdx) { return mAnimClips[_animIdx]; }
 		void RemoveAnimClip(ResPtr<AnimationClip> _clip);
 
 		std::vector<ResPtr<AnimationClip>>& GetAnimClips() { return mAnimClips; }

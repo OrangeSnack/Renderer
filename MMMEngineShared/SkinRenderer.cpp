@@ -72,7 +72,7 @@ namespace MMMEngine {
 		return receiveShadows;
 	}
 
-	bool SkinRenderer::SetAnimatior(Animator* _animator)
+	bool SkinRenderer::SetAnimatior(ObjPtr<Animator> _animator)
 	{
 		if (mAnimator != nullptr)
 			return false;
@@ -97,7 +97,7 @@ namespace MMMEngine {
 		if (!mesh || !GetTransform())
 			return;
 
-		if (mAnimator != nullptr)
+		if (!mAnimator)
 			mAnimator->Update(TimeManager::Get().GetDeltaTime());
 
 		for (auto& [matIdx, meshIndices] : mesh->meshGroupData) {

@@ -17,7 +17,7 @@ namespace MMMEngine {
 	private:
 		// GPU 버퍼
 		ResPtr<SkeletalMesh> mesh = nullptr;
-		Animator* mAnimator = nullptr;
+		ObjPtr<Animator> mAnimator = nullptr;
 		Mesh_BoneBuffer* mAnimBuffer = nullptr;
 		Mesh_BoneBuffer mDefaultBoneBuffer;
 
@@ -33,7 +33,7 @@ namespace MMMEngine {
 		void SetReceiveShadow(bool _val);
 		bool GetReceiveShadow();
 
-		bool SetAnimatior(Animator* _animator);
+		bool SetAnimatior(ObjPtr<Animator> _animator);
 		void RemoveAnimator() { mAnimator = nullptr; }
 
 		//void SetMaterial(std::vector<ResPtr<Material>> _materials);

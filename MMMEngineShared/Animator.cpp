@@ -423,13 +423,9 @@ void MMMEngine::Animator::Initialize()
 	if (!mSkinComp)
 		Destroy(SelfPtr(this));
 		
-	mIsReal = mSkinComp->SetAnimatior(this);
+	mIsReal = mSkinComp->SetAnimatior(SelfPtr(this));
 	if (!mIsReal)
 		Destroy(SelfPtr(this));
-
-	auto clip = ResourceManager::Get().Load<AnimationClip>(L"Assets/Test/Player_Idle_0.animclip");
-	AddAnimClip(clip);
-	PlayClip(clip->mName, true);
 }
 
 void MMMEngine::Animator::UnInitialize()

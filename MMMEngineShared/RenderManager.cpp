@@ -151,7 +151,7 @@ namespace MMMEngine {
 			Mesh_BoneBuffer* lastAnim = nullptr;
 			for (auto& cmd : commands)
 			{
-				if (!cmd.material)
+				if (cmd.material == nullptr)
 					continue;
 
 				if (cmd.material != lastMaterial)
@@ -539,7 +539,7 @@ namespace MMMEngine {
 		sceneColorDesc.Height = m_clientHeight;
 		sceneColorDesc.MipLevels = 1;
 		sceneColorDesc.ArraySize = 1;
-		sceneColorDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		sceneColorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT; // HDR 지원 포맷
 		sceneColorDesc.SampleDesc.Count = 1;
 		sceneColorDesc.SampleDesc.Quality = 0;
 		sceneColorDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -768,7 +768,7 @@ namespace MMMEngine {
 		colorDesc.Height = _sceneHeight;
 		colorDesc.MipLevels = 1;
 		colorDesc.ArraySize = 1;
-		colorDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // HDR 지원 포맷X
+		colorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT; // HDR 지원 포맷
 		colorDesc.SampleDesc.Count = 1;
 		colorDesc.SampleDesc.Quality = 0;
 		colorDesc.Usage = D3D11_USAGE_DEFAULT;
