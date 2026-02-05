@@ -544,6 +544,17 @@ namespace MMMEngine {
 		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 		HR_T(m_pDevice->CreateSamplerState(&sampDesc, m_pLinearSampler.GetAddressOf()));
+
+		sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		sampDesc.MinLOD = 0;
+		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+		HR_T(m_pDevice->CreateSamplerState(&sampDesc, m_pLinearWarpSampler.GetAddressOf()));
+		
 		
 		sampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT; // 비교 필터
 		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -1344,7 +1355,7 @@ namespace MMMEngine {
 			ID3D11ShaderResourceView* sceneSRV = m_pSceneSRV.Get();
 			m_pDeviceContext->PSSetShaderResources(0, 1, &sceneSRV);
 			
-			ID3D11SamplerState* samplers[] = { m_pLinearSampler.Get(), m_pCompareSampler.Get(), m_pPointSampler.Get() };
+			ID3D11SamplerState* samplers[] = { m_pLinearWarpSampler.Get(), m_pCompareSampler.Get(), m_pPointSampler.Get() };
 			m_pDeviceContext->PSSetSamplers(0, 3, samplers);
 
 			// 씬 뷰포트 설정

@@ -120,6 +120,7 @@ namespace MMMEngine
 		Microsoft::WRL::ComPtr<ID3D11Texture2D1> m_pDepthStencilBuffer;			// 뎊스스텐실 텍스쳐버퍼
 
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pLinearSampler;		// 기본 샘플러
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pLinearWarpSampler;	// 기본 샘플러
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pCompareSampler;		// 비교 샘플러
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pPointSampler;			// 포인트 샘플러
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState2> m_pDefaultRS;		// 기본 RS
