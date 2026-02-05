@@ -85,13 +85,22 @@ void MMMEngine::AnimatorController::Initialize()
 
 void MMMEngine::AnimatorController::UnInitialize()
 {
-	mAnimator = nullptr;
+	// 전이/상태 관련 런타임 포인터 정리
+	mTransitionTime = 0.0f;
+	mActiveTr = nullptr;
+	mNext = nullptr;
+	mCurrent = nullptr;
+
+	ResetTriggers();
+
+	if (mAnimator.IsValid() && !mAnimator->IsDestroyed())
+	{
+		mAnimator->StopClip();
+	}
+
+	mAnimator.Reset();
 	mStates.clear();
 	mParams.clear();
-
-	mCurrent = nullptr;
-	mNext = nullptr;
-	mActiveTr = nullptr;
 }
 
 void MMMEngine::AnimatorController::Update(float dt)

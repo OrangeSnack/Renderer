@@ -31,7 +31,7 @@ RTTR_REGISTRATION
 		.method("Inject", &ObjPtr<MeshRenderer>::Inject);
 }
 
-void MMMEngine::MeshRenderer::SetMesh(ResPtr<StaticMesh>& _mesh)
+void MMMEngine::MeshRenderer::SetMesh(ResPtr<StaticMesh> _mesh)
 {
 	mesh = _mesh;
 }

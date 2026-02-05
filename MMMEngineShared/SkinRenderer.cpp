@@ -9,6 +9,7 @@
 #include "PShader.h"
 #include "Material.h"
 #include "Animator.h"
+#include "AnimatorController.h"
 #include "TimeManager.h"
 
 #include "SkeletalMesh.h"
@@ -100,8 +101,13 @@ namespace MMMEngine {
 		if (!mesh || !GetTransform())
 			return;
 
+		float dt = TimeManager::Get().GetDeltaTime();
+
 		if (mAnimator)
-			mAnimator->Update(TimeManager::Get().GetDeltaTime());
+			mAnimator->Update(dt);
+
+		if (mAnimController)
+			mAnimController->Update(dt);
 
 		for (auto& [matIdx, meshIndices] : mesh->meshGroupData) {
 			if (mesh->materials.empty())

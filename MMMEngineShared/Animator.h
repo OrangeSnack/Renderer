@@ -59,7 +59,7 @@ namespace MMMEngine {
 		void SetAnimClips(std::vector<ResPtr<AnimationClip>>& _clips) { mAnimClips = _clips; }
 	
 		void PlayClip(std::string _name, bool _isLoop = false, int _rootIdx = -1);
-		void PlayBlendClip(std::string _name, float _blendWeight, bool _isLoop = false, int _rootIdx = -1);
+		void PlayBlendClip(std::string _name, float _blendWeight, bool _isLoop = false, int _rootIdx = -1, bool _normalizeOthers = true);
 		void StopClip();
 		void PauseClip();
 		void ResumeClip();

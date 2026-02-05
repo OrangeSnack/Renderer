@@ -32,7 +32,6 @@ namespace MMMEngine {
 		std::vector<AnimCondition> conditions;
 	};
 	struct AnimState {
-		std::string name;
 		std::string clipName;
 		bool loop = true;
 		float speed = 1.0f;
