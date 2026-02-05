@@ -308,6 +308,10 @@ namespace MMMEngine {
 		if (!m_pUIVShader || !m_pUIPShader || !m_pUIBuffer)
 			return;
 
+		std::sort(m_canvases.begin(), m_canvases.end(), [](Canvas* a, Canvas* b) {
+			return a->GetSortOrder() < b->GetSortOrder();
+			});
+
 		for (auto* canvas : m_canvases) // 정렬 없이 등록된 순서대로 렌더링 중
 		{
 			if (!canvas) continue;
