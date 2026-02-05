@@ -1,4 +1,4 @@
-﻿#include "imgui.h"
+#include "imgui.h"
 #include "SceneViewWindow.h"
 #include "EditorRegistry.h"
 #include "HierarchyWindow.h"
