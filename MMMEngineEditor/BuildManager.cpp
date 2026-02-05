@@ -157,6 +157,17 @@ namespace MMMEngine::Editor
         try
         {
             const char* configStr = (config == BuildConfiguration::Debug) ? "Debug" : "Release";
+            fs::path engineDir;
+            {
+                char* engineDirEnv = nullptr;
+                size_t envSize = 0;
+                _dupenv_s(&engineDirEnv, &envSize, "MMMENGINE_DIR");
+                if (engineDirEnv != nullptr)
+                {
+                    engineDir = fs::path(engineDirEnv);
+                    free(engineDirEnv);
+                }
+            }
 
             // 1. 출력 디렉토리 생성
             if (m_progressCallbackString)
@@ -249,6 +260,22 @@ namespace MMMEngine::Editor
             fs::path shaderSource = projectRootDir / "Shader";
             fs::path shaderDest = dataDir / "Shader";
 
+            if (!engineDir.empty())
+            {
+                fs::path engineShaderSource = engineDir / "Common" / "Shader";
+                if (fs::exists(engineShaderSource))
+                {
+                    fs::copy(engineShaderSource, shaderDest,
+                        fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+                    if (ec)
+                    {
+                        output.result = BuildResult::Failed;
+                        output.errorLog = "Failed to copy engine Shader: " + ec.message();
+                        return output;
+                    }
+                }
+            }
+
             if (fs::exists(shaderSource))
             {
                 fs::copy(shaderSource, shaderDest,
@@ -290,19 +317,12 @@ namespace MMMEngine::Editor
             if (m_progressCallbackString)
                 m_progressCallbackString(u8"엔진 DLL 복사 중...");
 
-            char* engineDirEnv = nullptr;
-            size_t envSize = 0;
-            _dupenv_s(&engineDirEnv, &envSize, "MMMENGINE_DIR");
-
-            if (engineDirEnv == nullptr)
+            if (engineDir.empty())
             {
                 output.result = BuildResult::Failed;
                 output.errorLog = "MMMENGINE_DIR environment variable not found";
                 return output;
             }
-
-            fs::path engineDir(engineDirEnv);
-            free(engineDirEnv);
 
             fs::path engineBinDir = engineDir / "Common" / "Bin" / configStr;
 

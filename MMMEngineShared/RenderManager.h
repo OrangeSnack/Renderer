@@ -60,13 +60,21 @@ namespace MMMEngine
 		// UI
 		std::vector<Canvas*> m_canvases;
 		Microsoft::WRL::ComPtr<ID3D11BlendState1> m_pUIBlendState;
+		Microsoft::WRL::ComPtr<ID3D11BlendState1> m_pUIBlendStateNoColor;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_pUIDepthState;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_pUIStencilTestState;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_pUIStencilWriteState;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_pUIStencilClearState;
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_pUIBuffer = nullptr;
 		ResPtr<VShader> m_pUIVShader;
 		ResPtr<PShader> m_pUIPShader;
 		std::unique_ptr<DirectX::SpriteBatch> m_uiSpriteBatch;
 		std::unordered_map<std::wstring, std::unique_ptr<DirectX::SpriteFont>> m_uiSpriteFontCache;
 		bool isOrtho = false;
+		bool m_uiMaskEnabled = false;
+		float m_uiMaskAlphaThreshold = 0.001f;
+		ID3D11DepthStencilState* m_uiActiveDepthState = nullptr;
+		UINT m_uiStencilRef = 0;
 		
 		// 라이트 저장
 		std::vector<Light*> m_lights;
@@ -220,6 +228,12 @@ namespace MMMEngine
 		void UnRegisterCanvas(Canvas* canvas);
 		void BeginCanvas(Canvas* canvas);
 		void EndCanvas();
+		void SetUIStencilDisabled();
+		void SetUIStencilTest(UINT stencilRef);
+		void SetUIStencilWriteIncrement(UINT stencilRef);
+		void SetUIStencilWriteDecrement(UINT stencilRef);
+		void SetUIColorWriteEnabled(bool enabled);
+		void SetUIMaskParams(bool enabled, float alphaThreshold);
 		void DrawUIElement(const DirectX::SimpleMath::Vector4& rect,
 			const DirectX::SimpleMath::Vector4& uvRect,
 			const DirectX::SimpleMath::Color& color,

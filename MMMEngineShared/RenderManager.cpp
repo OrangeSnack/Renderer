@@ -36,6 +36,7 @@ namespace
 		Vector4 uvRect;
 		Vector4 color;
 		Vector4 screenParams; // x=width, y=height, z=useTexture, w=unused
+		Vector4 maskParams; // x=maskEnabled, y=alphaThreshold, z=unused, w=unused
 		Vector4 transformParams0; // x=pivotX, y=pivotY, z=rightX, w=rightY
 		Vector4 transformParams1; // x=upX, y=upY, z=unused, w=unused
 		Matrix viewProj;     // reserved
@@ -303,19 +304,11 @@ namespace MMMEngine {
 		if (!m_pUIVShader || !m_pUIPShader || !m_pUIBuffer)
 			return;
 
-		std::sort(m_canvases.begin(), m_canvases.end(), [](Canvas* a, Canvas* b) {
-			return a->GetSortOrder() < b->GetSortOrder();
-			});
+	std::sort(m_canvases.begin(), m_canvases.end(), [](Canvas* a, Canvas* b) {
+		return a->GetSortOrder() < b->GetSortOrder();
+		});
 
-		for (auto* canvas : m_canvases) // 정렬 없이 등록된 순서대로 렌더링 중
-		{
-			if (!canvas) continue;
-			BeginCanvas(canvas);
-			canvas->RenderUI(*this);
-			EndCanvas();
-		}
-
-		auto context = m_pDeviceContext.Get();
+	auto context = m_pDeviceContext.Get();
 
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetInputLayout(nullptr);
@@ -328,13 +321,16 @@ namespace MMMEngine {
 		context->PSSetConstantBuffers(0, 1, m_pUIBuffer.GetAddressOf());
 		context->PSSetSamplers(0, 1, m_pLinearSampler.GetAddressOf());
 
-		float blendFactor[4] = { 0,0,0,0 };
-		context->OMSetBlendState(m_pUIBlendState.Get(), blendFactor, 0xffffffff);
-		context->OMSetDepthStencilState(m_pUIDepthState.Get(), 0);
-		context->RSSetState(m_pDefaultRS.Get());
+	float blendFactor[4] = { 0,0,0,0 };
+	context->OMSetBlendState(m_pUIBlendState.Get(), blendFactor, 0xffffffff);
+	context->OMSetDepthStencilState(m_pUIDepthState.Get(), 0);
+	context->RSSetState(m_pDefaultRS.Get());
+	m_uiActiveDepthState = m_pUIDepthState.Get();
+	m_uiStencilRef = 0;
+	m_uiMaskEnabled = false;
 
-		for (auto* canvas : m_canvases)
-		{
+	for (auto* canvas : m_canvases)
+	{
 			if (!canvas)
 				continue;
 			BeginCanvas(canvas);
@@ -480,6 +476,11 @@ namespace MMMEngine {
 	uiBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 	HR_T(m_pDevice->CreateBlendState1(&uiBlendDesc, m_pUIBlendState.GetAddressOf()));
 
+	// UI 마스크용 컬러 미작성 블렌드 스테이트
+	D3D11_BLEND_DESC1 uiBlendNoColorDesc = uiBlendDesc;
+	uiBlendNoColorDesc.RenderTarget[0].RenderTargetWriteMask = 0;
+	HR_T(m_pDevice->CreateBlendState1(&uiBlendNoColorDesc, m_pUIBlendStateNoColor.GetAddressOf()));
+
 	// 레스터라이저 스테이트 생성
 	D3D11_RASTERIZER_DESC2 rsDesc = {};
 	rsDesc.FillMode = D3D11_FILL_SOLID;
@@ -507,6 +508,30 @@ namespace MMMEngine {
 	uiDepthDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
 	uiDepthDesc.StencilEnable = FALSE;
 	HR_T(m_pDevice->CreateDepthStencilState(&uiDepthDesc, m_pUIDepthState.GetAddressOf()));
+
+	// UI 스텐실 스테이트 생성
+	D3D11_DEPTH_STENCIL_DESC uiStencilTestDesc = uiDepthDesc;
+	uiStencilTestDesc.StencilEnable = TRUE;
+	uiStencilTestDesc.StencilReadMask = 0xFF;
+	uiStencilTestDesc.StencilWriteMask = 0x00;
+	uiStencilTestDesc.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+	uiStencilTestDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	uiStencilTestDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	uiStencilTestDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	uiStencilTestDesc.BackFace = uiStencilTestDesc.FrontFace;
+	HR_T(m_pDevice->CreateDepthStencilState(&uiStencilTestDesc, m_pUIStencilTestState.GetAddressOf()));
+
+	D3D11_DEPTH_STENCIL_DESC uiStencilWriteDesc = uiStencilTestDesc;
+	uiStencilWriteDesc.StencilWriteMask = 0xFF;
+	uiStencilWriteDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_INCR_SAT;
+	uiStencilWriteDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_INCR_SAT;
+	HR_T(m_pDevice->CreateDepthStencilState(&uiStencilWriteDesc, m_pUIStencilWriteState.GetAddressOf()));
+
+	D3D11_DEPTH_STENCIL_DESC uiStencilClearDesc = uiStencilTestDesc;
+	uiStencilClearDesc.StencilWriteMask = 0xFF;
+	uiStencilClearDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR_SAT;
+	uiStencilClearDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_DECR_SAT;
+	HR_T(m_pDevice->CreateDepthStencilState(&uiStencilClearDesc, m_pUIStencilClearState.GetAddressOf()));
 	
 		// 샘플러 만들기
 		D3D11_SAMPLER_DESC sampDesc = {};
@@ -741,7 +766,11 @@ namespace MMMEngine {
 		m_uiSpriteBatch.reset();
 
 		m_pUIBlendState.Reset();
+		m_pUIBlendStateNoColor.Reset();
 		m_pUIDepthState.Reset();
+		m_pUIStencilTestState.Reset();
+		m_pUIStencilWriteState.Reset();
+		m_pUIStencilClearState.Reset();
 		m_pUIBuffer.Reset();
 		m_pUIVShader.reset();
 		m_pUIPShader.reset();
@@ -1641,6 +1670,67 @@ namespace MMMEngine {
 	{
 	}
 
+	void RenderManager::SetUIStencilDisabled()
+	{
+		m_uiActiveDepthState = m_pUIDepthState.Get();
+		m_uiStencilRef = 0;
+		if (m_pDeviceContext)
+			m_pDeviceContext->OMSetDepthStencilState(m_uiActiveDepthState, m_uiStencilRef);
+	}
+
+	void RenderManager::SetUIStencilTest(UINT stencilRef)
+	{
+		if (stencilRef > 0xFF)
+			stencilRef = 0xFF;
+		m_uiActiveDepthState = m_pUIStencilTestState.Get();
+		m_uiStencilRef = stencilRef;
+		if (m_pDeviceContext)
+			m_pDeviceContext->OMSetDepthStencilState(m_uiActiveDepthState, m_uiStencilRef);
+	}
+
+	void RenderManager::SetUIStencilWriteIncrement(UINT stencilRef)
+	{
+		if (stencilRef > 0xFF)
+			stencilRef = 0xFF;
+		m_uiActiveDepthState = m_pUIStencilWriteState.Get();
+		m_uiStencilRef = stencilRef;
+		if (m_pDeviceContext)
+			m_pDeviceContext->OMSetDepthStencilState(m_uiActiveDepthState, m_uiStencilRef);
+	}
+
+	void RenderManager::SetUIStencilWriteDecrement(UINT stencilRef)
+	{
+		if (stencilRef > 0xFF)
+			stencilRef = 0xFF;
+		m_uiActiveDepthState = m_pUIStencilClearState.Get();
+		m_uiStencilRef = stencilRef;
+		if (m_pDeviceContext)
+			m_pDeviceContext->OMSetDepthStencilState(m_uiActiveDepthState, m_uiStencilRef);
+	}
+
+	void RenderManager::SetUIColorWriteEnabled(bool enabled)
+	{
+		if (!m_pDeviceContext)
+			return;
+
+		ID3D11BlendState* state = enabled ? m_pUIBlendState.Get() : m_pUIBlendStateNoColor.Get();
+		if (!state)
+			state = m_pUIBlendState.Get();
+
+		float blendFactor[4] = { 0,0,0,0 };
+		m_pDeviceContext->OMSetBlendState(state, blendFactor, 0xffffffff);
+	}
+
+	void RenderManager::SetUIMaskParams(bool enabled, float alphaThreshold)
+	{
+		m_uiMaskEnabled = enabled;
+		if (alphaThreshold < 0.0f)
+			alphaThreshold = 0.0f;
+		if (alphaThreshold > 1.0f)
+			alphaThreshold = 1.0f;
+		m_uiMaskAlphaThreshold = alphaThreshold;
+	}
+
 	void RenderManager::DrawUIElement(const Vector4& rect, const Vector4& uvRect,
 		const Color& color, const ResPtr<Texture2D>& texture,
 		const Vector2& pivot, const Vector2& rightDir, const Vector2& upDir)
@@ -1652,14 +1742,19 @@ namespace MMMEngine {
 		data.rect = rect;
 		data.uvRect = uvRect;
 		data.color = color;
-		data.screenParams = Vector4(
-			static_cast<float>(m_sceneWidth),
-			static_cast<float>(m_sceneHeight),
-			texture ? 1.0f : 0.0f,
-			0.0f);
-		data.transformParams0 = Vector4(
-			pivot.x,
-			pivot.y,
+	data.screenParams = Vector4(
+		static_cast<float>(m_sceneWidth),
+		static_cast<float>(m_sceneHeight),
+		texture ? 1.0f : 0.0f,
+		0.0f);
+	data.maskParams = Vector4(
+		m_uiMaskEnabled ? 1.0f : 0.0f,
+		m_uiMaskAlphaThreshold,
+		0.0f,
+		0.0f);
+	data.transformParams0 = Vector4(
+		pivot.x,
+		pivot.y,
 			rightDir.x,
 			rightDir.y);
 		data.transformParams1 = Vector4(
@@ -1698,14 +1793,17 @@ namespace MMMEngine {
 
 		const DirectX::XMMATRIX transform = DirectX::XMMatrixIdentity();
 
-		ID3D11RasterizerState* uiRs = m_pUIRS ? m_pUIRS.Get() : m_pDefaultRS.Get();
-		m_uiSpriteBatch->Begin(DirectX::SpriteSortMode_Deferred,
-			m_pUIBlendState.Get(),
-			m_pLinearSampler.Get(),
-			m_pUIDepthState.Get(),
-			uiRs,
-			nullptr,
-			transform);
+	ID3D11RasterizerState* uiRs = m_pUIRS ? m_pUIRS.Get() : m_pDefaultRS.Get();
+	ID3D11DepthStencilState* depthState = m_uiActiveDepthState ? m_uiActiveDepthState : m_pUIDepthState.Get();
+	m_uiSpriteBatch->Begin(DirectX::SpriteSortMode_Deferred,
+		m_pUIBlendState.Get(),
+		m_pLinearSampler.Get(),
+		depthState,
+		uiRs,
+		nullptr,
+		transform);
+	if (m_pDeviceContext && depthState && m_uiStencilRef != 0)
+		m_pDeviceContext->OMSetDepthStencilState(depthState, m_uiStencilRef);
 
 		auto endSpriteBatch = [this]()
 		{
@@ -1729,7 +1827,8 @@ namespace MMMEngine {
 
 			float blendFactor[4] = { 0,0,0,0 };
 			context->OMSetBlendState(m_pUIBlendState.Get(), blendFactor, 0xffffffff);
-			context->OMSetDepthStencilState(m_pUIDepthState.Get(), 0);
+		ID3D11DepthStencilState* restoreDepth = m_uiActiveDepthState ? m_uiActiveDepthState : m_pUIDepthState.Get();
+		context->OMSetDepthStencilState(restoreDepth, m_uiStencilRef);
 		context->RSSetState(m_pUIRS ? m_pUIRS.Get() : m_pDefaultRS.Get());
 		};
 
