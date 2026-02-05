@@ -229,7 +229,10 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 			}
 			else
 			{
-				if (t > clip->durationSec) t = clip->durationSec;
+				if (t > clip->durationSec) {
+					t = clip->durationSec;
+					mCurrentPlayingMap.erase(clip->mName);
+				}
 				if (t < 0.0f) t = 0.0f;
 			}
 		}
@@ -506,6 +509,17 @@ void MMMEngine::Animator::StopClip()
 {
 	mIsPlaying = false;
 	mCurrentPlayingMap.clear();
+}
+
+int MMMEngine::Animator::GetBoneIdx(std::string _boneName)
+{
+	if (mSkinComp) {
+		auto it = mSkinComp->GetMesh()->boneIdxData.find(_boneName);
+		if(it != mSkinComp->GetMesh()->boneIdxData.end())
+			return mSkinComp->GetMesh()->boneIdxData[_boneName];
+	}
+
+	return -1;
 }
 
 void MMMEngine::Animator::PlayClip(std::string _name, bool _isLoop /*= false*/, int _rootIdx /*= -1*/)
