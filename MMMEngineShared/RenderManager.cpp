@@ -308,6 +308,18 @@ namespace MMMEngine {
 		if (!m_pUIVShader || !m_pUIPShader || !m_pUIBuffer)
 			return;
 
+		std::sort(m_canvases.begin(), m_canvases.end(), [](Canvas* a, Canvas* b) {
+			return a->GetSortOrder() < b->GetSortOrder();
+			});
+
+		for (auto* canvas : m_canvases) // 정렬 없이 등록된 순서대로 렌더링 중
+		{
+			if (!canvas) continue;
+			BeginCanvas(canvas);
+			canvas->RenderUI(*this);
+			EndCanvas();
+		}
+
 		auto context = m_pDeviceContext.Get();
 
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -539,7 +551,7 @@ namespace MMMEngine {
 		sceneColorDesc.Height = m_clientHeight;
 		sceneColorDesc.MipLevels = 1;
 		sceneColorDesc.ArraySize = 1;
-		sceneColorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT; // HDR 지원 포맷
+		sceneColorDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		sceneColorDesc.SampleDesc.Count = 1;
 		sceneColorDesc.SampleDesc.Quality = 0;
 		sceneColorDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -768,7 +780,7 @@ namespace MMMEngine {
 		colorDesc.Height = _sceneHeight;
 		colorDesc.MipLevels = 1;
 		colorDesc.ArraySize = 1;
-		colorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT; // HDR 지원 포맷
+		colorDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // HDR 지원 포맷X
 		colorDesc.SampleDesc.Count = 1;
 		colorDesc.SampleDesc.Quality = 0;
 		colorDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -1490,14 +1502,14 @@ namespace MMMEngine {
 		m_canvases.pop_back();
 	}
 
-void RenderManager::BeginCanvas(Canvas* canvas)
-{
+	void RenderManager::BeginCanvas(Canvas* canvas)
+	{
 		(void)canvas;
-}
+	}
 
-void RenderManager::EndCanvas()
-{
-}
+	void RenderManager::EndCanvas()
+	{
+	}
 
 	void RenderManager::DrawUIElement(const Vector4& rect, const Vector4& uvRect,
 		const Color& color, const ResPtr<Texture2D>& texture,

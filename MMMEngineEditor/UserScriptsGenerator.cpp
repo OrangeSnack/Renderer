@@ -1,4 +1,4 @@
-#include "UserScriptsGenerator.h"
+﻿#include "UserScriptsGenerator.h"
 #include "UserScriptMessageSignatures.h"
 
 #include <fstream>
@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <set>
 #include <unordered_map>
+#include <filesystem>
 
 namespace fs = std::filesystem;
 
@@ -14,6 +15,17 @@ namespace MMMEngine::Editor
 {
     namespace
     {
+        static size_t ComputeFileHash(const fs::path& path) {
+            std::ifstream file(path, std::ios::binary);
+            if (!file) return 0;
+
+            // 파일 전체를 문자열로 읽음
+            std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+            // 표준 해시 함수 사용
+            return std::hash<std::string>{}(content);
+        }
+
         static std::string StripUtf8Bom(std::string text)
         {
             if (text.size() >= 3 &&
@@ -54,15 +66,35 @@ namespace MMMEngine::Editor
 
         static bool WriteUtf8BomFile(const fs::path& path, const std::string& text)
         {
+            const std::string normalized = NormalizeToCrlf(text);
+
+            // [수정] 파일이 이미 존재한다면 내용을 먼저 읽어 비교함
+            if (fs::exists(path))
+            {
+                std::ifstream in(path, std::ios::binary);
+                if (in)
+                {
+                    // BOM 제거 후 기존 내용 읽기
+                    std::string existing((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                    if (StripUtf8Bom(existing) == normalized)
+                    {
+                        return true; // 내용이 완전히 같으면 쓰지 않고 리턴 (타임스탬프 보존)
+                    }
+                }
+            }
+
             std::ofstream out(path, std::ios::binary);
-            if (!out)
-                return false;
+            if (!out) return false;
+
             static const unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
             out.write(reinterpret_cast<const char*>(bom), sizeof(bom));
-            const std::string normalized = NormalizeToCrlf(text);
             out.write(normalized.data(), static_cast<std::streamsize>(normalized.size()));
             return static_cast<bool>(out);
         }
+
+        // 클래스 이름을 키로, 상대 헤더 경로를 값으로 가지는 '파일 DB'
+        using ScriptDB = std::unordered_map<std::string, fs::path>;
+
         struct MessageInfo
         {
             std::string messageName;  // BroadCast 시 사용할 이름
@@ -79,20 +111,42 @@ namespace MMMEngine::Editor
             std::string range;
         };
 
-        struct ScriptInfo
-        {
+        struct FileStamp {
+            long long writeTime = 0;
+            long long fileSize = 0;
+            size_t contentHash = 0; // [추가] 내용 기반 비교를 위한 해시값
+        };
+
+        struct ScriptInfo {
             std::string className;
-            fs::path headerPath;  // Scripts 기준 상대 경로
+            fs::path headerPath;        // Scripts 폴더 기준 상대 경로 (서브폴더 포함)
             bool dontAutogen = false;
             std::vector<MessageInfo> messages;
             std::vector<PropertyInfo> properties;
+            std::set<std::string> dependencies; // ObjPtr<T> 등에서 추출된 의존 클래스 이름
         };
 
-        struct FileStamp
-        {
-            int64_t writeTime = 0;
-            uintmax_t fileSize = 0;
-        };
+
+        // ObjPtr<T> 패턴을 찾아 의존성 리스트에 추가하는 로직
+        static void ExtractDependencies(const std::string& classBody, MMMEngine::Editor::ScriptInfo& info) {
+            // ObjPtr<Type> 패턴을 찾아 Type을 추출
+                // 공백(\s*) 처리를 포함하여 정확하게 클래스명만 캡처합니다.
+            std::regex ptrRegex(R"re(ObjPtr\s*<\s*([A-Za-z0-9_]+)\s*>)re");
+
+            auto words_begin = std::sregex_iterator(classBody.begin(), classBody.end(), ptrRegex);
+            auto words_end = std::sregex_iterator();
+
+            for (std::sregex_iterator i = words_begin; i != words_end; ++i)
+            {
+                std::string tType = (*i)[1].str();
+
+                // 자기 자신은 인클루드할 필요 없으므로 제외
+                if (tType != info.className)
+                {
+                    info.dependencies.insert(tType);
+                }
+            }
+        }
 
         static int64_t ToStampTime(const fs::file_time_type& time)
         {
@@ -175,12 +229,14 @@ namespace MMMEngine::Editor
 
                 const size_t first = line.find('|');
                 const size_t second = (first == std::string::npos) ? std::string::npos : line.find('|', first + 1);
-                if (first == std::string::npos || second == std::string::npos)
+                const size_t third = (second == std::string::npos) ? std::string::npos : line.find('|', second + 1);
+                if (first == std::string::npos || second == std::string::npos || third == std::string::npos)
                     continue;
                 std::string relPath = line.substr(0, first);
                 FileStamp stamp;
                 stamp.writeTime = std::stoll(line.substr(first + 1, second - first - 1));
                 stamp.fileSize = static_cast<uintmax_t>(std::stoull(line.substr(second + 1)));
+                stamp.contentHash = static_cast<size_t>(std::stoull(line.substr(third + 1))); // 해시 읽기 추가
                 outMap.emplace(std::move(relPath), stamp);
             }
 
@@ -200,7 +256,7 @@ namespace MMMEngine::Editor
             out << "sigHash=" << sigHash << "\n";
             for (const auto& [rel, stamp] : map)
             {
-                out << rel << "|" << stamp.writeTime << "|" << stamp.fileSize << "\n";
+                out << rel << "|" << stamp.writeTime << "|" << stamp.fileSize << "|" << stamp.contentHash << "\n";
             }
             return true;
         }
@@ -366,6 +422,8 @@ namespace MMMEngine::Editor
             const std::vector<MMMEngine::UserScriptMessageSignature>& engineSigs,
             ScriptInfo& info)
         {
+            ExtractDependencies(classBody, info);
+
             std::set<std::string> registeredMessages; // 중복 방지
 
             // 1) USCRIPT_MESSAGE() void Func(params);
@@ -546,7 +604,7 @@ namespace MMMEngine::Editor
         }
 
         // gen.cpp 생성 (이미 RTTR 등록된 .cpp가 있는 클래스는 제외)
-        static bool WriteGenCpp(const fs::path& scriptsDir, const std::vector<ScriptInfo>& scripts)
+        static bool WriteGenCpp(const fs::path& scriptsDir, const std::vector<ScriptInfo>& scripts, const ScriptDB& db)
         {
             std::vector<const ScriptInfo*> toGen;
             for (const auto& s : scripts)
@@ -559,10 +617,13 @@ namespace MMMEngine::Editor
             fs::path genPath = scriptsDir / "UserScripts.gen.cpp";
             std::ostringstream os;
             os << "// Auto-generated. Do not edit.\n";
+            os << "#pragma optimize(\"\", off)\n";
             os << "#include \"Export.h\"\n";
             os << "#include \"ScriptBehaviour.h\"\n";
             os << "#include \"UserScriptsCommon.h\"\n";
             os << "#include \"Object.h\"\n";
+            os << "#include \"GameObject.h\"\n";
+            os << "#include \"CoreComponents.h\"\n";
             os << "#include \"rttr/registration\"\n";
             os << "#include \"rttr/detail/policies/ctor_policies.h\"\n\n";
 
@@ -575,7 +636,22 @@ namespace MMMEngine::Editor
             }
             os << "\nusing namespace rttr;\nusing namespace MMMEngine;\n\nRTTR_PLUGIN_REGISTRATION\n{\n";
 
-            for (const auto* s : toGen)
+            std::set<std::string> extraIncludes;
+            for (const auto* s : toGen) {
+                for (const auto& dep : s->dependencies) {
+                    if (db.count(dep)) {
+                        std::string dPath = db.at(dep).generic_string();
+                        std::replace(dPath.begin(), dPath.end(), '\\', '/');
+                        extraIncludes.insert(dPath);
+                    }
+                }
+            }
+
+            for (const auto& inc : extraIncludes) {
+                os << "#include \"" << inc << "\"\n";
+            }
+
+            for (const auto& s : toGen)
             {
                 os << "\tregistration::class_<" << s->className << ">(\"" << s->className << "\")\n";
                 os << "\t\t(rttr::metadata(\"wrapper_type_name\", \"ObjPtr<" << s->className << ">\"))";
@@ -596,7 +672,16 @@ namespace MMMEngine::Editor
                 os << "\t\t.method(\"Inject\", &ObjPtr<" << s->className << ">::Inject);\n\n";
             }
             os << "}\n";
-            return WriteUtf8BomFile(genPath, os.str());
+            std::string newText = os.str();
+            std::string oldText = ReadFileAsUtf8(genPath);
+            if (!oldText.empty())
+            {
+                std::string oldNormalized = NormalizeToCrlf(std::move(oldText));
+                std::string newNormalized = NormalizeToCrlf(newText);
+                if (oldNormalized == newNormalized)
+                    return true;
+            }
+            return WriteUtf8BomFile(genPath, newText);
         }
 
         // 생성자 본문에서 REGISTER_BEHAVIOUR_MESSAGE 제외한 라인들 유지
@@ -687,69 +772,77 @@ namespace MMMEngine::Editor
 
         std::unordered_map<std::string, FileStamp> current;
         std::vector<std::string> headerList;
-        bool headerListChanged = false;
+
+        bool structureChanged = false;
 
         std::error_code ecDir;
-        auto dirIt = fs::recursive_directory_iterator(scriptsDir,
-            fs::directory_options::skip_permission_denied, ecDir);
-        if (ecDir)
+        auto dirIt = fs::recursive_directory_iterator(scriptsDir, fs::directory_options::skip_permission_denied, ecDir);
+        if (ecDir) 
             return true;
-        for (const auto& e : dirIt)
+
+        for (const auto& e : dirIt) 
         {
-            if (!e.is_regular_file())
-                continue;
-            if (e.path().extension() != ".h")
-                continue;
+            if (!e.is_regular_file() || e.path().extension() != ".h") continue;
+
             FileStamp stamp;
-            if (!GetFileStamp(e.path(), stamp))
-            {
-                headerListChanged = true;
-                continue;
-            }
+            if (!GetFileStamp(e.path(), stamp)) continue;
             std::string rel = fs::relative(e.path(), scriptsDir).generic_u8string();
-            current.emplace(rel, stamp);
-            headerList.push_back(std::move(rel));
+
+            auto it = cached.find(rel);
+            if (it == cached.end()) 
+            {
+                structureChanged = true;
+                stamp.contentHash = ComputeFileHash(e.path()); // 새 파일 해시 계산
+            }
+            else if (it->second.writeTime != stamp.writeTime || it->second.fileSize != stamp.fileSize) 
+            {
+                size_t newHash = ComputeFileHash(e.path()); // 변경된 파일 해시 계산
+                if (newHash != it->second.contentHash) 
+                {
+                    structureChanged = true;
+                    stamp.contentHash = newHash;
+                }
+                else 
+                {
+                    stamp.contentHash = it->second.contentHash; // 시간만 변한 경우 기존 해시 유지
+                }
+            }
+            else 
+            {
+                stamp.contentHash = it->second.contentHash; // 변한 게 없는 경우 기존 해시 유지
+            }
+
+            current.emplace(rel, stamp); // 최종 결정된 stamp(해시 포함)를 넣어야 함
+            headerList.push_back(rel);
         }
 
-        if (!hasCache || cachedSigHash != sigHash)
+        if (!structureChanged && current.size() != cached.size()) 
         {
-            headerListChanged = true;
+            structureChanged = true;
         }
-        else if (current.size() != cached.size())
-        {
-            headerListChanged = true;
-        }
-        else
-        {
-            for (const auto& [rel, stamp] : current)
-            {
-                auto it = cached.find(rel);
-                if (it == cached.end())
-                {
-                    headerListChanged = true;
-                    break;
-                }
-                if (it->second.writeTime != stamp.writeTime || it->second.fileSize != stamp.fileSize)
-                {
-                    headerListChanged = true;
-                    break;
-                }
-            }
-        }
+
+        // 3. 엔진 시그니처 변경 확인
+        if (cachedSigHash != sigHash) structureChanged = true;
 
         fs::path genPath = scriptsDir / "UserScripts.gen.cpp";
-        if (!headerListChanged && fs::exists(genPath))
-        {
-            return true;
+
+        if (!structureChanged && fs::exists(genPath)) {
+            return true; // 진짜 아무것도 안 해도 되는 상태
         }
 
+        // --- 여기서부터 실제 무거운 작업 시작 ---
         std::sort(headerList.begin(), headerList.end());
         std::vector<ScriptInfo> allScripts;
-        for (const auto& rel : headerList)
+
+        std::unordered_map<std::string, std::filesystem::path> scriptDB;
+
+        for (const auto& rel : headerList) 
         {
             const fs::path headerPath = scriptsDir / fs::path(rel);
+            // [병목 지점] structureChanged가 true일 때만 전체 파싱을 하거나, 
+            // 변경된 파일만 부분 파싱하여 캐시를 업데이트하는 로직이 필요함
             std::vector<ScriptInfo> infos = ParseHeaderFile(headerPath, scriptsDir, engineSigs);
-            for (ScriptInfo& info : infos)
+            for (ScriptInfo& info : infos) 
             {
                 info.headerPath = fs::relative(headerPath, scriptsDir);
                 allScripts.push_back(std::move(info));
@@ -757,7 +850,7 @@ namespace MMMEngine::Editor
         }
 
         // 스크립트 유무와 관계없이 gen.cpp 는 항상 생성 (빌드가 동일한 파일 집합을 사용하도록)
-        if (!WriteGenCpp(scriptsDir, allScripts))
+        if (!WriteGenCpp(scriptsDir, allScripts, scriptDB))
             return false;
 
         for (const ScriptInfo& info : allScripts)
@@ -769,7 +862,9 @@ namespace MMMEngine::Editor
             if (text.empty())
                 continue;
             std::string newText = InjectConstructor(text, info.className, info.messages);
-            if (newText == text)
+            std::string oldNormalized = NormalizeToCrlf(text);
+            std::string newNormalized = NormalizeToCrlf(newText);
+            if (newNormalized == oldNormalized)
                 continue;
 
             fs::path backupPath = headerPath;
