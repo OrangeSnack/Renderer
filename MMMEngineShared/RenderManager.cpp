@@ -1635,7 +1635,6 @@ namespace MMMEngine {
 
 	void RenderManager::BeginCanvas(Canvas* canvas)
 	{
-		(void)canvas;
 	}
 
 	void RenderManager::EndCanvas()
