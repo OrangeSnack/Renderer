@@ -1867,6 +1867,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 					{
 						if (auto& meshCol = col.Cast<MeshColliderComponent>(); meshCol.IsValid())
 						{
+							auto srt = go->GetTransform()->GetWorldMatrix();
 							if (auto convexMesh = meshCol->GetConvexMesh(); convexMesh)
 							{
 								auto verts = convexMesh->getVertices();
@@ -1901,13 +1902,13 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 										physx::PxVec3 v2 = verts[i2];
 
 										XMVECTOR A = XMVector3TransformCoord(
-											XMVectorSet(v0.x, v0.y, v0.z, 1.0f), rt);
+											XMVectorSet(v0.x, v0.y, v0.z, 1.0f), srt);
 
 										XMVECTOR B = XMVector3TransformCoord(
-											XMVectorSet(v1.x, v1.y, v1.z, 1.0f), rt);
+											XMVectorSet(v1.x, v1.y, v1.z, 1.0f), srt);
 
 										XMVECTOR C = XMVector3TransformCoord(
-											XMVectorSet(v2.x, v2.y, v2.z, 1.0f), rt);
+											XMVectorSet(v2.x, v2.y, v2.z, 1.0f), srt);
 
 										DX::DrawTriangle(m_batch.get(), A, B, C, Colors::LightGreen);
 									}
@@ -1938,9 +1939,9 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 											continue; // 안전장치
 
 
-										XMVECTOR A = XMVector3TransformCoord(XMLoadFloat3(&submesh[ia].Pos), rt);
-										XMVECTOR B = XMVector3TransformCoord(XMLoadFloat3(&submesh[ib].Pos), rt);
-										XMVECTOR C = XMVector3TransformCoord(XMLoadFloat3(&submesh[ic].Pos), rt);
+										XMVECTOR A = XMVector3TransformCoord(XMLoadFloat3(&submesh[ia].Pos), srt);
+										XMVECTOR B = XMVector3TransformCoord(XMLoadFloat3(&submesh[ib].Pos), srt);
+										XMVECTOR C = XMVector3TransformCoord(XMLoadFloat3(&submesh[ic].Pos), srt);
 
 										DX::DrawTriangle(m_batch.get(), A, B, C, Colors::LightGreen);
 									}
@@ -2066,7 +2067,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	}
 
 	// Stencil 기반 마스크 생성 (선택된 오브젝트, 깊이 무시)
-	if (g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed()
+	if (!m_ui2DMode && g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed()
 		&& m_pPickingVS && m_pMaskPS && m_pStencilWriteState && m_pStencilTestState)
 	{
 		std::vector<uint32_t> selectedIds;
@@ -2119,7 +2120,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	}
 
 	// 아웃라인 렌더링 (씬 뷰 전용)
-	if (g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed()
+	if (!m_ui2DMode && g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed()
 		&& m_pOutlinePS && m_pFullScreenVS && m_pOutlineCBuffer && m_pMaskSRV)
 	{
 		if (m_width > 0 && m_height > 0)
@@ -2153,6 +2154,10 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 			ID3D11ShaderResourceView* nullSRV2 = nullptr;
 			context->PSSetShaderResources(0, 1, &nullSRV2);
 		}
+	}
+	else
+	{
+		context->OMSetRenderTargets(1, &rtv, dsv);
 	}
 
 	if (m_ui2DMode)
