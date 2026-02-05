@@ -430,11 +430,11 @@ void MMMEngine::Animator::Initialize()
 
 void MMMEngine::Animator::UnInitialize()
 {
-	if (mIsReal)
-		mSkinComp->RemoveAnimator();
-	mSkinComp->mAnimBuffer = nullptr;
+	if (mSkinComp) {
+		mSkinComp->mAnimBuffer = nullptr;
+		mSkinComp.Reset();
+	}
 
-	mSkinComp.Reset();
 	mCurrentPlayingMap.clear();
 }
 

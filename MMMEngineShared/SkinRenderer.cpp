@@ -74,7 +74,7 @@ namespace MMMEngine {
 
 	bool SkinRenderer::SetAnimatior(ObjPtr<Animator> _animator)
 	{
-		if (mAnimator != nullptr)
+		if (mAnimator)
 			return false;
 
 		mAnimator = _animator;
@@ -89,6 +89,9 @@ namespace MMMEngine {
 	void SkinRenderer::UnInitialize()
 	{
 		RenderManager::Get().RemoveRenderer(renderIndex);
+		mesh.reset();
+		mAnimator.Reset();
+		mAnimBuffer = nullptr;
 	}
 
 	void SkinRenderer::Render()
@@ -97,7 +100,7 @@ namespace MMMEngine {
 		if (!mesh || !GetTransform())
 			return;
 
-		if (!mAnimator)
+		if (mAnimator)
 			mAnimator->Update(TimeManager::Get().GetDeltaTime());
 
 		for (auto& [matIdx, meshIndices] : mesh->meshGroupData) {

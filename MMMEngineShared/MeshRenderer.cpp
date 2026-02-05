@@ -91,6 +91,7 @@ void MMMEngine::MeshRenderer::Initialize()
 void MMMEngine::MeshRenderer::UnInitialize()
 {
 	RenderManager::Get().RemoveRenderer(renderIndex);
+	mesh.reset();
 }
 
 void MMMEngine::MeshRenderer::Render()

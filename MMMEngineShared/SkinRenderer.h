@@ -34,7 +34,6 @@ namespace MMMEngine {
 		bool GetReceiveShadow();
 
 		bool SetAnimatior(ObjPtr<Animator> _animator);
-		void RemoveAnimator() { mAnimator = nullptr; }
 
 		//void SetMaterial(std::vector<ResPtr<Material>> _materials);
 		//std::vector<ResPtr<Material>> GetMaterial();
