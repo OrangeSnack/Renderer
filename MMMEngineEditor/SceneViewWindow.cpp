@@ -1836,7 +1836,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 
 
 		// 전체보기는 성능이 문제로 픽한게임오브젝트만
-		if(g_selectedGameObject.IsValid())
+		if(g_selectedGameObject.IsValid() && !g_selectedGameObject->IsDestroyed())
 		{
 			auto& go = g_selectedGameObject;
 
