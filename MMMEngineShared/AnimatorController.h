@@ -67,6 +67,7 @@ namespace MMMEngine {
 		void UnInitialize() override;
 
 		void Update(float dt);
+		void AddTrigger(std::string name);
 		void SetTrigger(std::string name);
 		void SetBool(std::string name, bool v);
 		void SetFloat(std::string name, float v);

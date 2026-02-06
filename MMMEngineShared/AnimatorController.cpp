@@ -141,6 +141,12 @@ void MMMEngine::AnimatorController::Update(float dt)
     }
 }
 
+void MMMEngine::AnimatorController::AddTrigger(std::string name)
+{
+	mParams[name].type = ParamType::Trigger;
+	mParams[name].value = 0.0f;
+}
+
 void MMMEngine::AnimatorController::SetTrigger(std::string name)
 {
 	auto it = mParams.find(name);
@@ -311,7 +317,7 @@ void MMMEngine::AnimatorController::BeginTransition(AnimTransition& tr)
 	mNext = &itNext->second;
 
 	// Animator에 두 클립 동시에 등록
-	mAnimator->PlayClip(mCurrent->clipName, mCurrent->loop, mCurrent->rootIdx);
+	mAnimator->PlayBlendClip(mCurrent->clipName, 1.0f, mCurrent->loop, mCurrent->rootIdx);
 	mAnimator->PlayBlendClip(mNext->clipName, 0.0f, mNext->loop, mNext->rootIdx);
 }
 
