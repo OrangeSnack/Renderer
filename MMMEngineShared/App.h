@@ -34,10 +34,10 @@ namespace MMMEngine::Utility
 			bool  valid = false;
 		};
 
-		App(bool useDefaultCursor = false);
-		App(HINSTANCE hInstance, bool useDefaultCursor = false);
-		App(LPCWSTR title, LONG width, LONG height, bool useDefaultCursor = false);
-		App(HINSTANCE hInstance,LPCWSTR title, LONG width, LONG height, bool useDefaultCursor = false);
+		App();
+		App(HINSTANCE hInstance);
+		App(LPCWSTR title, LONG width, LONG height);
+		App(HINSTANCE hInstance,LPCWSTR title, LONG width, LONG height);
 
 		~App();
 
@@ -71,7 +71,6 @@ namespace MMMEngine::Utility
 	protected:
 		LRESULT HandleWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	private:
-		bool m_useDefaultCursor;
 		bool m_isRunning;
 		WindowInfo m_windowInfo;
 		WindowedRestore m_windowedRestore;
