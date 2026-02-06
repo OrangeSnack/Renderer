@@ -77,7 +77,7 @@ namespace MMMEngine::Utility
 		DisplayMode m_currentDisplayMode;
 		DisplayMode m_previousDisplayMode;
 		bool m_isResizable = true;
-
+		bool m_useDefaultCursor;
 		bool m_windowSizeDirty;
 
 		HINSTANCE m_hInstance;
