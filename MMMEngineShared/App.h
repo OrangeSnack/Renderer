@@ -34,10 +34,10 @@ namespace MMMEngine::Utility
 			bool  valid = false;
 		};
 
-		App();
-		App(HINSTANCE hInstance);
-		App(LPCWSTR title, LONG width, LONG height);
-		App(HINSTANCE hInstance,LPCWSTR title, LONG width, LONG height);
+		App(bool useDefaultCursor = false);
+		App(HINSTANCE hInstance, bool useDefaultCursor = false);
+		App(LPCWSTR title, LONG width, LONG height, bool useDefaultCursor = false);
+		App(HINSTANCE hInstance,LPCWSTR title, LONG width, LONG height, bool useDefaultCursor = false);
 
 		~App();
 
