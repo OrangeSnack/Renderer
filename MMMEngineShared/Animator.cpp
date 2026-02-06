@@ -593,7 +593,7 @@ void MMMEngine::Animator::PlayBlendClip(std::string _name, float _blendWeight, b
 	info.bufferWeight = _blendWeight;
 
 	// 추가된 클립제외 Weight 정규화
-	NormalizeWeightExcept(_name);
+	//NormalizeWeightExcept(_name);
 
 	mIsPlaying = true;
 }
