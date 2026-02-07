@@ -149,6 +149,11 @@ void Update()
 	if (GlobalRegistry::g_runtimeActive)
 	{
 		BehaviourManager::Get().InitializeBehaviours();
+		BehaviourManager::Get().CheckAndSortBehaviours();
+		BehaviourManager::Get().ExecuteAwake();
+		BehaviourManager::Get().ExecuteStart();
+		BehaviourManager::Get().ExecuteOnEnable();
+		BehaviourManager::Get().ClearInitializeCache();
 	}
 
 	TimeManager::Get().ConsumeFixedSteps([&](float fixedDt)
@@ -208,10 +213,9 @@ void Update()
 
 	if (GlobalRegistry::g_runtimeActive)
 	{
+		PhysxManager::Get().ApplyInterpolation(TimeManager::Get().GetInterpolationAlpha());
 		BehaviourManager::Get().BroadCastBehaviourMessage("Update");
 		BehaviourManager::Get().BroadCastBehaviourMessage("LateUpdate");
-
-		PhysxManager::Get().ApplyInterpolation(TimeManager::Get().GetInterpolationAlpha());
 	}
 
 	RenderManager::Get().BeginFrame();
