@@ -245,6 +245,7 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 			{
 				if (t > clip->durationSec) {
 					t = clip->durationSec;
+					mCurrentPlayingMap.erase(clip->mName);
 				}
 				if (t < 0.0f) t = 0.0f;
 			}
