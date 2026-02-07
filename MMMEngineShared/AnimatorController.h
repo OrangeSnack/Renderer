@@ -7,6 +7,7 @@
 
 namespace MMMEngine {
 	class Animator;
+	class SkinRenderer;
 
 	enum class CondOp { Greater, Less, Equal, NotEqual };
 	enum class ParamType { Bool, Float, Trigger };
@@ -46,6 +47,7 @@ namespace MMMEngine {
 		RTTR_REGISTRATION_FRIEND
 	private:
 		ObjPtr<Animator> mAnimator;
+		ObjPtr<SkinRenderer> mSkinRenderer;
 
 		std::unordered_map<std::string, AnimState> mStates;
 		std::unordered_map<std::string, AnimParameter> mParams;

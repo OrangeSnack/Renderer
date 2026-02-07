@@ -2,6 +2,7 @@
 #include "AnimatorController.h"
 #include "AnimationClip.h"
 #include "Animator.h"
+#include "SkinRenderer.h"
 #include "rttr/registration"
 
 RTTR_REGISTRATION
@@ -78,6 +79,11 @@ bool MMMEngine::AnimatorController::EvalCondition(const AnimCondition& cond)
 
 void MMMEngine::AnimatorController::Initialize()
 {
+	mSkinRenderer = GetComponent<SkinRenderer>();
+	if (!mSkinRenderer)
+		Destroy(SelfPtr(this));
+	mSkinRenderer->mAnimController = SelfPtr(this);
+
 	mAnimator = GetComponent<Animator>();
 	if(!mAnimator)
 		Destroy(SelfPtr(this));
@@ -324,7 +330,7 @@ void MMMEngine::AnimatorController::BeginTransition(AnimTransition& tr)
 void MMMEngine::AnimatorController::PlayCurrentState()
 {
 	if (!mAnimator || !mCurrent) return;
-	mAnimator->PlayClip(mCurrent->clipName, mCurrent->loop, mCurrent->rootIdx);
+	mAnimator->PlayBlendClip(mCurrent->clipName, 1.0f, mCurrent->loop, mCurrent->rootIdx);
 }
 
 void MMMEngine::AnimatorController::BlendStates(float _weight)
