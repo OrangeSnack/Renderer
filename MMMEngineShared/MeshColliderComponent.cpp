@@ -157,27 +157,37 @@ bool MMMEngine::MeshColliderComponent::TryBuildAndRegister()
 
 bool MMMEngine::MeshColliderComponent::UpdateShapeGeometry()
 {
-
     if (!m_Shape) return false;
 
-    Vector3 s = GetTransform()->GetWorldScale();
-    physx::PxMeshScale scale(ToPxVec(s), physx::PxQuat(physx::PxIdentity));
+    const Vector3 ws = GetTransform()->GetWorldScale();
+    physx::PxMeshScale meshScale(physx::PxVec3(
+        fabs(ws.x), fabs(ws.y), fabs(ws.z)
+    ));
 
-    if (m_convex)
+    physx::PxGeometryHolder holder = m_Shape->getGeometry();
+    switch (holder.getType())
     {
-        physx::PxConvexMeshGeometry geom(m_convex, scale);
+    case physx::PxGeometryType::eTRIANGLEMESH:
+    {
+        auto geom = holder.triangleMesh();
+        geom.scale = meshScale;
         if (!geom.isValid()) return false;
         m_Shape->setGeometry(geom);
+        ApplyAll();
         return true;
     }
-    if (m_tri)
+    case physx::PxGeometryType::eCONVEXMESH:
     {
-        physx::PxTriangleMeshGeometry geom(m_tri, scale);
+        auto geom = holder.convexMesh();
+        geom.scale = meshScale;
         if (!geom.isValid()) return false;
         m_Shape->setGeometry(geom);
+        ApplyAll();
         return true;
     }
-    return false;
+    default:
+        return false;
+    }
 }
 
 bool MMMEngine::MeshColliderComponent::RebuildForRigidType(MMMEngine::RigidBodyComponent::Type type)
