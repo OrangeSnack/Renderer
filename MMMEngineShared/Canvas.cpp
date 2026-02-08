@@ -6,6 +6,36 @@
 #include "rttr/registration"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
+
+namespace
+{
+	int ComputeEffectiveRenderOrder(const MMMEngine::ObjPtr<MMMEngine::Graphic>& graphic)
+	{
+		if (!graphic.IsValid())
+			return 0;
+
+		int order = graphic->GetRenderOrder();
+
+		auto tr = graphic->GetTransform();
+		for (auto parent = tr.IsValid() ? tr->GetParent() : MMMEngine::ObjPtr<MMMEngine::Transform>();
+			parent.IsValid();
+			parent = parent->GetParent())
+		{
+			if (parent->IsDestroyed())
+				continue;
+
+			auto go = parent->GetGameObject();
+			if (!go.IsValid() || go->IsDestroyed())
+				continue;
+
+			if (auto parentGraphic = go->GetComponent<MMMEngine::Graphic>(); parentGraphic.IsValid())
+				order += parentGraphic->GetRenderOrder();
+		}
+
+		return order;
+	}
+}
 
 RTTR_REGISTRATION
 {
@@ -41,6 +71,7 @@ void MMMEngine::Canvas::UnInitialize()
 {
 	RenderManager::Get().UnRegisterCanvas(this);
 	m_graphics.clear();
+	m_graphicIndex.clear();
 	Behaviour::UnInitialize();
 }
 
@@ -109,21 +140,29 @@ void MMMEngine::Canvas::RegisterGraphic(ObjPtr<Graphic> graphic)
 	if (!graphic)
 		return;
 
-	auto it = std::find(m_graphics.begin(), m_graphics.end(), graphic);
-	if (it != m_graphics.end())
+	if (m_graphicIndex.find(graphic) != m_graphicIndex.end())
 		return;
 
+	m_graphicIndex.emplace(graphic, m_graphics.size());
 	m_graphics.push_back(graphic);
 }
 
 void MMMEngine::Canvas::UnregisterGraphic(ObjPtr<Graphic> graphic)
 {
-	auto it = std::find(m_graphics.begin(), m_graphics.end(), graphic);
-	if (it == m_graphics.end())
+	auto it = m_graphicIndex.find(graphic);
+	if (it == m_graphicIndex.end() || m_graphics.empty())
 		return;
 
-	*it = m_graphics.back();
+	const size_t index = it->second;
+	const size_t lastIndex = m_graphics.size() - 1;
+	if (index != lastIndex)
+	{
+		auto lastGraphic = m_graphics[lastIndex];
+		m_graphics[index] = lastGraphic;
+		m_graphicIndex[lastGraphic] = index;
+	}
 	m_graphics.pop_back();
+	m_graphicIndex.erase(it);
 }
 
 const std::vector<MMMEngine::ObjPtr<MMMEngine::Graphic>>& MMMEngine::Canvas::GetGraphics() const
@@ -145,10 +184,24 @@ void MMMEngine::Canvas::RenderUI(RenderManager& renderer)
 		graphics.push_back(graphic);
 	}
 
+	std::unordered_map<ObjPtr<Graphic>, int> orderCache;
+	orderCache.reserve(graphics.size());
+
+	auto getEffectiveOrder = [&orderCache](const ObjPtr<Graphic>& g)
+	{
+		auto it = orderCache.find(g);
+		if (it != orderCache.end())
+			return it->second;
+
+		int order = ComputeEffectiveRenderOrder(g);
+		orderCache.emplace(g, order);
+		return order;
+	};
+
 	std::stable_sort(graphics.begin(), graphics.end(),
-		[](const ObjPtr<Graphic>& a, const ObjPtr<Graphic>& b)
+		[&](const ObjPtr<Graphic>& a, const ObjPtr<Graphic>& b)
 		{
-			return a->GetRenderOrder() < b->GetRenderOrder();
+			return getEffectiveOrder(a) < getEffectiveOrder(b);
 		});
 
 	if (graphics.empty())
