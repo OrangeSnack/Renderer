@@ -6,36 +6,8 @@
 #include "rttr/registration"
 #include <algorithm>
 #include <cmath>
-#include <unordered_map>
 
-namespace
-{
-	int ComputeEffectiveRenderOrder(const MMMEngine::ObjPtr<MMMEngine::Graphic>& graphic)
-	{
-		if (!graphic.IsValid())
-			return 0;
-
-		int order = graphic->GetRenderOrder();
-
-		auto tr = graphic->GetTransform();
-		for (auto parent = tr.IsValid() ? tr->GetParent() : MMMEngine::ObjPtr<MMMEngine::Transform>();
-			parent.IsValid();
-			parent = parent->GetParent())
-		{
-			if (parent->IsDestroyed())
-				continue;
-
-			auto go = parent->GetGameObject();
-			if (!go.IsValid() || go->IsDestroyed())
-				continue;
-
-			if (auto parentGraphic = go->GetComponent<MMMEngine::Graphic>(); parentGraphic.IsValid())
-				order += parentGraphic->GetRenderOrder();
-		}
-
-		return order;
-	}
-}
+ 
 
 RTTR_REGISTRATION
 {
@@ -175,33 +147,25 @@ void MMMEngine::Canvas::RenderUI(RenderManager& renderer)
 	if (!IsActiveAndEnabled())
 		return;
 
-	std::vector<ObjPtr<Graphic>> graphics;
+	struct GraphicEntry
+	{
+		ObjPtr<Graphic> graphic;
+		int order = 0;
+	};
+
+	std::vector<GraphicEntry> graphics;
 	graphics.reserve(m_graphics.size());
 	for (auto& graphic : m_graphics)
 	{
 		if (!graphic.IsValid() || graphic->IsDestroyed())
 			continue;
-		graphics.push_back(graphic);
+	graphics.push_back({ graphic, graphic->GetEffectiveRenderOrder() });
 	}
 
-	std::unordered_map<ObjPtr<Graphic>, int> orderCache;
-	orderCache.reserve(graphics.size());
-
-	auto getEffectiveOrder = [&orderCache](const ObjPtr<Graphic>& g)
-	{
-		auto it = orderCache.find(g);
-		if (it != orderCache.end())
-			return it->second;
-
-		int order = ComputeEffectiveRenderOrder(g);
-		orderCache.emplace(g, order);
-		return order;
-	};
-
 	std::stable_sort(graphics.begin(), graphics.end(),
-		[&](const ObjPtr<Graphic>& a, const ObjPtr<Graphic>& b)
+		[](const GraphicEntry& a, const GraphicEntry& b)
 		{
-			return getEffectiveOrder(a) < getEffectiveOrder(b);
+			return a.order < b.order;
 		});
 
 	if (graphics.empty())
@@ -293,8 +257,9 @@ void MMMEngine::Canvas::RenderUI(RenderManager& renderer)
 	std::vector<MaskEntry> targetMasks;
 	targetMasks.reserve(8);
 
-	for (auto& graphic : graphics)
+	for (auto& entry : graphics)
 	{
+		auto& graphic = entry.graphic;
 		if (graphic->IsDestroyed())
 			continue;
 		if (!graphic->IsActiveAndEnabled())
