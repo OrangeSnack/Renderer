@@ -250,6 +250,7 @@ namespace MMMEngine
 			const DirectX::SimpleMath::Color& color,
 			TextAlignment alignment,
 			float rotationRad,
-			const DirectX::SimpleMath::Vector2& pivotScene);
+			const DirectX::SimpleMath::Vector2& pivotScene,
+			const DirectX::SimpleMath::Vector2& textScale);
 	};
 }
