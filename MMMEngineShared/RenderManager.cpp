@@ -107,7 +107,7 @@ namespace MMMEngine {
 	{
 		for (auto& [type, commands] : m_renderCommands)
 		{
-			if (type == RenderType::R_TRANSCULANT)
+			if (type == RenderType::R_TRANSCULANT || type == RenderType::R_PARTICLE)
 			{
 				// 투명 오브젝트: 카메라 거리 내림차순 정렬
 				std::sort(commands.begin(), commands.end(),
@@ -140,6 +140,17 @@ namespace MMMEngine {
 						return a.material < b.material;
 					});
 			}
+
+			float blendFactor[4] = { 0,0,0,0 };
+			if (type == RenderType::R_PARTICLE)
+				m_pDeviceContext->OMSetBlendState(m_pUIBlendState.Get(), blendFactor, 0xffffffff);
+			else
+				m_pDeviceContext->OMSetBlendState(m_pDefaultBS.Get(), blendFactor, 0xffffffff);
+			
+			if (type == RenderType::R_PARTICLE)
+				m_pDeviceContext->RSSetState(m_pUIRS ? m_pUIRS.Get() : m_pDefaultRS.Get());
+			else
+				m_pDeviceContext->RSSetState(m_pDefaultRS.Get());
 
 			// 정렬된 커맨드 실행
 			ResPtr<Material> lastMaterial;
@@ -181,6 +192,25 @@ namespace MMMEngine {
 
 				// 상수버퍼 등록
 				auto sType = ShaderInfo::Get().GetShaderType(lastMaterial->GetPShader()->GetFilePath());
+
+				if (type == RenderType::R_PARTICLE && m_pParticleBuffer)
+				{
+					const float particleAlpha = cmd.useParticleAlpha ? cmd.particleAlpha : 1.0f;
+					const Vector4 particleParams = { particleAlpha, 0.0f, 0.0f, 0.0f };
+					m_pDeviceContext->UpdateSubresource1(m_pParticleBuffer.Get(), 0, nullptr, &particleParams, 0, 0, D3D11_COPY_DISCARD);
+					m_pDeviceContext->PSSetConstantBuffers(10, 1, m_pParticleBuffer.GetAddressOf());
+				}
+				
+				// Per-renderer receiveShadow flag: bind/unbind shadow map SRV explicitly.
+				PropertyInfo shadowPropInfo{};
+				const int shadowSlot = ShaderInfo::Get().PropertyToIdx(sType, L"_shadowmap", &shadowPropInfo);
+				if (shadowSlot >= 0 && shadowPropInfo.propertyType == PropertyType::Texture)
+				{
+					ID3D11ShaderResourceView* shadowSrv = nullptr;
+					if (cmd.receiveShadow && m_pShadowSRV)
+						shadowSrv = m_pShadowSRV->m_pSRV.Get();
+					m_pDeviceContext->PSSetShaderResources(shadowSlot, 1, &shadowSrv);
+				}
 
 				// 상수버퍼 일렬업데이트
 				ShaderInfo::Get().UpdateCBuffers(sType);
@@ -644,6 +674,8 @@ namespace MMMEngine {
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, &m_pAnimBuffer));
 		bd.ByteWidth = sizeof(Render_UIBuffer);
 		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pUIBuffer.GetAddressOf()));
+		bd.ByteWidth = sizeof(Vector4);
+		HR_T(m_pDevice->CreateBuffer(&bd, nullptr, m_pParticleBuffer.GetAddressOf()));
 
 		// 그림자 버퍼용
 		D3D11_TEXTURE2D_DESC1 shadowDesc = {};
@@ -789,6 +821,7 @@ namespace MMMEngine {
 		// 6) 트랜스폼/카메라/스킨/쉐도우 버퍼
 		m_pTransbuffer.Reset();
 		m_pCambuffer.Reset();
+		m_pParticleBuffer.Reset();
 
 		m_pOffsetBuffer.Reset();
 		m_pAnimBuffer.Reset();
@@ -871,17 +904,17 @@ namespace MMMEngine {
 			}, _value);
 	}
 
-	void RenderManager::SetWorldMatrix(DirectX::SimpleMath::Matrix& _world)
+	void RenderManager::SetWorldMatrix(const DirectX::SimpleMath::Matrix& _world)
 	{
 		m_worldMatrix = _world;
 	}
 
-	void RenderManager::SetViewMatrix(DirectX::SimpleMath::Matrix& _view)
+	void RenderManager::SetViewMatrix(const DirectX::SimpleMath::Matrix& _view)
 	{
 		m_viewMatrix = _view;
 	}
 
-	void RenderManager::SetProjMatrix(DirectX::SimpleMath::Matrix& _proj)
+	void RenderManager::SetProjMatrix(const DirectX::SimpleMath::Matrix& _proj)
 	{
 		m_projMatrix = _proj;
 	}
@@ -1064,6 +1097,12 @@ namespace MMMEngine {
 
 		// TODO :: 글로벌 쉐이더인포 삭제하기 (라이트는 관리했는데 스카이박스 데이터는 관리안함 바꾸셈)
 		ShaderInfo::Get().ClearWorldPropertyDatas();
+
+		if (m_pMainCamera.IsValid())
+		{
+			m_viewMatrix = m_pMainCamera->GetViewMatrix();
+			m_projMatrix = m_pMainCamera->GetProjMatrix();
+		}
 
 		// 렌더러 컨트롤
 		UpdateRenderers();
@@ -1425,6 +1464,13 @@ namespace MMMEngine {
 
 		// RenderPass
 		ExcuteCommands();
+	}
+
+	void RenderManager::RefreshRenderCommands()
+	{
+		ClearCache();
+		UpdateRenderers();
+		UpdateLights();
 	}
 
 	void RenderManager::RenderUIWithSize(UINT width, UINT height)
