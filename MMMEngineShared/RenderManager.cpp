@@ -1834,7 +1834,8 @@ namespace MMMEngine {
 		const Color& color,
 		TextAlignment alignment,
 		float rotationRad,
-		const Vector2& pivotScene)
+		const Vector2& pivotScene,
+		const Vector2& textScale)
 	{
 		if (text.empty() || !font)
 			return;
@@ -1915,7 +1916,12 @@ namespace MMMEngine {
 			}
 		}
 
-		const float textWidth = DirectX::XMVectorGetX(sizeVec);
+		float scaleX = std::abs(textScale.x);
+		float scaleY = std::abs(textScale.y);
+		if (scaleX <= 1e-6f) scaleX = 1.0f;
+		if (scaleY <= 1e-6f) scaleY = 1.0f;
+
+		const float textWidth = DirectX::XMVectorGetX(sizeVec) * scaleX;
 
 		float x = rect.x;
 		if (alignment == TextAlignment::Center)
@@ -1926,12 +1932,18 @@ namespace MMMEngine {
 		const float y = rect.y;
 		try
 		{
-			const DirectX::XMFLOAT2 pos(x, y);
+			const DirectX::XMFLOAT2 topLeft(x, y);
+			// DrawString's origin is interpreted relative to 'position'.
+			// To rotate around RectTransform pivot while preserving top-left placement,
+			// use position as pivotScene and origin as (pivot - topLeft).
+			const DirectX::XMFLOAT2 pos(pivotScene.x, pivotScene.y);
+			const float invScaleX = 1.0f / scaleX;
+			const float invScaleY = 1.0f / scaleY;
 			const DirectX::XMFLOAT2 origin(
-				pivotScene.x - pos.x,
-				pivotScene.y - pos.y);
+				(pivotScene.x - topLeft.x) * invScaleX,
+				(pivotScene.y - topLeft.y) * invScaleY);
 			spriteFont->DrawString(m_uiSpriteBatch.get(), renderText.c_str(),
-				pos, color, rotationRad, origin);
+				pos, color, rotationRad, origin, DirectX::XMFLOAT2(scaleX, scaleY));
 		}
 		catch (const std::exception&)
 		{

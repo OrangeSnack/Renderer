@@ -7,6 +7,7 @@
 #include "ResourceManager.h"
 #include "Renderer.h"
 #include "ParticleRenderer.h"
+#include "LineRenderer.h"
 #include "VShader.h"
 #include "PShader.h"
 #include "SceneManager.h"
@@ -1815,6 +1816,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 	renderManager.SetProjMatrix(proj);
 	renderManager.SetOrtho(ortho);
 	ParticleRenderer::BeginSceneViewRender(view);
+	LineRenderer::BeginSceneViewRender(view);
 	renderManager.RefreshRenderCommands();
 
 	// ID 텍스쳐 렌더링
@@ -2192,6 +2194,7 @@ void MMMEngine::Editor::SceneViewWindow::RenderSceneToTexture(ID3D11DeviceContex
 		renderManager.RenderUIWithSize(static_cast<UINT>(m_width), static_cast<UINT>(m_height));
 
 	ParticleRenderer::EndSceneViewRender();
+	LineRenderer::EndSceneViewRender();
 
 	// 여기서 함수 끝나면 guard 소멸자에서 원래 RT/Viewport/Blend 등 자동 복원됨
 }
