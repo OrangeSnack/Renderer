@@ -79,7 +79,8 @@ namespace MMMEngine::Editor
             const std::filesystem::path& msbuildPath,
             const std::filesystem::path& slnPath,
             const std::string& projectName,
-            BuildConfiguration config
+            BuildConfiguration config,
+            bool buildProjectReferences = true
         ) const;
 
         ProgressCallbackString m_progressCallbackString;
