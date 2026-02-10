@@ -473,9 +473,11 @@ void MMMEngine::Animator::Update(float _deltaTime)
 
 void MMMEngine::Animator::AddAnimClip(ResPtr<AnimationClip> _clip)
 {
-	int idx = mAnimClips.size();
-	mAnimClips.push_back(_clip);
-	mAnimClipIdx[_clip->mName] = idx;
+	if (_clip) {
+		int idx = mAnimClips.size();
+		mAnimClips.push_back(_clip);
+		mAnimClipIdx[_clip->mName] = idx;
+	}
 }
 
 void MMMEngine::Animator::RemoveAnimClip(ResPtr<AnimationClip> _clip)
