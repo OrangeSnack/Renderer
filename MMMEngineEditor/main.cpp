@@ -136,6 +136,16 @@ void Update()
 	const bool playStoppedThisFrame = (EditorRegistry::g_editor_scene_was_playing && !isPlaying);
 	EditorRegistry::g_editor_scene_was_playing = isPlaying;
 
+	if (MMMEngine::GlobalRegistry::g_quitRequested)
+	{
+		MMMEngine::GlobalRegistry::g_quitRequested = false;
+		if (EditorRegistry::g_editor_scene_playing)
+		{
+			EditorRegistry::g_editor_scene_playing = false;
+			EditorRegistry::g_editor_scene_pause = true;
+		}
+	}
+
 	if (playStoppedThisFrame)
 		AudioManager::Get().StopAll();
 
