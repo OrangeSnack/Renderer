@@ -143,6 +143,10 @@ void Update()
 		{
 			EditorRegistry::g_editor_scene_playing = false;
 			EditorRegistry::g_editor_scene_pause = true;
+
+			auto currenSceneRef = SceneManager::Get().GetCurrentScene();
+			SceneManager::Get().ChangeScene(EditorRegistry::g_editor_scene_before_play_sceneID);
+			SceneManager::Get().ClearDDOLScene();
 		}
 	}
 
