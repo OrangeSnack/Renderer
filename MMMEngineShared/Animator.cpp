@@ -245,7 +245,9 @@ void MMMEngine::Animator::UpdateBoneMatrix()
 			{
 				if (t > clip->durationSec) {
 					t = clip->durationSec;
-					mCurrentPlayingMap.erase(clip->mName);
+					
+					// 애니메이션 종료시 재생목록 제거
+					//mCurrentPlayingMap.erase(clip->mName);
 				}
 				if (t < 0.0f) t = 0.0f;
 			}
