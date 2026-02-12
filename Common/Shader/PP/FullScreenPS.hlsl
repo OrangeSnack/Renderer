@@ -10,9 +10,7 @@ struct PSInput
 
 float4 main(PSInput input) : SV_TARGET
 {
-    // 텍스처 샘플링 (풀스크린 삼각형에서 pos가 화면 밖까지 가므로 UV를 0~1로 clamp)
-    float2 uv = saturate(input.uv);
-    float4 color = _inputTex.Sample(_sp0, uv);
+    float4 color = _inputTex.Sample(_sp0, input.uv);
 
     // 간단한 효과 예시: 색 반전
     // color = float4(1.0 - color.rgb, color.a);
