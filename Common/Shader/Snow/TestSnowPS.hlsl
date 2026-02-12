@@ -1,9 +1,8 @@
 #include "../CommonSharedPS.hlsli"
 
 Texture2D _ambientOcclusion : register(t10);
+Texture2D _lutMap : register(t11);
 
-// b0은 Cambuffer라서 쓰면 충돌남.
-// 엔진에서 비어있는 슬롯로 맞춰줘. (여기서는 b5로 가정)
 cbuffer SnowParams : register(b5)
 {
     float tileScale;
@@ -16,7 +15,6 @@ cbuffer SnowParams : register(b5)
     float2 padding;
 };
 
-// 수동 PCF
 float CalculateShadowPCF(float4 LightPos)
 {
     float currentShadowDepth = LightPos.z / LightPos.w;
@@ -35,9 +33,8 @@ float CalculateShadowPCF(float4 LightPos)
     float bias = 0.0001f;
     currentShadowDepth -= bias;
 
-    // 3x3 PCF
     float shadow = 0.0f;
-    float2 texelSize = 1.0f / 4096.0f;
+    float2 texelSize = 1.0f / 4096.0f; // (가능하면 엔진에서 shadowmap size 넘기는게 베스트)
 
     [unroll]
     for (int x = -1; x <= 1; ++x)
@@ -49,38 +46,29 @@ float CalculateShadowPCF(float4 LightPos)
             shadow += _shadowmap.SampleCmpLevelZero(_cmpsp0, shadowUV + offset, currentShadowDepth);
         }
     }
-    shadow /= 9.0f;
 
-    return shadow;
+    return shadow / 9.0f;
 }
 
+// ---- noise 함수들은 그대로 ----
 float hash(float2 p)
 {
     return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
 }
-
 float valueNoise(float2 uv)
 {
     float2 i = floor(uv);
     float2 f = frac(uv);
-
     float a = hash(i);
     float b = hash(i + float2(1, 0));
     float c = hash(i + float2(0, 1));
     float d = hash(i + float2(1, 1));
-
     float2 u = f * f * (3.0 - 2.0 * f);
-
-    return lerp(lerp(a, b, u.x),
-                lerp(c, d, u.x), u.y);
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
 }
-
 float fbm(float2 uv, int oct)
 {
-    float v = 0.0;
-    float amp = 0.5;
-    float freq = 1.0;
-
+    float v = 0.0, amp = 0.5, freq = 1.0;
     [loop]
     for (int i = 0; i < oct; i++)
     {
@@ -88,19 +76,17 @@ float fbm(float2 uv, int oct)
         freq *= 2.0;
         amp *= 0.5;
     }
-
     return v;
 }
 
 float4 main(PS_INPUT input) : SV_Target
 {
-    // -------- Base Snow Pattern --------
+    // ===== Base Pattern =====
     float2 uv = input.W_Pos.xz * tileScale;
 
     float2 warp;
     warp.x = fbm(uv + float2(12.7, 3.1), 3);
     warp.y = fbm(uv + float2(5.3, 19.1), 3);
-
     uv += (warp * 2.0 - 1.0) * warpStrength;
 
     float base = fbm(uv, octaves);
@@ -111,45 +97,62 @@ float4 main(PS_INPUT input) : SV_Target
 
     float iceMask = smoothstep(0.65, 0.85, base) * iceStrength;
 
-    float3 snow = float3(0.9, 0.95, 1.0);
-    float3 ice = float3(0.75, 0.85, 1.0);
+    float3 deepSnow = float3(0.75, 0.85, 1.0);
+    float3 brightSnow = float3(1.0, 1.0, 1.0);
+    float3 iceColor = float3(0.7, 0.85, 1.0);
 
-    float3 albedo = lerp(snow, ice, iceMask);
-    albedo *= (0.7 + base * 0.6);
+    float3 albedo = lerp(deepSnow, brightSnow, base);
+    albedo = lerp(albedo, iceColor, iceMask);
 
-    // -------- AO --------
+    // ===== Micro Normal =====
+    float eps = 0.02;
+    float hL = fbm(uv - float2(eps, 0), 3);
+    float hR = fbm(uv + float2(eps, 0), 3);
+    float hD = fbm(uv - float2(0, eps), 3);
+    float hU = fbm(uv + float2(0, eps), 3);
+
+    float3 microNormal = normalize(float3(hL - hR, 1.0, hD - hU));
+    float3 N = normalize(input.Norm + microNormal * 1.5);
+
+    base = pow(base, 1.8);
+
+    float3 V = normalize(mCamPos.xyz - input.W_Pos.xyz);
+    float3 L = normalize(-mLightDir.xyz);
+    float NdotL = saturate(dot(N, L));
+
+    // ===== AO =====
     float aoTex = saturate(_ambientOcclusion.Sample(_sp0, input.Tex).r);
-    float ao = lerp(1.0f, aoTex, saturate(mAoStrength));
 
-    // -------- Shadow (Directional) --------
-    float shadow = CalculateShadowPCF(input.S_Pos); // 1=lit, 0=shadow
-    const float minShadow = 0.35f;
-    shadow = lerp(minShadow, 1.0f, shadow);
+    // ===== Shadow =====
+    float shadow = CalculateShadowPCF(input.S_Pos); // 0~1
 
-    // -------- Lighting (Directional LightBuffer from CommonSharedPS.hlsli) --------
-    // CommonSharedPS.hlsli의 LightBuffer(b1):
-    // float3 mLightDir; float3 mLightColor; float mIntensity;
-    // mLightDir가 "빛이 향하는 방향"인지, "빛이 오는 방향"인지 헷갈릴 수 있어서
-    // (보통 엔진은 '빛이 향하는 방향'을 많이 넣음) → 기본은 -mLightDir로 라이트벡터를 만듦.
-    float3 N = normalize(input.Norm);
-    float3 L = normalize(-mLightDir); // Light direction (to light)
-    float NdotL = saturate(dot(N, L)); // Lambert
+    // ✅ 핵심: 툰처럼 LUT로 “절도 있는” shadow 만들기
+    // 툰 셰이더가 쓰던 x좌표 매핑 그대로 가져옴
+    float shadowLut = _lutMap.Sample(_samPoint, float2(shadow * 0.5f + 0.495f, 0.5f)).r;
 
-    // 최소한의 환경광(빛 색 기반)
-    float3 ambient = 0.12f * mLightColor;
+    // ✅ 너무 검게 떨어지는 걸 방지(원하면 값 조절)
+    shadowLut = lerp(0.35f, 1.0f, shadowLut);
 
-    // 확산광
+    // ===== Lighting =====
+    float3 ambient = mAoStrength * mLightColor;
+    ambient *= aoTex;
+
     float3 diffuse = (NdotL * mLightColor) * mIntensity;
 
-    // AO는 주로 ambient에 강하게 적용하는 편이 자연스러움
-    ambient *= ao;
-    // diffuse에도 살짝만(원하면 1.0f로 올려도 됨)
-    diffuse *= lerp(1.0f, ao, 0.35f);
+    // ✅ Shadow는 diffuse에 절도있게 적용
+    diffuse *= shadowLut;
 
-    // Shadow는 보통 diffuse에 적용 (ambient는 유지하거나 약하게만)
-    diffuse *= shadow;
+    // AO는 diffuse에도 살짝
+    diffuse *= lerp(1.0f, aoTex, 0.35f);
 
     float3 col = albedo * (ambient + diffuse);
+
+    // Rim/Subsurface는 그대로
+    float rim = pow(1.0 - saturate(dot(N, V)), 3.0);
+    col += rim * float3(0.6, 0.75, 1.0) * 0.3;
+
+    float subsurface = pow(saturate(dot(L, -V)), 4.0);
+    col += subsurface * float3(0.5, 0.65, 1.0) * 0.25;
 
     return float4(col, 1.0f);
 }
