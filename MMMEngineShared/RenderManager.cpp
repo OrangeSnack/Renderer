@@ -436,6 +436,15 @@ namespace MMMEngine {
 				// 상수버퍼 일렬업데이트
 				ShaderInfo::Get().UpdateCBuffers(sType);
 
+				// 디더링 알파: 그림자에도 동일 적용 — 디더링된 메쉬는 그림자도 디더링되어 표면에 반영
+				if (m_pParticleBuffer)
+				{
+					const float ditherAlpha = cmd.useDitherAlpha ? cmd.ditherAlpha : 1.0f;
+					const Vector4 ditherParams = { ditherAlpha, 0.0f, 0.0f, 0.0f };
+					m_pDeviceContext->UpdateSubresource1(m_pParticleBuffer.Get(), 0, nullptr, &ditherParams, 0, 0, D3D11_COPY_DISCARD);
+					m_pDeviceContext->PSSetConstantBuffers(10, 1, m_pParticleBuffer.GetAddressOf());
+				}
+
 				// 월드매트릭스 버퍼집어넣기
 				Render_TransformBuffer transformBuffer;
 				transformBuffer.mWorld = XMMatrixTranspose(m_objWorldMatMap[cmd.worldMatIndex]);
@@ -1526,6 +1535,15 @@ namespace MMMEngine {
 					m_pDeviceContext->UpdateSubresource1(m_pAnimBuffer.Get(), 0, nullptr, cmd.animBuffer, 0, 0, D3D11_COPY_DISCARD);
 					m_pDeviceContext->VSSetConstantBuffers(2, 1, m_pAnimBuffer.GetAddressOf());
 					lastAnim = cmd.animBuffer;
+				}
+
+				// 디더 알파: 그림자 맵에도 적용 — 디더링된 메쉬가 드리우는 그림자도 디더링
+				if (m_pParticleBuffer)
+				{
+					const float ditherAlpha = cmd.useDitherAlpha ? cmd.ditherAlpha : 1.0f;
+					const Vector4 ditherParams = { ditherAlpha, 0.0f, 0.0f, 0.0f };
+					m_pDeviceContext->UpdateSubresource1(m_pParticleBuffer.Get(), 0, nullptr, &ditherParams, 0, 0, D3D11_COPY_DISCARD);
+					m_pDeviceContext->PSSetConstantBuffers(10, 1, m_pParticleBuffer.GetAddressOf());
 				}
 
 				// 월드매트릭스 버퍼집어넣기
