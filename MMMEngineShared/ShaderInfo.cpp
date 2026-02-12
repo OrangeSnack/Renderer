@@ -222,6 +222,7 @@ void MMMEngine::ShaderInfo::StartUp()
 	m_propertyInfoMap[ShaderType::S_SNOW][L"_shadowmap"] = { PropertyType::Texture, 3 };
 	m_propertyInfoMap[ShaderType::S_SNOW][L"_opacity"] = { PropertyType::Texture, 4 };
 	m_propertyInfoMap[ShaderType::S_SNOW][L"_ambientOcclusion"] = { PropertyType::Texture, 10 };
+	m_propertyInfoMap[ShaderType::S_SNOW][L"_lutMap"] = { PropertyType::Texture, 11, ResourceManager::Get().Load<Texture2D>(L"Shader/Resource/Default_Texture/Toon_Lut.png") };
 
 	// SnowParams(b5)
 	m_propertyInfoMap[ShaderType::S_SNOW][L"tileScale"] = { PropertyType::Constant, 5, 0.15f };
@@ -230,7 +231,7 @@ void MMMEngine::ShaderInfo::StartUp()
 	m_propertyInfoMap[ShaderType::S_SNOW][L"iceStrength"] = { PropertyType::Constant, 5, 0.4f };
 
 	m_propertyInfoMap[ShaderType::S_SNOW][L"octaves"] = { PropertyType::Constant, 5, 4 };
-	m_propertyInfoMap[ShaderType::S_SNOW][L"mAoStrength"] = { PropertyType::Constant, 5, 0.5f };
+	m_propertyInfoMap[ShaderType::S_SNOW][L"mAoStrength"] = { PropertyType::Constant, 5, 0.2f };
 	m_propertyInfoMap[ShaderType::S_SNOW][L"padding"] = { PropertyType::Constant, 5 };
 	//---
 
