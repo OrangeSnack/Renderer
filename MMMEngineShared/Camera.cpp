@@ -158,14 +158,21 @@ void MMMEngine::Camera::Initialize()
 		GetTransform()->onMatrixUpdate.AddListener<Camera, &Camera::MarkViewMatrixDirty>(this);
 		GetTransform()->onMatrixUpdate.AddListener<Camera, &Camera::MarkProjectionMatrixDirty>(this);
 	}
-		
 
-	m_fov = 75;
+	m_fov = 75.0f;
 	m_near = 0.3f;
 	m_far = 1000.0f;
-	m_aspect = 4 / 3;
+
+	// 현재 씬 렌더 타깃 크기에서 Aspect를 가져온다.
+	UINT w = 0, h = 0;
+	RenderManager::Get().GetSceneSize(w, h);
+	if (w > 0 && h > 0)
+		m_aspect = static_cast<float>(w) / static_cast<float>(h);
+	else
+		m_aspect = 16.0f / 9.0f;   // fallback
 
 	MarkViewMatrixDirty();
+	MarkProjectionMatrixDirty();  // 초기 Projection도 다시 계산하도록 플래그
 
 	RenderManager::Get().SetCamera(SelfPtr(this));
 }

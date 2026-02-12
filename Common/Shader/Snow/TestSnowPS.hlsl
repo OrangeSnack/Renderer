@@ -121,7 +121,7 @@ float4 main(PS_INPUT input) : SV_Target
     float3 microNormal = normalize(float3(hL - hR, 1.0, hD - hU));
     float3 N = normalize(input.Norm + microNormal * 1.5);
 
-    base = pow(base, 1.8);
+    base = pow(abs(base), 1.8);
 
     float3 V = normalize(mCamPos.xyz - input.W_Pos.xyz);
     float3 L = normalize(-mLightDir.xyz);
