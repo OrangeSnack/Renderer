@@ -1,4 +1,4 @@
-﻿#include "RenderManager.h"
+#include "RenderManager.h"
 
 #include "RendererTools.h"
 #include "RenderShared.h"
@@ -436,8 +436,8 @@ namespace MMMEngine {
 				// 상수버퍼 일렬업데이트
 				ShaderInfo::Get().UpdateCBuffers(sType);
 
-				// 디더링 알파: 그림자에도 동일 적용 — 디더링된 메쉬는 그림자도 디더링되어 표면에 반영
-				if (m_pParticleBuffer)
+				// 디더링 알파: R_GEOMETRY일 때만 b10 덮어쓰기 (R_PARTICLE은 위에서 이미 particle alpha로 설정함)
+				if (type == RenderType::R_GEOMETRY && m_pParticleBuffer)
 				{
 					const float ditherAlpha = cmd.useDitherAlpha ? cmd.ditherAlpha : 1.0f;
 					const Vector4 ditherParams = { ditherAlpha, 0.0f, 0.0f, 0.0f };
