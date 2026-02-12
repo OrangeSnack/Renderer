@@ -43,7 +43,7 @@ float CalculateShadowPCF(float4 LightPos)
     if (currentShadowDepth < 0.0f || currentShadowDepth > 1.0f)
         return 1.0f;
 
-    float bias = 0.0002f;
+    float bias = 0.0001f;
     currentShadowDepth -= bias;
 
 // 3x3 PCF
@@ -106,7 +106,7 @@ float4 main(PS_INPUT input) : SV_TARGET
     float diffShadow = min(shadowLut, diffLut); // 그림자와 조명값 중 작은 값을 사용
     diffShadow = diffShadow > mLowLut ? diffShadow : (dot(N, -L) * mDiffGradientDistHalf + mDiffGradientDepth);
 
-    float3 diffuse = mDiffuseStr * mLightColor *  diffShadow;
+    float3 diffuse = mDiffuseStr * mLightColor * mIntensity * diffShadow;
     
     float3 viewDir = normalize(input.W_Pos.xyz - mCamPos.xyz);
     float3 halfDir = normalize(viewDir + L); // 스펙큘러연산을 위한 하프 벡터
