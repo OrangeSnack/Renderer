@@ -1,5 +1,11 @@
 #include "../CommonSharedPS.hlsli"
 
+cbuffer DitherParams : register(b10)
+{
+    float mDitherAlpha;
+    float3 _ditherPadding;
+}
+
 Texture2D _lutMap : register(t10);
 Texture2D _roughness : register(t11);
 Texture2D _ambientOcclusion : register(t12);
@@ -158,7 +164,16 @@ float4 main(PS_INPUT input) : SV_TARGET
 	//GradientAttenuation = saturate(GradientAttenuation);
 	//
 	//baseRGB = baseRGB * GradientAttenuation;
-    
+    if (mDitherAlpha < 1.0)
+    {
+        const float bayer4x4[16] = { 0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0 };
+        uint2 px = (uint2)input.Pos.xy;
+        uint idx = (px.x % 4u) + (px.y % 4u) * 4u;
+        float bayerVal = (bayer4x4[idx] + 0.5) / 16.0;
+        if (mDitherAlpha <= bayerVal)
+            discard;
+    }
+
     return float4(baseRGB, baseTex.a);
 
 }

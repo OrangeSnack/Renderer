@@ -414,6 +414,13 @@ namespace MMMEngine {
 					m_pDeviceContext->UpdateSubresource1(m_pParticleBuffer.Get(), 0, nullptr, &particleParams, 0, 0, D3D11_COPY_DISCARD);
 					m_pDeviceContext->PSSetConstantBuffers(10, 1, m_pParticleBuffer.GetAddressOf());
 				}
+				else if (type == RenderType::R_GEOMETRY && m_pParticleBuffer)
+				{
+					const float ditherAlpha = cmd.useDitherAlpha ? cmd.ditherAlpha : 1.0f;
+					const Vector4 ditherParams = { ditherAlpha, 0.0f, 0.0f, 0.0f };
+					m_pDeviceContext->UpdateSubresource1(m_pParticleBuffer.Get(), 0, nullptr, &ditherParams, 0, 0, D3D11_COPY_DISCARD);
+					m_pDeviceContext->PSSetConstantBuffers(10, 1, m_pParticleBuffer.GetAddressOf());
+				}
 
 				// Per-renderer receiveShadow flag: bind/unbind shadow map SRV explicitly.
 				PropertyInfo shadowPropInfo{};
